@@ -1,0 +1,54 @@
+.app-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  background: var(--alvoar-navy);
+  color: #fff;
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+.app-brand {
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: #fff;
+  margin-bottom: .25rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.app-brand span { color: var(--alvoar-teal); }
+.app-brand__sub { font-size: .72rem; font-weight: 400; color: #b9bdd6; margin-bottom: 1rem; }
+
+.app-nav a {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .55rem .7rem;
+  border-radius: var(--radius-sm);
+  color: #cdd0e6;
+  font-size: .9rem;
+  font-weight: 500;
+}
+.app-nav a:hover { background: rgba(255,255,255,.08); text-decoration: none; color: #fff; }
+.app-nav a.active { background: var(--alvoar-teal); color: var(--alvoar-navy); font-weight: 700; }
+
+.app-main { padding: 1.5rem 2rem; overflow: auto; }
+
+.page-header { margin-bottom: 1.25rem; }
+.page-header__title { font-size: 1.5rem; font-weight: 800; color: var(--alvoar-navy); margin: 0; }
+.page-header__sub { color: var(--text-color-secondary); margin: .25rem 0 0; }
+.page-header__actions { margin-top: .75rem; }
+
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.trilha-card { cursor: pointer; transition: transform .15s, box-shadow .15s; }
+.trilha-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(13,12,85,.12); }
+.trilha-card__icon { font-size: 1.6rem; }

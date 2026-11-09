@@ -1,0 +1,123 @@
+# 3. Design system `iv-*`
+
+CSS do design system interno (prefixo `iv-` = "infra view"). Copiável inteiro.
+Fica em `apps/web/src/styles/iv.css` e é importado uma vez no `main.tsx`.
+
+```css
+/* ===== iv-card: contêiner base ===== */
+.iv-card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 2px rgba(13, 12, 85, 0.04);
+}
+.iv-card + .iv-card { margin-top: 1rem; }
+
+/* ===== iv-status: faixa com acento na borda esquerda ===== */
+.iv-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  border-left: 4px solid var(--alvoar-teal);
+  background: color-mix(in srgb, var(--alvoar-teal) 8%, var(--surface-card));
+  font-weight: 500;
+}
+.iv-status--ok   { border-left-color: var(--iv-ok,   #22c55e); background: color-mix(in srgb, #22c55e 8%, #fff); }
+.iv-status--warn { border-left-color: var(--iv-warn, #f59e0b); background: color-mix(in srgb, #f59e0b 8%, #fff); }
+.iv-status--crit { border-left-color: var(--iv-crit, #ef4444); background: color-mix(in srgb, #ef4444 8%, #fff); }
+
+/* ===== iv-kpis / iv-kpi: minicards com acento na borda de cima ===== */
+.iv-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+.iv-kpi {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-top: 3px solid var(--alvoar-teal);
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 1rem;
+  cursor: default;
+  transition: box-shadow .15s, transform .15s;
+}
+.iv-kpi[data-clickable='true'] { cursor: pointer; }
+.iv-kpi[data-clickable='true']:hover { box-shadow: 0 4px 14px rgba(13,12,85,.1); transform: translateY(-1px); }
+.iv-kpi[data-active='true'] { border-top-color: var(--alvoar-navy); background: var(--highlight-bg); }
+.iv-kpi__label { font-size: .8rem; color: var(--text-color-secondary); text-transform: uppercase; letter-spacing: .03em; }
+.iv-kpi__value { font-size: 1.6rem; font-weight: 700; color: var(--alvoar-navy); line-height: 1.2; }
+.iv-kpi__hint  { font-size: .75rem; color: var(--text-color-secondary); }
+
+/* ===== iv-bar / iv-meter: barra de progresso ===== */
+.iv-bar {
+  height: 8px;
+  width: 100%;
+  background: var(--surface-hover);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.iv-meter {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--alvoar-teal);
+  transition: width .3s ease;
+}
+.iv-meter--ok   { background: #22c55e; }
+.iv-meter--warn { background: #f59e0b; }
+.iv-meter--crit { background: #ef4444; }
+
+/* ===== iv-pill: etiqueta com fundo a 13% via color-mix ===== */
+.iv-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .15rem .6rem;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--pill-color, var(--alvoar-navy));
+  background: color-mix(in srgb, var(--pill-color, var(--alvoar-teal)) 13%, #fff);
+}
+
+/* ===== iv-chip: filtro clicável ===== */
+.iv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .3rem .7rem;
+  border-radius: 999px;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  font-size: .8rem;
+  cursor: pointer;
+  user-select: none;
+  transition: all .15s;
+}
+.iv-chip:hover { border-color: var(--alvoar-teal); }
+.iv-chip[data-active='true'] {
+  background: var(--alvoar-navy);
+  border-color: var(--alvoar-navy);
+  color: #fff;
+}
+
+/* ===== iv-toolbar ===== */
+.iv-toolbar {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+  margin-bottom: .9rem;
+}
+.iv-toolbar__spacer { flex: 1; }
+
+/* ===== utilitários ===== */
+.iv-row    { display: flex; align-items: center; gap: .5rem; }
+.iv-col    { display: flex; flex-direction: column; gap: .5rem; }
+.iv-muted  { color: var(--text-color-secondary); }
+.iv-right  { margin-left: auto; }
+.iv-gap    { gap: 1rem; }
+.iv-mt     { margin-top: 1rem; }
+```

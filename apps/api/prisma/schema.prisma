@@ -1,0 +1,140 @@
+// SegInfo Study — persistência no PostgreSQL 16 (banco dedicado seginfo_study).
+// Guarda o ESTADO DO USUÁRIO. Trilhas/Tópicos/Labs são conteúdo estático no código.
+// Chave de usuário = e-mail do Cloudflare Access (header Cf-Access-Authenticated-User-Email).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7: a URL de conexão NÃO fica mais aqui.
+//  - CLI/migrations: apps/api/prisma.config.ts
+//  - Runtime: driver adapter (@prisma/adapter-pg) em src/db.ts
+datasource db {
+  provider = "postgresql"
+}
+
+model Usuario {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  criadoEm  DateTime @default(now())
+
+  progresso    Progresso[]
+  sessoes      Sessao[]
+  metas        Meta[]
+  posts        Post[]
+  arsenal      ArsenalItem[]
+  biblioteca   BiblioItem[]
+  cofre        CofreBlob?
+}
+
+// Progresso + anotações por tópico (tópico é estático no código)
+model Progresso {
+  id           String   @id @default(cuid())
+  usuarioId    String
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  topicoId     String
+  status       String   @default("a_estudar") // a_estudar | estudando | concluido
+  anotacoes    String   @default("")
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([usuarioId, topicoId])
+  @@index([usuarioId])
+}
+
+model Sessao {
+  id        String   @id @default(cuid())
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  data      String
+  trilhaId  String?
+  topicoId  String?
+  minutos   Int
+  nota      String   @default("")
+  criadoEm  DateTime @default(now())
+
+  @@index([usuarioId])
+}
+
+model Meta {
+  id        String   @id @default(cuid())
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  titulo    String
+  trilhaId  String?
+  prazo     String
+  concluida Boolean  @default(false)
+  criadoEm  DateTime @default(now())
+
+  @@index([usuarioId])
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  titulo    String
+  gancho    String   @default("")
+  corpo     String   @default("")
+  topicoId  String?
+  publicado Boolean  @default(false)
+  criadoEm  DateTime @default(now())
+
+  @@index([usuarioId])
+}
+
+model ArsenalItem {
+  id          String   @id @default(cuid())
+  usuarioId   String
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tipo        String   // prompt | skill | agente
+  nome        String
+  slug        String   @default("")
+  dominio     String   @default("geral")
+  resumo      String   @default("")
+  conteudo    String   @default("")
+  quandoUsar  String   @default("")
+  requisitos  String[] @default([])
+  tags        String[] @default([])
+  artefatos   Json     @default("[]")
+  favorito    Boolean  @default(false)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([usuarioId])
+}
+
+model BiblioItem {
+  id            String   @id @default(cuid())
+  usuarioId     String
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  url           String
+  titulo        String   @default("")
+  dominio       String   @default("")
+  textoOriginal String   @default("")
+  resumo        String   @default("")
+  palavrasChave String[] @default([])
+  categoria     String   @default("geral")
+  tags          String[] @default([])
+  estado        String   @default("para_ler")
+  favorito      Boolean  @default(false)
+  anotacoes     String   @default("")
+  topicoId      String?
+  fonteResumo   String   @default("local")
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
+
+  @@index([usuarioId])
+  @@index([usuarioId, categoria])
+}
+
+// Blob cifrado do cofre (AES-GCM). O servidor nunca vê nada em claro.
+model CofreBlob {
+  usuarioId  String   @id
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  versao     Int      @default(1)
+  salt       String
+  iv         String
+  ciphertext String
+  autoLockMin Int     @default(5)
+  atualizadoEm DateTime @updatedAt
+}

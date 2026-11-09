@@ -1,0 +1,44 @@
+# Deploy da SegInfo Study no Coolify (VM100 10.10.10.99, Proxmox pm02).
+# O Coolify lê este compose, builda as imagens e publica o serviço `web`.
+# O Cloudflare Tunnel aponta estudo.criecom.ia.br -> container web (porta 80).
+services:
+  # Nome único (não `api`): a API também entra na rede compartilhada `coolify`
+  # para alcançar o Postgres, e um nome genérico poderia colidir no DNS com outras apps.
+  seginfo-api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      # mesma origem em produção (Nginx faz o proxy /api): CORS não é usado pelo browser.
+      - WEB_ORIGIN=https://estudo.criecom.ia.br
+      # Secrets definidos no Coolify. NÃO comite valores reais:
+      #   DATABASE_URL=postgresql://seginfo_app:SENHA@lgrzsnhe4pycyjjsoyk7f3hi:5432/seginfo_study?schema=public
+      - DATABASE_URL=${DATABASE_URL}
+      # Verificação do JWT do Cloudflare Access (sem isso a API recusa tudo em produção)
+      - CF_ACCESS_TEAM=${CF_ACCESS_TEAM}
+      - CF_ACCESS_AUD=${CF_ACCESS_AUD}
+    expose:
+      - "3001"
+    # `default`: rede privada do compose (web -> api).
+    # `coolify`: rede onde estão os Postgres (acesso ao banco pelo nome do container).
+    networks:
+      - default
+      - coolify
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    depends_on:
+      - seginfo-api
+    # O Coolify injeta a porta/label do proxy. Para teste local, descomente:
+    # ports:
+    #   - "8080:80"
+    restart: unless-stopped
+
+networks:
+  coolify:
+    external: true
