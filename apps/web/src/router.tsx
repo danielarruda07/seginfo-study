@@ -11,6 +11,7 @@ import { Posts } from '@/routes/Posts';
 import { Cofre } from '@/routes/Cofre';
 import { Arsenal } from '@/routes/Arsenal';
 import { Biblioteca } from '@/routes/Biblioteca';
+import { Radar } from '@/routes/Radar';
 
 const rootRoute = createRootRoute({ component: Layout });
 
@@ -26,6 +27,7 @@ const postsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/posts'
 const cofreRoute = createRoute({ getParentRoute: () => rootRoute, path: '/cofre', component: Cofre });
 const arsenalRoute = createRoute({ getParentRoute: () => rootRoute, path: '/arsenal', component: Arsenal });
 const bibliotecaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/biblioteca', component: Biblioteca });
+const radarRoute = createRoute({ getParentRoute: () => rootRoute, path: '/radar', component: Radar });
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -40,6 +42,7 @@ const routeTree = rootRoute.addChildren([
   cofreRoute,
   arsenalRoute,
   bibliotecaRoute,
+  radarRoute,
 ]);
 
 export const router = createRouter({ routeTree });

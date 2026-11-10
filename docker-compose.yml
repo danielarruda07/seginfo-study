@@ -19,6 +19,15 @@ services:
       # Verificação do JWT do Cloudflare Access (sem isso a API recusa tudo em produção)
       - CF_ACCESS_TEAM=${CF_ACCESS_TEAM}
       - CF_ACCESS_AUD=${CF_ACCESS_AUD}
+      # Radar de Ataques: token dos coletores e dono dos eventos (sem eles a ingestão responde 503)
+      - INGEST_TOKEN=${INGEST_TOKEN}
+      - INGEST_OWNER_EMAIL=${INGEST_OWNER_EMAIL}
+      # Service Token do Access para a ingestão (app `estudo-ingest`)
+      - CF_ACCESS_INGEST_AUD=${CF_ACCESS_INGEST_AUD}
+      - CF_ACCESS_INGEST_CLIENT_ID=${CF_ACCESS_INGEST_CLIENT_ID}
+      # opcionais (valores padrão seguros)
+      - RADAR_GUARDAR_SENHAS=${RADAR_GUARDAR_SENHAS:-false}
+      - ATAQUES_RETENCAO_DIAS=${ATAQUES_RETENCAO_DIAS:-90}
     expose:
       - "3001"
     # `default`: rede privada do compose (web -> api).

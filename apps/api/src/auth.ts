@@ -28,6 +28,22 @@ function getJwks(team: string) {
 }
 
 /**
+ * Verifica um JWT do Cloudflare Access contra uma audiência (AUD) específica.
+ * Usado pela ingestão de coletores (Service Token), que tem uma aplicação Access própria.
+ * Lança se a assinatura, o emissor ou a audiência não conferirem.
+ */
+export async function verifyAccessJwt(token: string, audience: string) {
+  const team = process.env.CF_ACCESS_TEAM;
+  if (!team) throw new Error('CF_ACCESS_TEAM não configurado');
+  const { payload } = await jwtVerify(token, getJwks(team), {
+    issuer: `https://${team}.cloudflareaccess.com`,
+    audience,
+    algorithms: ['RS256'],
+  });
+  return payload;
+}
+
+/**
  * Valida a identidade e devolve o e-mail verificado, ou null (já respondeu 401/503).
  * Não toca no banco: serve também para proteger rotas sem estado (ex: /api/extract).
  */

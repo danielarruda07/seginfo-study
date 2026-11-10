@@ -3,6 +3,8 @@ import cors from '@fastify/cors';
 import { z } from 'zod';
 import { extractUrl } from './extract.js';
 import { registerStateRoutes } from './routes.js';
+import { registerIngestRoutes } from './ingest.js';
+import { iniciarRetencao } from './radar.js';
 import { requireIdentity } from './auth.js';
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
@@ -17,6 +19,12 @@ app.get('/health', async () => ({ ok: true, service: 'seginfo-api', time: new Da
 
 // rotas de estado do usuário (persistência PostgreSQL via Prisma)
 await app.register(registerStateRoutes);
+
+// ingestão de eventos por coletores (token de máquina; fora do hook de usuário)
+await app.register(registerIngestRoutes);
+
+// retenção dos eventos de ataque (ATAQUES_RETENCAO_DIAS, padrão 90)
+iniciarRetencao(app);
 
 const ExtractBody = z.object({ url: z.string().url() });
 

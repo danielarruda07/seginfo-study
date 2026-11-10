@@ -25,6 +25,7 @@ model Usuario {
   arsenal      ArsenalItem[]
   biblioteca   BiblioItem[]
   cofre        CofreBlob?
+  ataques      AtaqueEvento[]
 }
 
 // Progresso + anotações por tópico (tópico é estático no código)
@@ -137,4 +138,31 @@ model CofreBlob {
   ciphertext String
   autoLockMin Int     @default(5)
   atualizadoEm DateTime @updatedAt
+}
+
+// Radar de Ataques: eventos de tentativa de invasão (FortiGate, Windows 4625/4740, honeypot).
+// Nunca guarda senha tentada. `dedupKey` torna a ingestão idempotente (reenvio do coletor).
+model AtaqueEvento {
+  id             String   @id @default(cuid())
+  usuarioId      String
+  usuario        Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  fonte          String   // fortigate | windows | cowrie | opencanary | outro
+  ocorridoEm     DateTime
+  ipOrigem       String?  // nulo só em lockout (evento 4740 não traz IP)
+  paisOrigem     String?
+  portaDestino   Int?
+  protocolo      String?
+  servico        String?
+  acao           String   // login_falha | login_ok | lockout | scan | bloqueio | conexao | comando | outro
+  usuarioTentado String?
+  senhaTentada   String?  // opcional e sensível: só honeypot e só com RADAR_GUARDAR_SENHAS=true
+  alvo           String?
+  detalhes       Json     @default("{}")
+  dedupKey       String
+  criadoEm       DateTime @default(now())
+
+  @@unique([usuarioId, dedupKey])
+  @@index([usuarioId, ocorridoEm])
+  @@index([usuarioId, ipOrigem])
+  @@index([usuarioId, servico])
 }

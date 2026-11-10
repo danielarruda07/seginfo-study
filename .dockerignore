@@ -11,3 +11,5 @@ coverage
 .env.*
 docs
 README.md
+sensor
+windows

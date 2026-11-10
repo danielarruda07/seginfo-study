@@ -6,6 +6,7 @@ const NAV = [
   { to: '/topicos', label: 'Tópicos', icon: 'pi-book' },
   { to: '/ambiente', label: 'Meu Ambiente', icon: 'pi-server' },
   { to: '/labs', label: 'Labs', icon: 'pi-desktop' },
+  { to: '/radar', label: 'Radar', icon: 'pi-eye' },
   { to: '/sessoes', label: 'Sessões', icon: 'pi-clock' },
   { to: '/metas', label: 'Metas', icon: 'pi-flag' },
   { to: '/posts', label: 'LinkedIn', icon: 'pi-linkedin' },

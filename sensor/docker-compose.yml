@@ -1,0 +1,58 @@
+# Sensor honeypot da SegInfo. Roda em uma VM ISOLADA (DMZ), NUNCA no host do Coolify
+# nem na mesma rede dos servidores reais. Ver docs/RADAR.md antes de subir.
+#
+# Imagens com tag `latest`: depois do primeiro `docker compose pull`, fixe por digest
+# (docker compose images) para não receber mudanças sem querer.
+services:
+  cowrie:
+    image: cowrie/cowrie:latest
+    restart: unless-stopped
+    environment:
+      - COWRIE_TELNET_ENABLED=yes
+    ports:
+      - "22:2222"   # SSH isca
+      - "23:2223"   # Telnet isca
+    volumes:
+      - cowrie-log:/cowrie/cowrie-git/var/log/cowrie
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+  opencanary:
+    image: thinkst/opencanary:latest
+    restart: unless-stopped
+    ports:
+      - "21:21"       # FTP isca
+      - "80:80"       # HTTP isca
+      - "1433:1433"   # MSSQL isca
+      - "3389:3389"   # RDP isca
+    volumes:
+      - ./opencanary/opencanary.conf:/root/.opencanary.conf:ro
+      - opencanary-log:/var/log/opencanary
+    # roda como root dentro do container para ouvir portas < 1024; só essa capability
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt:
+      - no-new-privileges:true
+
+  shipper:
+    build: ./shipper
+    restart: unless-stopped
+    env_file: .env
+    depends_on: [cowrie, opencanary]
+    ports:
+      - "514:5514/udp"   # syslog do FortiGate (libere só o IP dele no firewall da VM)
+    volumes:
+      - cowrie-log:/logs/cowrie:ro
+      - opencanary-log:/logs/opencanary:ro
+      - shipper-state:/state
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  cowrie-log:
+  opencanary-log:
+  shipper-state:

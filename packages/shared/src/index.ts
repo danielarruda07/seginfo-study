@@ -245,3 +245,54 @@ export const BiblioItemSchema = z.object({
   atualizadoEm: z.string(),
 });
 export type BiblioItem = z.infer<typeof BiblioItemSchema>;
+
+// ===================== RADAR DE ATAQUES (auto-vulnerabilidade / honeypot) =====================
+
+/** Origem do evento: de onde o coletor leu. */
+export const AtaqueFonte = z.enum(['fortigate', 'windows', 'cowrie', 'opencanary', 'outro']);
+export type AtaqueFonte = z.infer<typeof AtaqueFonte>;
+
+/** O que o atacante fez. */
+export const AtaqueAcao = z.enum([
+  'login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'outro',
+]);
+export type AtaqueAcao = z.infer<typeof AtaqueAcao>;
+
+const IpSchema = z.union([z.ipv4(), z.ipv6()]);
+
+/**
+ * Evento enviado pelo coletor. NÃO existe campo de senha: por desenho, a plataforma
+ * nunca armazena senhas tentadas (em honeypot elas podem ser credenciais reais vazadas).
+ */
+export const AtaqueEventoInSchema = z.object({
+  fonte: AtaqueFonte,
+  ocorridoEm: z.string().datetime({ offset: true }),
+  /** Obrigatório, exceto em `lockout` (o evento 4740 do Windows não traz IP de origem). */
+  ipOrigem: IpSchema.optional(),
+  paisOrigem: z.string().length(2).optional(),
+  portaDestino: z.number().int().min(0).max(65535).optional(),
+  protocolo: z.string().max(16).optional(),
+  servico: z.string().max(32).optional(),
+  acao: AtaqueAcao,
+  usuarioTentado: z.string().max(128).optional(),
+  /**
+   * Senha tentada. SÓ de honeypots (cowrie/opencanary) e SÓ se o servidor tiver
+   * RADAR_GUARDAR_SENHAS=true; caso contrário a API descarta o campo sem armazenar.
+   */
+  senhaTentada: z.string().max(128).optional(),
+  alvo: z.string().max(128).optional(),
+  detalhes: z
+    .record(z.string(), z.unknown())
+    .refine((d) => JSON.stringify(d).length <= 4096, { message: 'detalhes excede 4KB' })
+    .optional(),
+}).refine((e) => e.acao === 'lockout' || e.ipOrigem !== undefined, {
+  message: 'ipOrigem é obrigatório (exceto em lockout)',
+  path: ['ipOrigem'],
+});
+export type AtaqueEventoIn = z.infer<typeof AtaqueEventoInSchema>;
+
+/** Lote de eventos (limite de 500 por requisição). */
+export const IngestBatchSchema = z.object({
+  eventos: z.array(AtaqueEventoInSchema).min(1).max(500),
+});
+export type IngestBatch = z.infer<typeof IngestBatchSchema>;

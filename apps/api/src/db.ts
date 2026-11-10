@@ -21,7 +21,9 @@ function createClient(): PrismaClient {
 export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
   get(_target, prop) {
     client ??= createClient();
-    return Reflect.get(client, prop);
+    const value = Reflect.get(client, prop);
+    // métodos como $transaction/$queryRaw dependem de `this` ser o client real
+    return typeof value === 'function' ? value.bind(client) : value;
   },
 });
 
