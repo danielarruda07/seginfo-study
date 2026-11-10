@@ -43,16 +43,24 @@ No túnel `criecomia` (UUID `33b791de-...`, systemd na VM100), adicione uma rota
 (public hostname):
 
 - **Subdomain**: `estudo`  **Domain**: `criecom.ia.br`
-- **Service**: `http://localhost:<porta_do_web_no_coolify>`
-  (use a porta que o Coolify atribuiu ao container `web`; se preferir fixa,
-  descomente `ports: 8080:80` no compose e aponte para `http://localhost:8080`).
+- **Service**: `http://localhost:80` — o **Traefik do Coolify**, mesmo padrão do
+  `criecom.ia.br`. O Traefik roteia pelo cabeçalho Host para o container `web`, a
+  partir do domínio configurado no Coolify. Não publique porta do `web` no host.
+
+  Atenção ao esquema do domínio no Coolify: o TLS termina no Cloudflare e o túnel fala
+  HTTP com o Traefik. Use o **mesmo esquema que o recurso do `criecom.ia.br` usa** no
+  Coolify. Se o domínio estiver como `https://` e o Traefik tentar redirecionar ou
+  emitir certificado, aparece loop de redirect (`ERR_TOO_MANY_REDIRECTS`).
+
+- **Ordem**: crie a aplicação no Cloudflare Access (passo 4) **antes** de adicionar
+  esta rota, para o hostname nunca ficar acessível sem login.
 
 Se você edita o túnel por arquivo (`config.yml`), a entrada fica assim:
 
 ```yaml
 ingress:
   - hostname: estudo.criecom.ia.br
-    service: http://localhost:8080
+    service: http://localhost:80
   # ...demais rotas (criecom.ia.br, coolify, rdp) acima/abaixo
   - service: http_status:404
 ```
@@ -145,8 +153,9 @@ na rede `coolify`, compartilhada com outros containers que poderiam forjá-lo.
 Defina no Coolify (Secrets do serviço `seginfo-api`):
 
 - `CF_ACCESS_TEAM`: nome do seu time Zero Trust (ex: `lampfortup`).
-- `CF_ACCESS_AUD`: Zero Trust → Access → Applications → `estudo` → Overview →
-  **Application Audience (AUD) Tag**. Crie a aplicação do passo 4 antes de pegar o valor.
+- `CF_ACCESS_AUD`: Zero Trust → Access controls → Applications → `estudo` → **Edit** →
+  aba **Additional settings** → **Application Audience (AUD) Tag**. Crie a aplicação do
+  passo 4 antes de pegar o valor. O AUD só muda se a aplicação for apagada e recriada.
 
 Sem essas duas variáveis a API responde 503 a tudo em produção (fail-closed). Cada
 e-mail verificado vira um `Usuario` isolado. Em dev, sem Access, use `DEV_USER_EMAIL`.
