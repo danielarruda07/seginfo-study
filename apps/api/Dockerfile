@@ -18,6 +18,6 @@ COPY apps/api apps/api
 RUN npm run prisma:generate --workspace apps/api
 
 EXPOSE 3001
-HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://localhost:3001/health >/dev/null 2>&1 || exit 1
+HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1:3001/health >/dev/null 2>&1 || exit 1
 # aplica migrations pendentes e sobe a API
 CMD ["sh", "-c", "npm run prisma:migrate --workspace apps/api && npm run start --workspace apps/api"]
