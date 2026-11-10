@@ -1,21 +1,21 @@
 import type { Lab } from '@seginfo/shared';
 
-/** Labs práticos amarrados aos ativos REAIS do homelab CRIECOMIA. */
+/** Labs demonstrativos. Os alvos são IDs fictícios; cadastre ativos reais na interface local. */
 export const LABS: Lab[] = [
   {
     id: 'lab-fw-hardening',
-    titulo: 'Hardening do FortiGate: eliminar policies all/ALL',
-    objetivo: 'Transformar a política insegura wan-50 (all/ALL) e o VIP RDP exposto em regras escopadas e auditáveis.',
+    titulo: 'Hardening de firewall: reduzir regras amplas',
+    objetivo: 'Auditar um firewall do seu laboratório e substituir regras excessivamente amplas por regras escopadas e auditáveis.',
     dominio: 'blue',
     nivel: 'intermediario',
     ativosAlvo: ['crie-fg40f', 'crie-wan50', 'crie-vip-rdp'],
     passos: [
       'Auditar a config real por CLI antes de mudar: show firewall policy.',
-      'Mapear o que a policy wan-50 (all/ALL) realmente permite hoje.',
-      'Criar 3 policies de gerência escopadas (origem/destino/serviço específicos).',
-      'Restringir o VIP RDP: geo Brasil + IPs de origem conhecidos + rate limit.',
-      'Avaliar mover RDP para trás do Cloudflare Access em vez de VIP na WAN.',
-      'Manter a gerência pela LAN-50 (porta 1) durante toda a mudança.',
+      'Mapear o que uma regra ampla realmente permite no ambiente autorizado.',
+      'Criar regras de gerência escopadas por origem, destino e serviço.',
+      'Restringir acesso administrativo a origens autorizadas e aplicar rate limit.',
+      'Avaliar um proxy de identidade com MFA para acesso remoto.',
+      'Manter um caminho de gerência alternativo durante toda a mudança.',
       'Validar e só então remover a policy antiga.',
     ],
     resultadoEsperado: 'Superfície de exposição reduzida, regras com menor privilégio, trilha de auditoria.',
@@ -23,15 +23,15 @@ export const LABS: Lab[] = [
   },
   {
     id: 'lab-wan-attack-surface',
-    titulo: 'Mapear a superfície de ataque do IP público 138.122.82.214',
-    objetivo: 'Enxergar seu próprio ambiente como um atacante externo enxerga (OSINT + scan autorizado do seu próprio ativo).',
+    titulo: 'Mapear a superfície de ataque de um ativo autorizado',
+    objetivo: 'Analisar um ativo próprio ou explicitamente autorizado com OSINT e verificações de exposição dentro do escopo definido.',
     dominio: 'red',
     nivel: 'basico',
     ativosAlvo: ['crie-wan', 'crie-tunnel', 'crie-vip-rdp', 'crie-vm100'],
     passos: [
       'Consultar seu IP no Shodan e Censys — o que está exposto?',
       'Rodar nmap autorizado contra seu próprio IP público (você é o dono).',
-      'Verificar os hostnames do Cloudflare Tunnel (criecom.ia.br, coolify, rdp).',
+      'Inventariar os hostnames de demonstração do seu ambiente (por exemplo, app.lab.example).',
       'Checar o domínio no Have I Been Pwned e certificados em crt.sh.',
       'Documentar cada porta/serviço exposto e justificar ou fechar.',
     ],
@@ -46,8 +46,8 @@ export const LABS: Lab[] = [
     nivel: 'intermediario',
     ativosAlvo: ['crie-vm100', 'crie-vlan70'],
     passos: [
-      'Subir OWASP Juice Shop como container Docker na VM100 (rede isolada).',
-      'Garantir que só a VLAN70_QUAR alcança o alvo (sem rota para produção).',
+      'Subir OWASP Juice Shop como container em uma rede isolada.',
+      'Garantir que somente o segmento de quarentena alcança o alvo (sem rota para produção).',
       'Configurar Burp Suite como proxy e mapear a aplicação.',
       'Explorar os itens do OWASP Top 10 (injection, broken access control, etc.).',
       'Registrar cada achado como anotação no tópico correspondente.',
@@ -63,8 +63,8 @@ export const LABS: Lab[] = [
     nivel: 'avancado',
     ativosAlvo: ['crie-vlan30', 'crie-vlan60', 'crie-vlan70', 'crie-fg40f'],
     passos: [
-      'Auditar as policies 50/51 que hoje dão acesso total entre VLANs.',
-      'Da VLAN30 (users), tentar alcançar serviços na VLAN70 (quarentena).',
+      'Auditar regras que permitem acesso excessivo entre segmentos.',
+      'Da rede de usuários, testar alcance autorizado aos serviços da quarentena.',
       'Documentar o que passa e o que é bloqueado.',
       'Aplicar o princípio de menor privilégio entre segmentos.',
       'Reexecutar o teste e comprovar a contenção.',
@@ -80,10 +80,10 @@ export const LABS: Lab[] = [
     nivel: 'avancado',
     ativosAlvo: ['crie-pm01', 'crie-ct102', 'crie-fg40f'],
     passos: [
-      'Subir o Wazuh (manager + indexer + dashboard) no cluster Proxmox.',
-      'Enviar syslog do FortiGate para o Wazuh.',
-      'Instalar agentes Wazuh nos hosts Proxmox e na VM100.',
-      'Criar regras de detecção (ex: brute force no RDP exposto).',
+      'Subir o Wazuh (manager + indexer + dashboard) em hosts de laboratório.',
+      'Enviar syslog do firewall de laboratório para o Wazuh.',
+      'Instalar agentes Wazuh nos hosts e máquinas virtuais de teste.',
+      'Criar regras de detecção (por exemplo, tentativas de autenticação repetidas).',
       'Mapear as detecções para técnicas do MITRE ATT&CK.',
     ],
     resultadoEsperado: 'Um SOC funcional em casa, com detecções reais. Material forte para o LinkedIn.',
@@ -108,13 +108,13 @@ export const LABS: Lab[] = [
   },
   {
     id: 'lab-ad-attack',
-    titulo: 'AD Security: montar criecomia.local e atacar/defender',
-    objetivo: 'Promover o DC do lab e praticar ataques clássicos de AD de forma controlada.',
+    titulo: 'AD Security: montar um domínio isolado e praticar defesa',
+    objetivo: 'Promover o controlador de domínio de laboratório e praticar ataques clássicos de forma controlada.',
     dominio: 'purple',
     nivel: 'avancado',
     ativosAlvo: ['crie-vm101'],
     passos: [
-      'Promover a VM101 a DC do domínio criecomia.local.',
+      'Promover a VM de laboratório a controlador de domínio em um domínio fictício.',
       'Mapear caminhos de ataque com BloodHound.',
       'Simular Kerberoasting e AS-REP roasting em contas de teste.',
       'Aplicar defesas: tiering, LAPS, contas gMSA.',

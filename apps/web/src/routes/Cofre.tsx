@@ -3,17 +3,19 @@ import { Password } from 'primereact/password';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
+import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { StatusStrip, Pill } from '@/components/InfraKit';
+import { StatusStrip } from '@/components/InfraKit';
 import type { VaultEntry } from '@seginfo/shared';
 import * as vault from '@/services/vault';
 import { useVaultActivity } from '@/hooks/useVaultActivity';
-import { downloadBackup, validateBackup, restoreBackup, type BackupPreview } from '@/services/backup';
-import { copyToClipboard } from '@/lib/clipboard';
+import { downloadBackup, validateBackup, restoreBackup, MAX_BACKUP_BYTES, type BackupPreview } from '@/services/backup';
+import { copySensitiveToClipboard } from '@/lib/clipboard';
 import { importarDoNavegador } from '@/services/migrate';
 import { detectMode } from '@/services/mode';
+import { listAtivos } from '@/services/inventario';
 
 /** Campo de senha padrão do Cofre (sem medidor de força, com botão de mostrar). */
 function SecretInput({ value, onChange, placeholder, onKeyDown }: {
@@ -36,6 +38,12 @@ function SecretInput({ value, onChange, placeholder, onKeyDown }: {
   );
 }
 
+function senhaMestraScore(senha: string): number {
+  if (!senha) return 0;
+  return [senha.length >= 12, senha.length >= 16, /[a-z]/.test(senha), /[A-Z]/.test(senha), /\d/.test(senha), /[^a-zA-Z0-9]/.test(senha)]
+    .filter(Boolean).length;
+}
+
 export function Cofre() {
   const [initialized, setInitialized] = useState(vault.isInitialized());
   const [unlocked, setUnlocked] = useState(vault.isUnlocked());
@@ -53,7 +61,7 @@ export function Cofre() {
 
   async function criar() {
     setErro('');
-    if (master.length < 8) return setErro('A senha-mestra precisa ter ao menos 8 caracteres.');
+    if (master.length < 12) return setErro('Use uma senha-mestra com pelo menos 12 caracteres.');
     if (master !== master2) return setErro('As senhas não conferem.');
     await vault.initVault(master);
     setMaster(''); setMaster2('');
@@ -63,7 +71,7 @@ export function Cofre() {
   async function destravar() {
     setErro('');
     const ok = await vault.unlock(master);
-    if (!ok) return setErro('Senha-mestra incorreta.');
+    if (!ok) { const seconds = vault.unlockWaitSeconds(); return setErro(`Senha-mestra incorreta.${seconds ? ` Aguarde ${seconds} s antes da próxima tentativa.` : ''}`); }
     setMaster('');
     setUnlocked(true);
   }
@@ -91,9 +99,16 @@ export function Cofre() {
             <div className="iv-col iv-gap">
               <h3 style={{ margin: 0 }}>Criar cofre</h3>
               <p className="iv-muted" style={{ margin: 0, fontSize: '.85rem' }}>
-                Escolha uma senha-mestra forte. Ela protege tudo e não pode ser recuperada se esquecida.
+                Use uma frase-senha com pelo menos 12 caracteres. Ela protege tudo e não pode ser recuperada se esquecida.
               </p>
               <SecretInput value={master} onChange={setMaster} placeholder="Senha-mestra" />
+              <div className="vault-strength" aria-live="polite">
+                <div className="vault-strength__track" role="progressbar" aria-label="Força da frase-senha"
+                  aria-valuemin={0} aria-valuemax={6} aria-valuenow={senhaMestraScore(master)}>
+                  <span style={{ width: `${(senhaMestraScore(master) / 6) * 100}%` }} />
+                </div>
+                <span className="iv-muted">{!master ? 'Mínimo 12 caracteres; uma frase longa é mais fácil de lembrar.' : senhaMestraScore(master) >= 5 ? 'Boa frase-senha' : 'Adicione comprimento e variedade.'}</span>
+              </div>
               <SecretInput value={master2} onChange={setMaster2} placeholder="Confirmar senha-mestra" />
               <Button label="Criar cofre" icon="pi pi-lock" onClick={criar} />
             </div>
@@ -130,6 +145,8 @@ function VaultManager({ onLock }: { onLock: () => void }) {
       titulo: editing.titulo!,
       usuario: editing.usuario ?? '',
       url: editing.url ?? '',
+      ambiente: editing.ambiente,
+      ativoId: editing.ativoId,
       notas: editing.notas ?? '',
       secret: editing.secret ?? '',
     });
@@ -168,6 +185,7 @@ function VaultManager({ onLock }: { onLock: () => void }) {
             <InputText value={editing.usuario ?? ''} onChange={(e) => setEditing({ ...editing, usuario: e.target.value })} placeholder="Usuário" />
             <SecretInput value={editing.secret ?? ''} onChange={(secret) => setEditing({ ...editing, secret })} placeholder="Senha / segredo" />
             <InputText value={editing.url ?? ''} onChange={(e) => setEditing({ ...editing, url: e.target.value })} placeholder="URL / host" />
+            <Dropdown value={editing.ativoId} options={listAtivos({ rows: 1000 }).items.map((a) => ({ label: `${a.nome}${a.endereco ? ` · ${a.endereco}` : ''}`, value: a.id }))} onChange={(e) => setEditing({ ...editing, ativoId: e.value, ambiente: 'criecomia' })} placeholder="Ativo relacionado (opcional)" showClear filter />
             <InputTextarea value={editing.notas ?? ''} onChange={(e) => setEditing({ ...editing, notas: e.target.value })} rows={2} placeholder="Notas" />
             <div className="iv-row">
               <Button label="Salvar" icon="pi pi-save" onClick={salvar} />
@@ -186,11 +204,14 @@ function VaultManager({ onLock }: { onLock: () => void }) {
                 <strong>{e.titulo}</strong>
                 {e.usuario && <span className="iv-muted"> · {e.usuario}</span>}
                 {e.url && <div className="iv-muted" style={{ fontSize: '.82rem' }}>{e.url}</div>}
+                {e.ativoId && <div className="iv-muted" style={{ fontSize: '.78rem' }}>Vinculado a: {listAtivos({ rows: 1000 }).items.find((a) => a.id === e.ativoId)?.nome ?? 'ativo removido'}</div>}
               </div>
               <div className="iv-row">
-                <Pill label={revealed[e.id] ? vault.getSecret(e.id) || '(vazio)' : '••••••••'} />
-                <Button icon={revealed[e.id] ? 'pi pi-eye-slash' : 'pi pi-eye'} text onClick={() => setRevealed({ ...revealed, [e.id]: !revealed[e.id] })} />
-                <Button icon="pi pi-copy" text onClick={() => copyToClipboard(vault.getSecret(e.id))} tooltip="Copiar segredo" />
+                <span className="vault-secret-preview" aria-label={revealed[e.id] ? 'Segredo revelado' : 'Segredo oculto'}>
+                  {revealed[e.id] ? vault.getSecret(e.id) || '(vazio)' : '••••••••'}
+                </span>
+                <Button icon={revealed[e.id] ? 'pi pi-eye-slash' : 'pi pi-eye'} text aria-label={revealed[e.id] ? 'Ocultar segredo' : 'Revelar segredo'} onClick={() => setRevealed({ ...revealed, [e.id]: !revealed[e.id] })} />
+                <Button icon="pi pi-copy" text aria-label="Copiar segredo" onClick={() => { void copySensitiveToClipboard(vault.getSecret(e.id)); }} tooltip="Copiar segredo (tenta limpar após 30 s)" />
                 <Button icon="pi pi-pencil" text onClick={() => setEditing({ ...e, secret: vault.getSecret(e.id) })} />
                 <Button icon="pi pi-trash" text severity="danger" onClick={() => excluir(e.id)} />
               </div>
@@ -220,7 +241,7 @@ function BackupCard() {
       }
       const r = await importarDoNavegador();
       const total = Object.values(r.imported).reduce((a, b) => a + b, 0);
-      setMsg({ sev: 'success', text: `Sincronizado com o servidor: ${total} registros enviados.` });
+      setMsg({ sev: 'success', text: `Importação concluída: ${total} registros processados. Repetir não cria cópias.` });
     } catch {
       setMsg({ sev: 'error', text: 'Falha ao sincronizar com o servidor.' });
     } finally {
@@ -228,9 +249,23 @@ function BackupCard() {
     }
   }
 
+  function exportarBackup() {
+    try {
+      downloadBackup();
+      setMsg({ sev: 'success', text: 'Backup exportado. Guarde o arquivo em local privado: ele contém a topologia do homelab.' });
+    } catch (e) {
+      setMsg({ sev: 'error', text: e instanceof Error ? e.message : 'Não foi possível exportar o backup.' });
+    }
+  }
+
   function onFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_BACKUP_BYTES) {
+      setPreview({ valid: false, error: 'O arquivo excede o limite de 25 MB.', keys: [], hasVault: false });
+      e.target.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const text = String(reader.result);
@@ -238,11 +273,13 @@ function BackupCard() {
       setPreview(validateBackup(text));
       setMsg(null);
     };
+    reader.onerror = () => setPreview({ valid: false, error: 'Não foi possível ler o arquivo selecionado.', keys: [], hasVault: false });
     reader.readAsText(file);
   }
 
   function restaurar(mode: 'replace' | 'merge') {
     if (!preview?.valid) return;
+    if (mode === 'replace' && !window.confirm('Substituir todos os dados locais deste navegador pelos dados do backup? Esta ação não pode ser desfeita.')) return;
     const r = restoreBackup(fileText, mode);
     if (r.valid) {
       setMsg({ sev: 'success', text: 'Backup restaurado. Recarregando...' });
@@ -259,15 +296,17 @@ function BackupCard() {
         Exporta todos os dados locais (estudo, inventário, metas e o cofre já cifrado).
         Nenhum segredo sai em texto puro: o cofre é incluído como blob criptografado.
       </p>
+      <Message severity="warn" style={{ width: '100%', marginBottom: '1rem' }}
+        text="O backup local contém também a topologia do seu homelab em texto legível. Guarde o arquivo em local privado e não o publique." />
 
       <div className="iv-row iv-wrap">
-        <Button label="Exportar backup" icon="pi pi-download" onClick={downloadBackup} />
+        <Button label="Exportar backup" icon="pi pi-download" onClick={exportarBackup} />
         <label className="p-button p-component p-button-outlined" style={{ cursor: 'pointer' }}>
           <span className="p-button-icon p-button-icon-left pi pi-upload" />
           <span className="p-button-label">Escolher arquivo...</span>
           <input type="file" accept="application/json,.json" hidden onChange={onFile} />
         </label>
-        <Button label="Sincronizar com servidor" icon={sincronizando ? 'pi pi-spinner pi-spin' : 'pi pi-cloud-upload'} severity="secondary" outlined onClick={sincronizarServidor} disabled={sincronizando} tooltip="Envia os dados deste navegador para o PostgreSQL (precisa da API no ar)" />
+        <Button label="Importar no servidor" icon={sincronizando ? 'pi pi-spinner pi-spin' : 'pi pi-cloud-upload'} severity="secondary" outlined onClick={sincronizarServidor} disabled={sincronizando} tooltip="Mescla os dados deste navegador no PostgreSQL; repetir não cria cópias" />
       </div>
 
       {preview && (
@@ -280,7 +319,7 @@ function BackupCard() {
                 <Button label="Restaurar (substituir tudo)" icon="pi pi-replay" severity="danger" onClick={() => restaurar('replace')} />
                 <Button label="Mesclar" icon="pi pi-plus" outlined onClick={() => restaurar('merge')} />
               </div>
-              <p className="iv-muted" style={{ fontSize: '.78rem' }}>
+        <p className="iv-muted" style={{ fontSize: '.78rem' }}>
                 "Substituir" apaga os dados atuais antes de importar. "Mesclar" sobrescreve só as chaves do arquivo.
               </p>
             </>

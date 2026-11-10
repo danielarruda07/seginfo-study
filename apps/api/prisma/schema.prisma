@@ -52,6 +52,7 @@ model Sessao {
   data      String
   trilhaId  String?
   topicoId  String?
+  labId     String?
   minutos   Int
   nota      String   @default("")
   criadoEm  DateTime @default(now())

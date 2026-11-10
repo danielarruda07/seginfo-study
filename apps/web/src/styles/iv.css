@@ -88,6 +88,8 @@
   cursor: pointer;
   user-select: none;
   transition: all .15s;
+  color: inherit;
+  font: inherit;
 }
 .iv-chip:hover { border-color: var(--alvoar-teal); }
 .iv-chip[data-active='true'] {
@@ -95,6 +97,8 @@
   border-color: var(--alvoar-navy);
   color: #fff;
 }
+.iv-chip[aria-pressed] { appearance: none; }
+.iv-chip:focus-visible, .iv-kpi[data-clickable='true']:focus-visible { outline-offset: 2px; }
 
 /* ===== iv-toolbar ===== */
 .iv-toolbar {

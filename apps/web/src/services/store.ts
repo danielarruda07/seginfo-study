@@ -1,8 +1,23 @@
+import { z } from 'zod';
+import { LOCAL_SCHEMA_VERSION, NS } from './localVersion';
+
 /**
  * Persistência local (MVP). Camada fina sobre localStorage, com namespace.
  * Troque estas funções por chamadas ao `http` quando migrar para o apps/api.
  */
-export const NS = 'seginfo:';
+export { LOCAL_SCHEMA_VERSION, NS };
+
+const SCHEMAS: Record<string, { safeParse: (value: unknown) => { success: boolean; data?: unknown; error?: unknown } }> = {};
+export function registerSchema(key: string, schema: (typeof SCHEMAS)[string]) { SCHEMAS[key] = schema; }
+registerSchema('_schema-version', { safeParse: (v) => z.number().int().min(1).max(LOCAL_SCHEMA_VERSION).safeParse(v) });
+registerSchema('inventario:seed-version', { safeParse: (v) => z.number().int().nonnegative().safeParse(v) });
+registerSchema('study:weekly-target', { safeParse: (v) => z.number().int().min(0).max(80).safeParse(v) });
+export function validateStoredValue(key: string, value: unknown): { success: boolean; error?: unknown } {
+  const schema = SCHEMAS[key];
+  if (!schema) return { success: true };
+  const result = schema.safeParse(value);
+  return { success: result.success, error: result.success ? undefined : result.error };
+}
 
 /** Guarda a última chave cuja leitura falhou por JSON corrompido (sugestão 3). */
 let lastReadError: { key: string; message: string } | null = null;
@@ -18,7 +33,17 @@ export function read<T>(key: string, fallback: T): T {
   const raw = localStorage.getItem(NS + key);
   if (raw === null) return fallback;
   try {
-    return JSON.parse(raw) as T;
+    const parsed: unknown = JSON.parse(raw);
+    if (SCHEMAS[key]) {
+      const result = SCHEMAS[key].safeParse(parsed);
+      if (!result.success) {
+        lastReadError = { key, message: String(result.error ?? 'formato inválido') };
+        console.error(`[store] Formato inválido na chave "${key}"; os dados originais foram preservados.`);
+        return fallback;
+      }
+      return result.data as T;
+    }
+    return parsed as T;
   } catch (e) {
     // Não engole a corrupção silenciosamente: registra para a UI avisar.
     lastReadError = { key, message: e instanceof Error ? e.message : String(e) };
@@ -28,7 +53,13 @@ export function read<T>(key: string, fallback: T): T {
 }
 
 export function write<T>(key: string, value: T): void {
+  if (lastReadError?.key === key) {
+    const original = localStorage.getItem(NS + key);
+    if (original !== null) localStorage.setItem(NS + `recovery:${key}:${Date.now()}`, original);
+    lastReadError = null;
+  }
   localStorage.setItem(NS + key, JSON.stringify(value));
+  if (key !== '_schema-version') localStorage.setItem(NS + '_schema-version', String(LOCAL_SCHEMA_VERSION));
 }
 
 /** Todas as chaves do namespace, sem o prefixo. */
@@ -60,7 +91,9 @@ export function uid(): string {
 
 /** Data de hoje no formato YYYY-MM-DD. */
 export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
 }
 
 /** Resultado paginado padrão das listagens. */

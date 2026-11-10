@@ -1,9 +1,27 @@
-import type { Topico, Trilha, StatusEstudo } from '@seginfo/shared';
+import { StatusEstudo as StatusEstudoSchema, type Topico, type Trilha, type StatusEstudo } from '@seginfo/shared';
 import { TRILHAS } from '@/data/trilhas';
 import { TOPICOS } from '@/data/topicos';
-import { read, write, paginate, matchesSearch, type Page } from './store';
+import { read, write, paginate, matchesSearch, registerSchema, type Page } from './store';
+import { z } from 'zod';
+
+const StatusMapSchema = z.record(z.string(), StatusEstudoSchema);
+registerSchema('status', { safeParse: (v) => StatusMapSchema.safeParse(v) });
+registerSchema('anotacoes', { safeParse: (v) => z.record(z.string(), z.string()).safeParse(v) });
 
 export type TopicoComStatus = Topico & { status: StatusEstudo };
+
+export interface RevisaoTopico { intervalo: number; revisadoEm: string; revisarEm: string; }
+const revisoesSchema = z.record(z.string(), z.object({ intervalo: z.number().int().min(0).max(5), revisadoEm: z.string(), revisarEm: z.string() }));
+registerSchema('revisoes', { safeParse: (v) => revisoesSchema.safeParse(v) });
+export function getRevisoes(): Record<string, RevisaoTopico> { return read('revisoes', {}); }
+export function agendarRevisao(topicoId: string): RevisaoTopico {
+  const atual = getRevisoes()[topicoId];
+  const intervaloIndex = Math.min((atual?.intervalo ?? -1) + 1, 4);
+  const dias = [1, 3, 7, 14, 30][intervaloIndex];
+  const revisao = { intervalo: intervaloIndex, revisadoEm: new Date().toISOString(), revisarEm: new Date(Date.now() + dias * 86400000).toISOString().slice(0, 10) };
+  write('revisoes', { ...getRevisoes(), [topicoId]: revisao });
+  return revisao;
+}
 
 export interface TopicoFiltro {
   search?: string;

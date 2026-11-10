@@ -1,8 +1,9 @@
-import type { ArsenalItem, Artefato, TipoArsenal, DominioArsenal } from '@seginfo/shared';
+import { ArsenalItemSchema, type ArsenalItem, type Artefato, type TipoArsenal, type DominioArsenal } from '@seginfo/shared';
 import { ARSENAL_SEED } from '@/data/arsenal';
-import { read, write, uid } from './store';
+import { read, write, uid, registerSchema } from './store';
 
 const KEY = 'arsenal';
+registerSchema(KEY, { safeParse: (v) => ArsenalItemSchema.array().safeParse(v) });
 
 function base(): ArsenalItem[] {
   const stored = read<ArsenalItem[] | null>(KEY, null);

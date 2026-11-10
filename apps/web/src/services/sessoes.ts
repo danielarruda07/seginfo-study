@@ -1,5 +1,9 @@
-import type { SessaoEstudo, Meta, PostIdea } from '@seginfo/shared';
-import { collection } from './store';
+import { SessaoEstudoSchema, MetaSchema, PostIdeaSchema, type SessaoEstudo, type Meta, type PostIdea } from '@seginfo/shared';
+import { collection, registerSchema } from './store';
+
+registerSchema('sessoes', { safeParse: (v) => SessaoEstudoSchema.array().safeParse(v) });
+registerSchema('metas', { safeParse: (v) => MetaSchema.array().safeParse(v) });
+registerSchema('posts', { safeParse: (v) => PostIdeaSchema.array().safeParse(v) });
 
 const sessoes = collection<SessaoEstudo>('sessoes');
 const metas = collection<Meta>('metas');
@@ -28,6 +32,9 @@ export function toggleMeta(id: string): void {
 // ---- Ideias de post ----
 export const listPosts = posts.all;
 export const addPost = posts.add;
+export function updatePost(id: string, patch: Partial<PostIdea>): void {
+  posts.update(id, (current) => ({ ...current, ...patch }));
+}
 export const removePost = posts.remove;
 export function togglePost(id: string): void {
   posts.update(id, (p) => ({ ...p, publicado: !p.publicado }));

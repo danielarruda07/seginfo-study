@@ -1,6 +1,7 @@
-import type { VaultEntry, VaultBlob } from '@seginfo/shared';
+import { VaultBlobSchema, type VaultEntry, type VaultBlob } from '@seginfo/shared';
 import { deriveKey, encryptJSON, decryptJSON, randomBytes, fromB64, type Bytes } from './crypto';
-import { read, write, uid } from './store';
+import { read, write, removeKey, uid, registerSchema } from './store';
+import { z } from 'zod';
 
 /**
  * Cofre cifrado. O estado em disco é apenas um VaultBlob (ciphertext).
@@ -11,6 +12,19 @@ import { read, write, uid } from './store';
 const BLOB_KEY = 'vault:blob';
 const TIMEOUT_KEY = 'vault:autolock-min'; // minutos de inatividade (config do usuário)
 const DEFAULT_TIMEOUT_MIN = 5;
+const FAILED_UNLOCKS_KEY = 'vault:failed-unlocks';
+registerSchema(BLOB_KEY, { safeParse: (v) => VaultBlobSchema.nullable().safeParse(v) });
+registerSchema(TIMEOUT_KEY, { safeParse: (v) => z.number().int().min(0).max(120).safeParse(v) });
+registerSchema(FAILED_UNLOCKS_KEY, { safeParse: (v) => z.object({ count: z.number().int().nonnegative(), at: z.number().nonnegative() }).safeParse(v) });
+const LOCKOUT_BASE_MS = 1_000;
+const LOCKOUT_MAX_MS = 30_000;
+
+function failedUnlocks(): { count: number; at: number } { return read(FAILED_UNLOCKS_KEY, { count: 0, at: 0 }); }
+export function unlockWaitSeconds(): number {
+  const failed = failedUnlocks();
+  const delay = Math.min(LOCKOUT_BASE_MS * (2 ** Math.max(0, failed.count - 1)), LOCKOUT_MAX_MS);
+  return Math.max(0, Math.ceil((delay - (Date.now() - failed.at)) / 1000));
+}
 
 let sessionKey: CryptoKey | null = null;
 let sessionSalt: Bytes | null = null;
@@ -68,21 +82,27 @@ export async function initVault(masterPassword: string): Promise<void> {
 
 /** Destrava um cofre existente. Retorna false se a senha estiver errada. */
 export async function unlock(masterPassword: string): Promise<boolean> {
+  const waitMs = unlockWaitSeconds() * 1000;
+  if (waitMs > 0) { await new Promise((resolve) => setTimeout(resolve, waitMs)); }
   const blob = read<VaultBlob | null>(BLOB_KEY, null);
   if (!blob) return false;
   const salt = fromB64(blob.salt);
   const key = await deriveKey(masterPassword, salt);
+  let entries: VaultEntry[];
   try {
-    const entries = await decryptJSON<VaultEntry[]>(blob, key);
-    sessionKey = key;
-    sessionSalt = salt;
-    cache = entries;
-    resetIdleTimer();
-    return true;
+    entries = await decryptJSON<VaultEntry[]>(blob, key);
   } catch {
     // tag GCM inválida => senha errada
+    const failed = failedUnlocks();
+    write(FAILED_UNLOCKS_KEY, { count: failed.count + 1, at: Date.now() });
     return false;
   }
+  sessionKey = key;
+  sessionSalt = salt;
+  cache = entries;
+  resetIdleTimer();
+  removeKey(FAILED_UNLOCKS_KEY);
+  return true;
 }
 
 /** Trava o cofre: descarta a chave e as entradas da memória. */

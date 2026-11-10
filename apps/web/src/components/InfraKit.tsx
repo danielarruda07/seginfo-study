@@ -23,8 +23,11 @@ export function Kpi({ label, value, hint, active, onClick }: KpiProps) {
       data-active={active || undefined}
       onClick={onClick}
       role={clickable ? 'button' : undefined}
+      aria-pressed={clickable ? !!active : undefined}
       tabIndex={clickable ? 0 : undefined}
-      onKeyDown={clickable ? (e) => (e.key === 'Enter' || e.key === ' ') && onClick!() : undefined}
+      onKeyDown={clickable ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick!(); }
+      } : undefined}
     >
       <div className="iv-kpi__label">{label}</div>
       <div className="iv-kpi__value">{value}</div>
@@ -41,11 +44,17 @@ export interface ChipProps {
   icon?: string;
 }
 export function Chip({ label, active, onClick, icon }: ChipProps) {
+  if (!onClick) {
+    return <span className="iv-chip" data-active={active || undefined}>
+      {icon && <i className={`pi ${icon}`} aria-hidden="true" />}{label}
+    </span>;
+  }
   return (
-    <span className="iv-chip" data-active={active || undefined} onClick={onClick}>
-      {icon && <i className={`pi ${icon}`} />}
+    <button type="button" className="iv-chip" data-active={active || undefined}
+      aria-pressed={!!active} onClick={onClick}>
+      {icon && <i className={`pi ${icon}`} aria-hidden="true" />}
       {label}
-    </span>
+    </button>
   );
 }
 

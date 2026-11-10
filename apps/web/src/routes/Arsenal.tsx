@@ -117,18 +117,18 @@ export function Arsenal() {
 
         <div className="grid-cards">
           {(data ?? []).map((item) => (
-            <div key={item.id} className="iv-card trilha-card" onClick={() => setSel(item)}>
+            <article key={item.id} className="iv-card library-card">
               <div className="iv-row" style={{ justifyContent: 'space-between' }}>
                 <Pill label={TIPO_LABEL[item.tipo]} color={TIPO_COLOR[item.tipo]} />
-                <i className={`pi ${item.favorito ? 'pi-star-fill' : 'pi-star'}`} style={{ color: item.favorito ? '#f59e0b' : 'var(--text-color-secondary)' }} onClick={(e) => { e.stopPropagation(); favoritar(item.id); }} />
+                <Button type="button" text rounded aria-label={item.favorito ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                  icon={`pi ${item.favorito ? 'pi-star-fill' : 'pi-star'}`} onClick={() => favoritar(item.id)} />
               </div>
-              <h3 style={{ margin: '.6rem 0 .25rem', color: 'var(--alvoar-navy)' }}>{item.nome}</h3>
-              <p className="iv-muted" style={{ margin: 0, fontSize: '.85rem' }}>{item.resumo}</p>
-              <div className="iv-row iv-wrap iv-mt">
-                <Pill label={item.dominio} />
-                {item.artefatos.length > 0 && <Pill label={`${item.artefatos.length} artefato(s)`} color="#64748b" />}
-              </div>
-            </div>
+              <button type="button" className="card-open" onClick={() => setSel(item)}>
+                <span className="card-title">{item.nome}</span>
+                <span className="card-summary iv-muted">{item.resumo}</span>
+                <span className="iv-row iv-wrap iv-mt"><Pill label={item.dominio} />{item.artefatos.length > 0 && <Pill label={`${item.artefatos.length} artefato(s)`} color="#64748b" />}</span>
+              </button>
+            </article>
           ))}
         </div>
       </div>

@@ -21,9 +21,12 @@ ligado, `data-active`. Clicar alterna o filtro daquela métrica.
 | Componente | Responsabilidade |
 | --- | --- |
 | `PageHeader` | Título, subtítulo e ações da tela (topo canônico) |
-| `DataTableWrapper` | Envolve o `DataTable` do PrimeReact com **paginação lazy** padronizada |
-| `FormField` | Label + controle + erro, integrado a `react-hook-form` + `zod` |
+| `DataTableWrapper` | Planejado; ainda não existe no código |
+| `FormField` | Planejado; ainda não existe no código |
 | `ActiveFiltersBar` | Mostra os filtros ativos como chips removíveis |
+
+Os exemplos e a anatomia abaixo são convenções desejadas para novas telas; as telas
+existentes ainda não seguem todas essas etapas nem usam paginação lazy de forma uniforme.
 
 ## 5. Anatomia de tela — ordem canônica
 

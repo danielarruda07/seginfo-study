@@ -17,8 +17,18 @@ import { executarBackup } from './backup.js';
 export function origemOk(req: FastifyRequest): boolean {
   if (process.env.NODE_ENV !== 'production') return true;
   const origin = req.headers.origin;
-  if (!origin) return true; // clientes que não são navegador não enviam Origin
-  return origin === publicBase();
+  // As rotas de estado são chamadas pelo navegador; exigir Origin em produção
+  // impede que um site externo use a sessão autenticada do usuário.
+  if (!origin) return false;
+  const esperado = publicBase();
+  if (esperado) return origin === esperado;
+  // Sem PUBLIC_BASE_URL (configuração do OneDrive ainda pendente) não dá para travar tudo:
+  // aceita apenas a mesma origem do próprio Host. O Nginx repassa o Host original.
+  try {
+    return new URL(origin).host === req.headers.host;
+  } catch {
+    return false;
+  }
 }
 
 export async function registerStorageRoutes(app: FastifyInstance) {

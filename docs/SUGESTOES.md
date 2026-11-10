@@ -82,19 +82,74 @@ de trilhas, tópicos, inventário, labs, sessões, metas, posts e cofre.
 Essa sequência prioriza evitar perda de dados e reduzir riscos antes de ampliar as
 funcionalidades de estudo.
 
+## Atualização de 10/11/2026
+
+- A importação local → API valida os registros e reaproveita seus IDs. Repeti-la
+  atualiza as coleções correspondentes, em vez de criar novas sessões, metas, posts,
+  itens do Arsenal ou da Biblioteca. Isso não remove cópias criadas por importações
+  antigas.
+- As rotas de escrita da API exigem a origem publicada em produção. Os campos de
+  atualização de posts e da Biblioteca também passaram a ter validação explícita.
+- O backup local avisa que o inventário contém topologia real em texto legível.
+- A busca atual do Segundo Cérebro já usa BM25 e retorna trechos com a fonte. A
+  busca híbrida, embeddings, respostas por LLM e ingestão do OneDrive seguem como
+  etapas futuras, descritas em `docs/PENDENCIAS.md`.
+- O layout ganhou navegação móvel, foco visível, filtros operáveis por teclado e
+  atalhos de próxima ação no Painel.
+- As telas agora são carregadas sob demanda. No build atual, o arquivo principal caiu
+  de aproximadamente 999 KB para 400 KB (126 KB gzip); os módulos maiores viraram
+  arquivos separados.
+- O diretório tem repositório Git local, e o `.gitignore` bloqueia backups e a chave
+  privada de restauração. O remoto `danielarruda07/seginfo-study` foi conferido em
+  10/11/2026 e está como privado.
+
+Ainda depende de operação no ambiente hospedado: conexão com OneDrive, backup real,
+e ensaio do novo script de restauração em banco descartável. Não rodei esse ensaio
+porque não tenho o arquivo `.sgb`, a chave privada nem um banco PostgreSQL de teste.
+
 ---
 
 # Revisão de 09/11/2026 — o que já foi feito e novas sugestões
 
-## Situação das sugestões 1–16
+## Situação atual das sugestões 1–37 (10/11/2026)
 
-| # | Sugestão | Situação |
-| --- | --- | --- |
-| 1 | Backup e restauração | **Feito** — `services/backup.ts` + card no Cofre (substituir/mesclar). |
-| 2 | Trava automática do Cofre | **Feito** — inatividade configurável, trava ao ocultar a aba, botão "Travar agora". |
-| 3 | Validar e versionar dados locais | **Parcial** — JSON corrompido gera aviso no Painel, mas os registros ainda não são validados com os schemas Zod nem têm versão de formato. |
-| 10 | Filtros consistentes | **Parcial** — Tópicos e Inventário seguem o padrão; Labs tem filtro simples, sem busca. |
-| demais | — | Pendentes. |
+| # | Situação atual |
+| --- | --- |
+| 1 | **Implementado no app**: backup local validado, mesclagem/substituição e rollback best-effort. Ensaio integral do backup externo ainda pendente. |
+| 2 | **Implementado**: timeout configurável, trava ao ocultar e ação manual. |
+| 3, 33 | **Implementado no cliente**: schemas Zod registrados para coleções locais, versão local e validação de backup antes de importar; dados inválidos são preservados para recuperação. |
+| 4 | **Parcial**: fluxo e instruções de backup/restauração existem; sincronização de conta não existe. |
+| 5, 11 | **Implementado parcialmente**: próximo tópico/meta e atalho de sessão no Painel; ainda não escolhe recomendação com base em revisão vencida. |
+| 6 | **Implementado localmente**: sessões aceitam tópico, lab e nota; não sincroniza esses novos campos com a API. |
+| 7 | **Implementado**: agenda local de revisão com intervalos de 1/3/7/14/30 dias. |
+| 8, 30 | **Implementado**: dias ativos, meta semanal configurável, horas por semana e por trilha. |
+| 9, 27 | **Implementado**: status, data, aprendizado, evidência em nota/caminho local, MITRE e tópico relacionado nos labs; a UI lembra para não incluir credenciais ou dados corporativos. |
+| 10 | **Parcial**: busca/filtros existem nas listas principais; os controles e estados não são totalmente uniformes. |
+| 12 | **Implementado**: busca global (Ctrl+K) de tópicos, trilhas, metas e labs. |
+| 13, 34 | **Implementado parcialmente**: menu móvel, foco e teclado nos controles interativos revisados; falta auditoria completa de contraste, rótulos e leitores de tela. |
+| 14, 32 | **Atualizado parcialmente**: arquitetura e componentes planejados são identificados; ainda pode haver documentação histórica a reconciliar. |
+| 15, 37 | **Parcial**: Vitest configurado; testes atuais cobrem storage, validação/restauração, agenda de revisão, progresso e cifragem. Faltam testes de UI, autotrava e fluxos completos do Cofre. |
+| 16, 17 | **Parcial**: seed e labs agora usam dados demonstrativos, sem endereços/domínios reais. O `localStorage` e backups antigos foram preservados; revise-os manualmente e confirme que o remoto Git é privado antes de publicar. |
+| 18 | **Resolvido**: dados da Alvoar removidos. |
+| 19 | **Implementado**: revisão de riscos antes de copiar texto para publicação. |
+| 20 | **Implementado**: senha-mestra de 12+, medidor, tentativa de limpeza da área de transferência, espera progressiva no desbloqueio e vínculo opcional entre credencial e ativo. |
+| 21 | **Resolvido**: Git local, exclusões de backup configuradas e remoto `danielarruda07/seginfo-study` confirmado como privado em 10/11/2026. |
+| 22 | **Resolvido**: datas usam o calendário local. |
+| 23, 24 | **Implementado**: CRUD de ativos, schemas e ação explícita para incorporar novidades do seed sem sobrescrever edições. |
+| 25 | **Parcial**: catálogo ampliado para OSINT, labs e domínios de certificação; requer seleção e curadoria contínua do conteúdo. |
+| 26 | **Implementado como guia inicial**: Security+ SY0-701 com domínios e pesos publicados, ligado a progresso de tópicos. Não representa prontidão para aprovação; conferir a versão do edital antes de marcar prova. |
+| 28 | **Implementado**: lab concluído pode gerar rascunho para LinkedIn; cópia passa pela revisão de segurança. |
+| 29 | **Implementado**: página de portfólio imprimível/Salvar PDF sem dados do inventário. |
+| 31 | **Implementado**: rascunhos editáveis e associáveis a tópico. |
+| 35 | **Implementado**: carregamento de rotas sob demanda. |
+| 36 | **Pendente no sistema operacional**: excluir `node_modules` da sincronização do OneDrive exige alterar a configuração/mover a pasta fora do workspace. |
+
+## Dependências externas ainda abertas
+
+- Anonimização do seed real (aguardando decisão do usuário), verificação do remoto Git e configuração OneDrive/backup real.
+- Ensaio do script de restauração em PostgreSQL descartável com `.sgb` e chave privada reais.
+- Migração das telas locais para API/PostgreSQL e validação de produção; a maioria das telas continua local.
+- Configuração de `node_modules` fora da sincronização OneDrive e demais tarefas de infraestrutura em `docs/PENDENCIAS.md`.
 
 ## Prioridade alta — segurança dos seus próprios dados
 
@@ -122,10 +177,10 @@ funcionalidades de estudo.
     - usar os campos `ambiente` e `ativoId` que já existem em `VaultEntry` para
       ligar a credencial ao ativo — o detalhe do ativo mostraria "há credencial no
       Cofre" sem revelar nada.
-21. **Controle de versão.** O projeto não está em um repositório git. Com o
-    OneDrive sincronizando, um arquivo sobrescrito por engano não tem histórico
-    confiável. Criar um repositório git **privado**, com `.gitignore` que bloqueie
-    os arquivos `seginfo-backup-*.json`.
+21. **Controle de versão.** O projeto já está em um repositório Git local. Com o
+    OneDrive sincronizando, confirme que qualquer remoto está privado antes de enviar
+    o código, pois o inventário contém topologia real. O `.gitignore` bloqueia agora
+    arquivos `seginfo-backup-*.json`, `.sgb` e a chave privada padrão.
 
 ## Prioridade alta — correções rápidas
 
@@ -180,8 +235,8 @@ funcionalidades de estudo.
 34. **Acessibilidade de teclado.** `Chip` (`<span onClick>`) e os cards de
     Trilhas/Labs (`<div onClick>`) não recebem foco nem respondem a Enter. Usar
     `<button>` ou `role="button"` + `tabIndex`, como já é feito no `Kpi`.
-35. **Dividir o bundle por tela.** O build gera um JS de 878 KB. Carregar cada
-    rota sob demanda (`lazy()`) reduz o tempo de abertura, principalmente no celular.
+35. ~~Dividir o bundle por tela~~ — **feito em 10/11/2026** com carregamento sob demanda.
+    O bundle inicial caiu para aproximadamente 396 KB (124 KB gzip).
 36. **Tirar `node_modules` da sincronização do OneDrive.** Milhares de arquivos
     sincronizando deixam o `npm install` lento e podem corromper pacotes. Mover o
     projeto para fora do OneDrive (com git como backup do código) ou excluir a

@@ -3,7 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Sidebar } from 'primereact/sidebar';
-import type { Ativo, EstadoAtivo, TipoAtivo } from '@seginfo/shared';
+import { Dropdown } from 'primereact/dropdown';
+import { InputText } from 'primereact/inputtext';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Button } from 'primereact/button';
+import { Message } from 'primereact/message';
+import { AtivoSchema, type Ativo, type EstadoAtivo, type TipoAtivo } from '@seginfo/shared';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
 import { SearchInput } from '@/components/ui/SearchInput';
@@ -11,11 +16,14 @@ import { DetailCard, DetailHeader, DetailLayout, DetailSection, TitleCell } from
 import { Kpi, StatusStrip, Chip, Pill } from '@/components/InfraKit';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useFilter } from '@/hooks/useFilter';
-import { listAtivos, resumoInventario, labsDoAtivo } from '@/services/inventario';
+import { listAtivos, resumoInventario, labsDoAtivo, saveAtivo, removeAtivo, inventarioSeedUpdate, incorporarNovidadesSeed } from '@/services/inventario';
 import { DOMINIO_LAB, ESTADO_ATIVO_COLOR, TIPO_ATIVO_LABEL } from '@/theme/status';
+import * as vault from '@/services/vault';
 
 const ROWS = 10;
 const TIPO_CHIPS: TipoAtivo[] = ['host', 'vm', 'container', 'storage', 'vlan', 'rede', 'switch', 'firewall_policy', 'servico'];
+const TIPO_OPTS = Object.entries(TIPO_ATIVO_LABEL).map(([value, label]) => ({ value, label }));
+const ESTADO_OPTS = ['ativo', 'atencao', 'critico', 'planejado', 'desativado'].map((value) => ({ value, label: value }));
 
 export function Inventario() {
   const [page, setPage] = useState(0);
@@ -25,23 +33,59 @@ export function Inventario() {
   const tipo = useFilter<TipoAtivo>(resetPage);
   const estado = useFilter<EstadoAtivo>(resetPage);
   const [sel, setSel] = useState<Ativo | null>(null);
+  const [draft, setDraft] = useState<Ativo | null>(null);
+  const [detalhesRaw, setDetalhesRaw] = useState('{}');
+  const [formError, setFormError] = useState('');
 
   const filtros = useMemo(
     () => ({ search, tipo: tipo.value, estado: estado.value, page, rows: ROWS }),
     [search, tipo.value, estado.value, page],
   );
-  const { data } = useQuery({ queryKey: ['ativos', filtros], queryFn: () => listAtivos(filtros) });
-  const resumo = useQuery({ queryKey: ['resumo-inv'], queryFn: resumoInventario }).data;
+  const query = useQuery({ queryKey: ['ativos', filtros], queryFn: () => listAtivos(filtros) });
+  const data = query.data;
+  const resumoQuery = useQuery({ queryKey: ['resumo-inv'], queryFn: resumoInventario });
+  const resumo = resumoQuery.data;
+  const seedUpdate = inventarioSeedUpdate();
 
   function changeSearch(v: string) { setSearchRaw(v); resetPage(); }
 
+  function criarAtivo() {
+    setSel(null); setFormError(''); setDetalhesRaw('{}');
+    setDraft({ id: '', ambiente: 'criecomia', tipo: 'servico', nome: '', endereco: '', funcao: '', estado: 'ativo', detalhes: {}, tags: [], labsRelacionados: [] });
+  }
+  function editarAtivo(ativo: Ativo) {
+    setSel(null); setFormError(''); setDetalhesRaw(JSON.stringify(ativo.detalhes, null, 2)); setDraft({ ...ativo });
+  }
+  function salvarEdicao() {
+    if (!draft) return;
+    let detalhes: unknown;
+    try { detalhes = JSON.parse(detalhesRaw); } catch { setFormError('Os detalhes precisam estar em formato JSON válido.'); return; }
+    const parsed = AtivoSchema.safeParse({ ...draft, detalhes });
+    if (!parsed.success) { setFormError('Confira os campos obrigatórios e o formato dos detalhes.'); return; }
+    saveAtivo(parsed.data);
+    setDraft(null);
+    void query.refetch();
+    void resumoQuery.refetch();
+  }
+  function excluirAtivo(ativo: Ativo) {
+    if (!window.confirm(`Remover o ativo “${ativo.nome}” do inventário?`)) return;
+    removeAtivo(ativo.id);
+    setSel(null);
+    void query.refetch();
+    void resumoQuery.refetch();
+  }
+
   return (
     <div>
-      <PageHeader title="Meu Ambiente" subtitle="Inventário vivo do homelab CRIECOMIA (Proxmox, Coolify, storage, rede). Sem credenciais — essas ficam no Cofre." />
+      <PageHeader title="Meu Ambiente" subtitle="Inventário vivo do homelab CRIECOMIA (Proxmox, Coolify, storage, rede). Sem credenciais — essas ficam no Cofre."
+        actions={<Button label="Novo ativo" icon="pi pi-plus" onClick={criarAtivo} />} />
+
+      <Message severity="warn" style={{ width: '100%', marginTop: '1rem' }} text="O seed do projeto agora usa somente ativos fictícios. Dados já salvos por versões antigas permanecem no navegador para evitar apagá-los sem autorização; faça um backup privado e revise endereços, nomes e detalhes antes de publicar ou sincronizar o inventário." />
 
       <StatusStrip tone={resumo && resumo.criticos > 0 ? 'crit' : 'ok'} icon="pi-server">
         {resumo?.total ?? 0} ativos · <strong>{resumo?.criticos ?? 0}</strong> críticos, {resumo?.atencao ?? 0} em atenção.
       </StatusStrip>
+      {seedUpdate.disponivel && <Message severity="info" style={{ width: '100%', marginTop: '1rem' }} content={<div className="iv-row iv-wrap" style={{ justifyContent: 'space-between', width: '100%' }}><span>Há {seedUpdate.quantidade} ativos novos no catálogo inicial. Eles serão adicionados sem alterar os seus ativos atuais.</span><Button label="Incorporar novidades" icon="pi pi-download" onClick={() => { const n = incorporarNovidadesSeed(); window.alert(`${n} ativos adicionados.`); void query.refetch(); void resumoQuery.refetch(); }} /></div>} />}
 
       <div className="iv-kpis iv-mt">
         <Kpi label="Ativos" value={resumo?.total ?? 0} hint="no homelab" />
@@ -80,14 +124,30 @@ export function Inventario() {
         </DataTable>
       </div>
 
-      <Sidebar visible={!!sel} position="right" onHide={() => setSel(null)} style={{ width: 460 }}>
-        {sel && <AtivoDetalhe ativo={sel} />}
+      <Sidebar visible={!!sel || !!draft} position="right" onHide={() => { setSel(null); setDraft(null); }} style={{ width: 520 }}>
+        {draft ? (
+          <DetailLayout>
+            <DetailHeader title={draft.id ? 'Editar ativo' : 'Novo ativo'} />
+            {formError && <Message severity="error" text={formError} />}
+            <div className="iv-col iv-gap">
+              <label className="iv-col">Nome<InputText value={draft.nome} onChange={(e) => setDraft({ ...draft, nome: e.target.value })} autoFocus /></label>
+              <label className="iv-col">Tipo<Dropdown value={draft.tipo} options={TIPO_OPTS} onChange={(e) => setDraft({ ...draft, tipo: e.value })} /></label>
+              <label className="iv-col">Endereço ou IP<InputText value={draft.endereco} onChange={(e) => setDraft({ ...draft, endereco: e.target.value })} /></label>
+              <label className="iv-col">Função<InputText value={draft.funcao} onChange={(e) => setDraft({ ...draft, funcao: e.target.value })} /></label>
+              <label className="iv-col">Estado<Dropdown value={draft.estado} options={ESTADO_OPTS} onChange={(e) => setDraft({ ...draft, estado: e.value })} /></label>
+              <label className="iv-col">Tags (separadas por vírgula)<InputText value={draft.tags.join(', ')} onChange={(e) => setDraft({ ...draft, tags: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) })} /></label>
+              <label className="iv-col">Detalhes adicionais (JSON)<InputTextarea value={detalhesRaw} rows={5} autoResize onChange={(e) => setDetalhesRaw(e.target.value)} /></label>
+              <Message severity="warn" text="O inventário contém informações reais da rede do homelab. Não inclua senhas, tokens ou segredos." />
+              <div className="iv-row"><Button label="Salvar ativo" icon="pi pi-save" onClick={salvarEdicao} /><Button label="Cancelar" text onClick={() => setDraft(null)} /></div>
+            </div>
+          </DetailLayout>
+        ) : sel && <AtivoDetalhe ativo={sel} onEdit={() => editarAtivo(sel)} onRemove={() => excluirAtivo(sel)} temCredencial={vault.isUnlocked() && vault.listEntries().some((e) => e.ativoId === sel.id)} />}
       </Sidebar>
     </div>
   );
 }
 
-function AtivoDetalhe({ ativo }: { ativo: Ativo }) {
+function AtivoDetalhe({ ativo, onEdit, onRemove, temCredencial }: { ativo: Ativo; onEdit: () => void; onRemove: () => void; temCredencial: boolean }) {
   const labs = labsDoAtivo(ativo.id);
   const detalhes = Object.entries(ativo.detalhes);
   return (
@@ -98,6 +158,11 @@ function AtivoDetalhe({ ativo }: { ativo: Ativo }) {
       </DetailHeader>
       <div><strong>Endereço:</strong> {ativo.endereco || '—'}</div>
       <div><strong>Função:</strong> {ativo.funcao}</div>
+      {temCredencial && <Message severity="info" text="Há uma credencial relacionada no Cofre. O conteúdo não é exibido aqui." className="iv-mt" />}
+      <div className="iv-row iv-wrap iv-mt">
+        <Button label="Editar" icon="pi pi-pencil" outlined onClick={onEdit} />
+        <Button label="Remover" icon="pi pi-trash" severity="danger" outlined onClick={onRemove} />
+      </div>
 
       {detalhes.length > 0 && (
         <DetailSection title="Detalhes">

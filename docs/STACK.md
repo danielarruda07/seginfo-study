@@ -1,41 +1,51 @@
-# 1. Stack
+# Arquitetura atual
 
-Monorepo com npm workspaces: `apps/web` + `apps/api` + `packages/shared`.
-A versão inicial (MVP) roda **100% no front** (`apps/web`) com persistência em
-`localStorage`. O `apps/api` é a referência para a migração futura para banco real.
+Monorepo npm com `apps/web`, `apps/api` e `packages/shared`.
 
-## Frontend — `apps/web`
+## Frontend
 
-| Lib | Versão | Para que serve |
-| --- | --- | --- |
-| react / react-dom | 19 | Biblioteca de UI, base de toda a aplicação |
-| vite | 6 | Dev server + bundler, build rápido e HMR |
-| typescript | 5.7 | Tipagem estática em todo o código |
-| primereact | 10 | **Núcleo da UI**: DataTable, Drawer, Button, Dropdown, etc. |
-| primeflex | 3 | Utilitários de layout (grid, flex, spacing) |
-| primeicons | 7 | Conjunto de ícones usado pelo PrimeReact |
-| @tanstack/react-query | 5 | Cache de dados assíncronos, estados de loading/erro, refetch |
-| @tanstack/react-router | 1 | Roteamento code-based, type-safe |
-| axios | 1 | Cliente HTTP com interceptors (base para o api futuro) |
-| chart.js | 4 | Gráficos do dashboard (progresso, horas, distribuição) |
-| react-chartjs-2 | 5 | Binding React para o chart.js |
-| @xyflow/react | 12 | Diagramas de fluxo — **só onde usado** (mapas de ataque, kill chain) |
-| leaflet | 1 | Mapas — **só onde usado** (geolocalização de ameaças) |
-| @xterm/xterm | 5 | Terminal no browser — **só onde usado** (labs de comandos) |
-| react-hook-form | 7 | Gerenciamento de formulários (metas, anotações) |
-| zod | 4 | Validação de schema, compartilhado via `packages/shared` |
+- React 19, TypeScript e Vite.
+- PrimeReact, PrimeFlex e PrimeIcons para a interface.
+- TanStack Router para navegação e TanStack Query para consultas/cache.
+- `localStorage` continua sendo a persistência principal de boa parte das telas de
+  estudo. As chaves conhecidas são validadas com schemas Zod, e o formato local guarda
+  uma versão. A tela Radar e o módulo Segundo Cérebro usam a API e o PostgreSQL.
+- `services/migrate.ts` envia uma cópia dos dados locais para o servidor. É uma
+  mesclagem manual, não sincronização bidirecional ou automática.
 
-## Backend (referência) — `apps/api`
+## API
 
-| Lib | Versão | Para que serve |
-| --- | --- | --- |
-| fastify | 5 | Framework HTTP de alto desempenho |
-| @prisma/client / prisma | 7 | ORM e migrations para PostgreSQL |
-| pg | 8 | Driver PostgreSQL |
-| zod | 4 | Validação de payloads (mesmos schemas do shared) |
-| pino | 9 | Logger estruturado |
+- Fastify com autenticação baseada na identidade verificada pelo Cloudflare Access.
+- Prisma 7 com PostgreSQL e adapter `pg`.
+- As rotas de estado aplicam verificação de origem para operações de escrita em
+  produção. Rotas de ingestão de máquina usam autenticação própria e ficam fora
+  desse plugin.
+- O módulo de backup cifra a exportação antes de enviá-la ao OneDrive. A chave
+  privada de restauração não fica no servidor.
 
-## Shared — `packages/shared`
+## Busca no Segundo Cérebro
 
-Tipos TypeScript e schemas Zod usados por `web` e `api` (ex: `Trilha`, `Topico`,
-`SessaoEstudo`, `Meta`, `StatusEstudo`). Fonte única da verdade dos contratos.
+A busca atual é lexical (BM25), executada pela API sobre memórias e devolve trechos
+com a fonte. A captura de URLs usa extração server-side com proteção contra SSRF.
+Não há geração de respostas por LLM, embeddings ou ingestão/sincronização contínua
+do OneDrive nesta etapa.
+
+## Shared
+
+`packages/shared` mantém os tipos e schemas Zod usados pelo frontend. A API valida
+seus payloads com Zod nas rotas; manter schemas compartilhados e modelos da API
+alinhados é uma tarefa em evolução.
+
+## Estrutura
+
+```text
+apps/web/src/routes/       telas da aplicação
+apps/web/src/services/     persistência local e clientes da API
+apps/api/src/              rotas, segurança, integrações e tarefas agendadas
+apps/api/prisma/           schema e migrations
+packages/shared/src/       tipos e schemas compartilhados
+docs/                      decisões e guias operacionais
+```
+
+Consulte `docs/PENDENCIAS.md` antes de considerar o backup externo completo ou usar
+uma exportação como procedimento de restauração integral.

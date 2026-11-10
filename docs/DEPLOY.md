@@ -172,5 +172,6 @@ recurso (confira a opção na sua versão).
 ### 5. Migrar dados do navegador
 
 Depois do primeiro deploy, abra a app, vá em **Cofre → Backup & Restauração** e
-clique em **"Sincronizar com servidor"**: envia o que estava no localStorage
-(estudo, metas, biblioteca, arsenal e o cofre cifrado) para o PostgreSQL.
+clique em **"Importar no servidor"**: mescla os dados deste navegador no PostgreSQL
+(estudo, metas, biblioteca, Arsenal e o cofre cifrado). A importação pode ser repetida
+sem criar cópias dos registros com IDs locais; ela não é uma sincronização contínua.

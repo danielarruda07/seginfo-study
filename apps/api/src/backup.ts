@@ -13,7 +13,8 @@ import { apagarItem, enviarBackup, listarBackups, obterAccessToken } from './one
 const PADRAO_NOME = /^seginfo-\d{8}-\d{6}\.sgb$/;
 
 async function exportarDados(usuarioId: string) {
-  const [progresso, sessoes, metas, posts, arsenal, biblioteca, cofre, ataques, memorias] = await Promise.all([
+  const [usuario, progresso, sessoes, metas, posts, arsenal, biblioteca, cofre, ataques, memorias] = await Promise.all([
+    prisma.usuario.findUnique({ where: { id: usuarioId }, select: { id: true, email: true } }),
     prisma.progresso.findMany({ where: { usuarioId } }),
     prisma.sessao.findMany({ where: { usuarioId } }),
     prisma.meta.findMany({ where: { usuarioId } }),
@@ -25,10 +26,12 @@ async function exportarDados(usuarioId: string) {
     // material corporativo NUNCA vai para o OneDrive pessoal
     prisma.memoria.findMany({ where: { usuarioId, escopo: { not: 'corporativo' } } }),
   ]);
+  if (!usuario) throw new Error('Usuário do backup não encontrado.');
   return {
     formato: 'seginfo-export',
     versao: 1,
     exportadoEm: new Date().toISOString(),
+    usuario,
     progresso, sessoes, metas, posts, arsenal, biblioteca, cofre, ataques, memorias,
   };
 }

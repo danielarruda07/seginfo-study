@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { prisma } from './db.js';
 import { requireUser, type AuthedRequest } from './auth.js';
 import { registerRadarRoutes } from './radar.js';
-import { registerStorageRoutes } from './storage-routes.js';
 import { registerMemoriaRoutes } from './memorias.js';
+import { origemOk, registerStorageRoutes } from './storage-routes.js';
 
 /** Registra todas as rotas de estado do usuário, todas protegidas por requireUser. */
 export async function registerStateRoutes(app: FastifyInstance) {
@@ -13,6 +13,9 @@ export async function registerStateRoutes(app: FastifyInstance) {
   app.addHook('preHandler', async (req, reply) => {
     const ok = await requireUser(req, reply);
     if (!ok) return reply; // resposta de erro já enviada; interrompe a cadeia
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && !origemOk(req)) {
+      return reply.status(403).send({ error: 'Origem não permitida.' });
+    }
   });
 
   const uid = (req: unknown) => (req as AuthedRequest).usuarioId;
@@ -39,7 +42,7 @@ export async function registerStateRoutes(app: FastifyInstance) {
   // ---------- Sessões ----------
   app.get('/api/sessoes', async (req) => prisma.sessao.findMany({ where: { usuarioId: uid(req) }, orderBy: { data: 'desc' } }));
   app.post('/api/sessoes', async (req, reply) => {
-    const b = z.object({ data: z.string(), minutos: z.number().int().positive(), trilhaId: z.string().optional(), topicoId: z.string().optional(), nota: z.string().optional() }).safeParse(req.body);
+    const b = z.object({ data: z.string(), minutos: z.number().int().positive(), trilhaId: z.string().optional(), topicoId: z.string().optional(), labId: z.string().optional(), nota: z.string().optional() }).safeParse(req.body);
     if (!b.success) return reply.status(400).send({ error: 'payload inválido' });
     return prisma.sessao.create({ data: { ...b.data, nota: b.data.nota ?? '', usuarioId: uid(req) } });
   });
@@ -76,9 +79,15 @@ export async function registerStateRoutes(app: FastifyInstance) {
     if (!b.success) return reply.status(400).send({ error: 'payload inválido' });
     return prisma.post.create({ data: { titulo: b.data.titulo, gancho: b.data.gancho ?? '', corpo: b.data.corpo ?? '', topicoId: b.data.topicoId, publicado: b.data.publicado ?? false, usuarioId: uid(req) } });
   });
-  app.patch('/api/posts/:id', async (req) => {
+  app.patch('/api/posts/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
-    await prisma.post.updateMany({ where: { id, usuarioId: uid(req) }, data: req.body as Record<string, unknown> });
+    const b = z.object({
+      titulo: z.string().max(200).optional(), gancho: z.string().max(2_000).optional(),
+      corpo: z.string().max(50_000).optional(), topicoId: z.string().nullable().optional(), publicado: z.boolean().optional(),
+    }).strict().safeParse(req.body);
+    if (!b.success) return reply.status(400).send({ error: 'payload inválido' });
+    const r = await prisma.post.updateMany({ where: { id, usuarioId: uid(req) }, data: b.data });
+    if (!r.count) return reply.status(404).send({ error: 'não encontrado' });
     return { ok: true };
   });
   app.delete('/api/posts/:id', async (req) => {
@@ -144,9 +153,19 @@ export async function registerStateRoutes(app: FastifyInstance) {
     if (id) { await prisma.biblioItem.updateMany({ where: { id, usuarioId: uid(req) }, data }); return { id }; }
     return prisma.biblioItem.create({ data: { ...data, usuarioId: uid(req) } });
   });
-  app.patch('/api/biblioteca/:id', async (req) => {
+  app.patch('/api/biblioteca/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
-    await prisma.biblioItem.updateMany({ where: { id, usuarioId: uid(req) }, data: req.body as Record<string, unknown> });
+    const b = z.object({
+      url: z.string().url().optional(), titulo: z.string().max(500).optional(), dominio: z.string().max(200).optional(),
+      textoOriginal: z.string().max(200_000).optional(), resumo: z.string().max(20_000).optional(),
+      palavrasChave: z.array(z.string().max(100)).max(100).optional(), categoria: z.string().max(100).optional(),
+      tags: z.array(z.string().max(100)).max(100).optional(), estado: z.enum(['para_ler', 'lendo', 'lido']).optional(),
+      favorito: z.boolean().optional(), anotacoes: z.string().max(20_000).optional(), topicoId: z.string().nullable().optional(),
+      fonteResumo: z.string().max(50).optional(),
+    }).strict().safeParse(req.body);
+    if (!b.success) return reply.status(400).send({ error: 'payload inválido' });
+    const r = await prisma.biblioItem.updateMany({ where: { id, usuarioId: uid(req) }, data: b.data });
+    if (!r.count) return reply.status(404).send({ error: 'não encontrado' });
     return { ok: true };
   });
   app.delete('/api/biblioteca/:id', async (req) => {
@@ -171,17 +190,35 @@ export async function registerStateRoutes(app: FastifyInstance) {
   app.post('/api/import', async (req, reply) => {
     const b = z.object({
       progresso: z.array(z.any()).optional(),
-      sessoes: z.array(z.any()).optional(),
-      metas: z.array(z.any()).optional(),
-      posts: z.array(z.any()).optional(),
-      arsenal: z.array(z.any()).optional(),
-      biblioteca: z.array(z.any()).optional(),
-      cofre: z.any().optional(),
+      sessoes: z.array(z.object({ id: z.string().min(1).max(100), data: z.string().max(32), minutos: z.number().int().positive(), trilhaId: z.string().optional(), topicoId: z.string().optional(), labId: z.string().optional(), nota: z.string().max(20_000).optional() })).max(10_000).optional(),
+      metas: z.array(z.object({ id: z.string().min(1).max(100), titulo: z.string().max(500), prazo: z.string().max(32), trilhaId: z.string().optional(), concluida: z.boolean().optional() })).max(10_000).optional(),
+      posts: z.array(z.object({ id: z.string().min(1).max(100), titulo: z.string().max(500), gancho: z.string().max(2_000).optional(), corpo: z.string().max(50_000).optional(), topicoId: z.string().optional(), publicado: z.boolean().optional() })).max(10_000).optional(),
+      arsenal: z.array(z.object({ id: z.string().min(1).max(100), tipo: z.enum(['prompt', 'skill', 'agente']), nome: z.string().max(500), slug: z.string().optional(), dominio: z.string().optional(), resumo: z.string().optional(), conteudo: z.string().optional(), quandoUsar: z.string().optional(), requisitos: z.array(z.string()).optional(), tags: z.array(z.string()).optional(), artefatos: z.array(z.any()).optional(), favorito: z.boolean().optional() })).max(10_000).optional(),
+      biblioteca: z.array(z.object({ id: z.string().min(1).max(100), url: z.string().url(), titulo: z.string().optional(), dominio: z.string().optional(), textoOriginal: z.string().optional(), resumo: z.string().optional(), palavrasChave: z.array(z.string()).optional(), categoria: z.string().optional(), tags: z.array(z.string()).optional(), estado: z.enum(['para_ler', 'lendo', 'lido']).optional(), favorito: z.boolean().optional(), anotacoes: z.string().optional(), topicoId: z.string().optional(), fonteResumo: z.string().optional() })).max(10_000).optional(),
+      cofre: z.object({ versao: z.literal(1), salt: z.string(), iv: z.string(), ciphertext: z.string(), autoLockMin: z.number().int().optional() }).nullable().optional(),
     }).safeParse(req.body);
     if (!b.success) return reply.status(400).send({ error: 'payload inválido' });
     const u = uid(req);
     const d = b.data;
     const counts = { progresso: 0, sessoes: 0, metas: 0, posts: 0, arsenal: 0, biblioteca: 0, cofre: 0 };
+
+    // Coleções locais têm IDs estáveis. Preservá-los torna a importação repetível:
+    // uma nova tentativa atualiza o mesmo registro em vez de criar cópias.
+    const salvarPorId = async (
+      find: () => Promise<{ usuarioId: string } | null>,
+      update: () => Promise<unknown>,
+      create: () => Promise<unknown>,
+    ) => {
+      const existente = await find();
+      if (existente) {
+        // IDs pertencentes a outro usuário são ignorados, nunca sobrescritos.
+        if (existente.usuarioId !== u) return false;
+        await update();
+        return true;
+      }
+      await create();
+      return true;
+    };
 
     for (const p of d.progresso ?? []) {
       await prisma.progresso.upsert({
@@ -191,11 +228,36 @@ export async function registerStateRoutes(app: FastifyInstance) {
       });
       counts.progresso++;
     }
-    for (const s of d.sessoes ?? []) { await prisma.sessao.create({ data: { usuarioId: u, data: s.data, minutos: s.minutos, trilhaId: s.trilhaId, topicoId: s.topicoId, nota: s.nota ?? '' } }); counts.sessoes++; }
-    for (const m of d.metas ?? []) { await prisma.meta.create({ data: { usuarioId: u, titulo: m.titulo, prazo: m.prazo, trilhaId: m.trilhaId, concluida: !!m.concluida } }); counts.metas++; }
-    for (const p of d.posts ?? []) { await prisma.post.create({ data: { usuarioId: u, titulo: p.titulo, gancho: p.gancho ?? '', corpo: p.corpo ?? '', publicado: !!p.publicado } }); counts.posts++; }
-    for (const a of d.arsenal ?? []) { await prisma.arsenalItem.create({ data: { usuarioId: u, tipo: a.tipo, nome: a.nome, slug: a.slug ?? '', dominio: a.dominio ?? 'geral', resumo: a.resumo ?? '', conteudo: a.conteudo ?? '', quandoUsar: a.quandoUsar ?? '', requisitos: a.requisitos ?? [], tags: a.tags ?? [], artefatos: a.artefatos ?? [], favorito: !!a.favorito } }); counts.arsenal++; }
-    for (const b2 of d.biblioteca ?? []) { await prisma.biblioItem.create({ data: { usuarioId: u, url: b2.url, titulo: b2.titulo ?? '', dominio: b2.dominio ?? '', textoOriginal: b2.textoOriginal ?? '', resumo: b2.resumo ?? '', palavrasChave: b2.palavrasChave ?? [], categoria: b2.categoria ?? 'geral', tags: b2.tags ?? [], estado: b2.estado ?? 'para_ler', favorito: !!b2.favorito, anotacoes: b2.anotacoes ?? '', fonteResumo: b2.fonteResumo ?? 'local' } }); counts.biblioteca++; }
+    for (const s of d.sessoes ?? []) {
+      const data = { data: s.data, minutos: s.minutos, trilhaId: s.trilhaId, topicoId: s.topicoId, nota: s.nota ?? '' };
+      if (await salvarPorId(() => prisma.sessao.findUnique({ where: { id: s.id }, select: { usuarioId: true } }),
+        () => prisma.sessao.updateMany({ where: { id: s.id, usuarioId: u }, data }),
+        () => prisma.sessao.create({ data: { ...data, id: s.id, usuarioId: u } }))) counts.sessoes++;
+    }
+    for (const m of d.metas ?? []) {
+      const data = { titulo: m.titulo, prazo: m.prazo, trilhaId: m.trilhaId, concluida: !!m.concluida };
+      if (await salvarPorId(() => prisma.meta.findUnique({ where: { id: m.id }, select: { usuarioId: true } }),
+        () => prisma.meta.updateMany({ where: { id: m.id, usuarioId: u }, data }),
+        () => prisma.meta.create({ data: { ...data, id: m.id, usuarioId: u } }))) counts.metas++;
+    }
+    for (const p of d.posts ?? []) {
+      const data = { titulo: p.titulo, gancho: p.gancho ?? '', corpo: p.corpo ?? '', topicoId: p.topicoId, publicado: !!p.publicado };
+      if (await salvarPorId(() => prisma.post.findUnique({ where: { id: p.id }, select: { usuarioId: true } }),
+        () => prisma.post.updateMany({ where: { id: p.id, usuarioId: u }, data }),
+        () => prisma.post.create({ data: { ...data, id: p.id, usuarioId: u } }))) counts.posts++;
+    }
+    for (const a of d.arsenal ?? []) {
+      const data = { tipo: a.tipo, nome: a.nome, slug: a.slug ?? '', dominio: a.dominio ?? 'geral', resumo: a.resumo ?? '', conteudo: a.conteudo ?? '', quandoUsar: a.quandoUsar ?? '', requisitos: a.requisitos ?? [], tags: a.tags ?? [], artefatos: a.artefatos ?? [], favorito: !!a.favorito };
+      if (await salvarPorId(() => prisma.arsenalItem.findUnique({ where: { id: a.id }, select: { usuarioId: true } }),
+        () => prisma.arsenalItem.updateMany({ where: { id: a.id, usuarioId: u }, data }),
+        () => prisma.arsenalItem.create({ data: { ...data, id: a.id, usuarioId: u } }))) counts.arsenal++;
+    }
+    for (const b2 of d.biblioteca ?? []) {
+      const data = { url: b2.url, titulo: b2.titulo ?? '', dominio: b2.dominio ?? '', textoOriginal: b2.textoOriginal ?? '', resumo: b2.resumo ?? '', palavrasChave: b2.palavrasChave ?? [], categoria: b2.categoria ?? 'geral', tags: b2.tags ?? [], estado: b2.estado ?? 'para_ler', favorito: !!b2.favorito, anotacoes: b2.anotacoes ?? '', topicoId: b2.topicoId, fonteResumo: b2.fonteResumo ?? 'local' };
+      if (await salvarPorId(() => prisma.biblioItem.findUnique({ where: { id: b2.id }, select: { usuarioId: true } }),
+        () => prisma.biblioItem.updateMany({ where: { id: b2.id, usuarioId: u }, data }),
+        () => prisma.biblioItem.create({ data: { ...data, id: b2.id, usuarioId: u } }))) counts.biblioteca++;
+    }
     if (d.cofre && d.cofre.ciphertext) {
       await prisma.cofreBlob.upsert({
         where: { usuarioId: u },

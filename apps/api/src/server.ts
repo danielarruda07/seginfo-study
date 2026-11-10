@@ -17,7 +17,10 @@ await app.register(cors, {
   allowedHeaders: ['Content-Type'],
 });
 
-app.get('/health', async () => ({ ok: true, service: 'seginfo-api', time: new Date().toISOString() }));
+const health = async () => ({ ok: true, service: 'seginfo-api', time: new Date().toISOString() });
+app.get('/health', health);
+// O frontend e o proxy de produção acessam a API sob /api/.
+app.get('/api/health', health);
 
 // rotas de estado do usuário (persistência PostgreSQL via Prisma)
 await app.register(registerStateRoutes);

@@ -88,18 +88,19 @@ export function Biblioteca() {
 
         <div className="grid-cards">
           {(data ?? []).map((item) => (
-            <div key={item.id} className="iv-card trilha-card" onClick={() => setSel(item)}>
+            <article key={item.id} className="iv-card library-card">
               <div className="iv-row" style={{ justifyContent: 'space-between' }}>
                 <Pill label={CATEGORIA_LABELS[item.categoria] ?? item.categoria} />
-                <i className={`pi ${item.favorito ? 'pi-star-fill' : 'pi-star'}`} style={{ color: item.favorito ? '#f59e0b' : 'var(--text-color-secondary)' }} onClick={(e) => { e.stopPropagation(); toggleFavoritoBiblio(item.id); refresh(); }} />
+                <Button type="button" text rounded aria-label={item.favorito ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                  icon={`pi ${item.favorito ? 'pi-star-fill' : 'pi-star'}`} onClick={() => { toggleFavoritoBiblio(item.id); refresh(); }} />
               </div>
-              <h3 style={{ margin: '.6rem 0 .25rem', color: 'var(--alvoar-navy)', fontSize: '1rem' }}>{item.titulo || item.url}</h3>
-              <div className="iv-muted" style={{ fontSize: '.78rem', marginBottom: '.4rem' }}>{item.dominio}</div>
-              <p className="iv-muted" style={{ margin: 0, fontSize: '.85rem' }}>{item.resumo || 'Sem resumo (nenhum texto colado).'}</p>
-              <div className="iv-row iv-wrap iv-mt">
-                <Pill label={ESTADO_LABEL[item.estado]} color={ESTADO_COLOR[item.estado]} />
-              </div>
-            </div>
+              <button type="button" className="card-open" onClick={() => setSel(item)}>
+                <span className="card-title">{item.titulo || item.url}</span>
+                <span className="card-domain iv-muted">{item.dominio}</span>
+                <span className="card-summary iv-muted">{item.resumo || 'Sem resumo (nenhum texto colado).'}</span>
+                <span className="iv-row iv-wrap iv-mt"><Pill label={ESTADO_LABEL[item.estado]} color={ESTADO_COLOR[item.estado]} /></span>
+              </button>
+            </article>
           ))}
         </div>
       </div>

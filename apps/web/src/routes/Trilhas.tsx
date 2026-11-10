@@ -23,7 +23,9 @@ export function Trilhas() {
             <div
               key={t.id}
               className="iv-card trilha-card"
+              role="button" tabIndex={0} aria-label={`Abrir trilha ${t.titulo}`}
               onClick={() => navigate({ to: '/trilhas/$trilhaId', params: { trilhaId: t.id } })}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate({ to: '/trilhas/$trilhaId', params: { trilhaId: t.id } }); } }}
             >
               <div className="iv-row" style={{ justifyContent: 'space-between' }}>
                 <i className={`pi ${t.icone} trilha-card__icon`} style={{ color: 'var(--alvoar-teal-600)' }} />

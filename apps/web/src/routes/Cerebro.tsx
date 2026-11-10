@@ -225,7 +225,8 @@ export function Cerebro() {
           <div className="iv-col iv-mt">
             {achados.length === 0 && <p className="iv-muted" style={{ margin: 0 }}>Nada encontrado para essa busca.</p>}
             {achados.map((a, i) => (
-              <div key={`${a.memoriaId}-${i}`} className="iv-card" style={{ padding: '.7rem .9rem', cursor: 'pointer' }} onClick={() => abrir(a.memoriaId)}>
+              <div key={`${a.memoriaId}-${i}`} className="iv-card memory-result" role="button" tabIndex={0}
+                onClick={() => abrir(a.memoriaId)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(a.memoriaId); } }}>
                 <div className="iv-row" style={{ justifyContent: 'space-between' }}>
                   <strong>{a.titulo}</strong>
                   <div className="iv-row">

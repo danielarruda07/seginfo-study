@@ -27,17 +27,19 @@ function TopList({ titulo, itens, onPick }: {
       <h4 style={{ margin: '0 0 .6rem' }}>{titulo}</h4>
       {itens.length === 0 && <p className="iv-muted" style={{ margin: 0, fontSize: '.85rem' }}>Sem dados no período.</p>}
       <div className="iv-col">
-        {itens.map((i) => (
-          <div key={i.rotulo}
-            style={{ cursor: onPick ? 'pointer' : 'default' }}
-            onClick={onPick ? () => onPick(i.rotulo) : undefined}>
+        {itens.map((i) => {
+          const conteudo = <>
             <div className="iv-row" style={{ justifyContent: 'space-between', fontSize: '.85rem' }}>
               <span style={{ fontFamily: 'monospace' }}>{i.rotulo}{i.extra ? ` · ${i.extra}` : ''}</span>
               <strong>{i.total}</strong>
             </div>
             <Bar pct={(i.total / max) * 100} />
-          </div>
-        ))}
+          </>;
+          return onPick
+            ? <div key={i.rotulo} className="radar-top-item" role="button" tabIndex={0} onClick={() => onPick(i.rotulo)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(i.rotulo); } }}>{conteudo}</div>
+            : <div key={i.rotulo}>{conteudo}</div>;
+        })}
       </div>
     </div>
   );

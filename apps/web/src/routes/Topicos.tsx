@@ -22,6 +22,8 @@ import {
   setStatus,
   getAnotacoes,
   setAnotacao,
+  getRevisoes,
+  agendarRevisao,
   resumoGeral,
   type TopicoComStatus,
 } from '@/services/catalog';
@@ -134,6 +136,7 @@ export function Topicos() {
 
 function TopicoDetalhe({ topico, onStatus }: { topico: TopicoComStatus; onStatus: (s: StatusEstudo) => void }) {
   const [nota, setNota] = useState(() => getAnotacoes()[topico.id] ?? '');
+  const [revisao, setRevisao] = useState(() => getRevisoes()[topico.id]);
   return (
     <DetailLayout>
       <DetailHeader title={topico.titulo}>
@@ -184,6 +187,12 @@ function TopicoDetalhe({ topico, onStatus }: { topico: TopicoComStatus; onStatus
           placeholder="Anote insights, comandos, ganchos para posts no LinkedIn..."
         />
         <Button label="Salvar anotação" icon="pi pi-save" className="iv-mt" onClick={() => setAnotacao(topico.id, nota)} />
+      </DetailSection>
+
+      <DetailSection title="Revisão espaçada">
+        {revisao && <p className="iv-muted">{revisao.revisarEm <= new Date().toISOString().slice(0, 10) ? 'Revisão recomendada hoje.' : `Próxima revisão: ${revisao.revisarEm}`}</p>}
+        <p className="iv-muted">Os intervalos aumentam gradualmente (1, 3, 7, 14 e 30 dias) para ajudar a planejar retornos ao conteúdo.</p>
+        <Button label="Estudei / agendar próxima revisão" icon="pi pi-calendar-plus" onClick={() => setRevisao(agendarRevisao(topico.id))} />
       </DetailSection>
     </DetailLayout>
   );

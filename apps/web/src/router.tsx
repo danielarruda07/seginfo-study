@@ -1,19 +1,22 @@
+import { lazy } from 'react';
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
 import { Layout } from '@/components/Layout';
-import { Dashboard } from '@/routes/Dashboard';
-import { Trilhas } from '@/routes/Trilhas';
-import { Topicos } from '@/routes/Topicos';
-import { Inventario } from '@/routes/Inventario';
-import { Labs } from '@/routes/Labs';
-import { Sessoes } from '@/routes/Sessoes';
-import { Metas } from '@/routes/Metas';
-import { Posts } from '@/routes/Posts';
-import { Cofre } from '@/routes/Cofre';
-import { Arsenal } from '@/routes/Arsenal';
-import { Biblioteca } from '@/routes/Biblioteca';
-import { Radar } from '@/routes/Radar';
-import { Armazenamento } from '@/routes/Armazenamento';
-import { Cerebro } from '@/routes/Cerebro';
+
+const Dashboard = lazy(async () => ({ default: (await import('@/routes/Dashboard')).Dashboard }));
+const Trilhas = lazy(async () => ({ default: (await import('@/routes/Trilhas')).Trilhas }));
+const Topicos = lazy(async () => ({ default: (await import('@/routes/Topicos')).Topicos }));
+const Inventario = lazy(async () => ({ default: (await import('@/routes/Inventario')).Inventario }));
+const Labs = lazy(async () => ({ default: (await import('@/routes/Labs')).Labs }));
+const Sessoes = lazy(async () => ({ default: (await import('@/routes/Sessoes')).Sessoes }));
+const Metas = lazy(async () => ({ default: (await import('@/routes/Metas')).Metas }));
+const Posts = lazy(async () => ({ default: (await import('@/routes/Posts')).Posts }));
+const Cofre = lazy(async () => ({ default: (await import('@/routes/Cofre')).Cofre }));
+const Arsenal = lazy(async () => ({ default: (await import('@/routes/Arsenal')).Arsenal }));
+const Biblioteca = lazy(async () => ({ default: (await import('@/routes/Biblioteca')).Biblioteca }));
+const Radar = lazy(async () => ({ default: (await import('@/routes/Radar')).Radar }));
+const Armazenamento = lazy(async () => ({ default: (await import('@/routes/Armazenamento')).Armazenamento }));
+const Cerebro = lazy(async () => ({ default: (await import('@/routes/Cerebro')).Cerebro }));
+const Portfolio = lazy(async () => ({ default: (await import('@/routes/Portfolio')).Portfolio }));
 
 const rootRoute = createRootRoute({ component: Layout });
 
@@ -32,6 +35,7 @@ const bibliotecaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/b
 const radarRoute = createRoute({ getParentRoute: () => rootRoute, path: '/radar', component: Radar });
 const armazenamentoRoute = createRoute({ getParentRoute: () => rootRoute, path: '/armazenamento', component: Armazenamento });
 const cerebroRoute = createRoute({ getParentRoute: () => rootRoute, path: '/cerebro', component: Cerebro });
+const portfolioRoute = createRoute({ getParentRoute: () => rootRoute, path: '/portfolio', component: Portfolio });
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -49,6 +53,7 @@ const routeTree = rootRoute.addChildren([
   radarRoute,
   armazenamentoRoute,
   cerebroRoute,
+  portfolioRoute,
 ]);
 
 export const router = createRouter({ routeTree });

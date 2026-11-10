@@ -1,86 +1,73 @@
-# SegInfo Study — Segundo Cérebro de Segurança da Informação
+# SegInfo Study
 
-Plataforma de estudo individual + agregador do homelab CRIECOMIA (Proxmox, Coolify, storage, rede), para a migração de carreira **Infraestrutura → Segurança da Informação**
-do Daniel Arruda.
+Plataforma pessoal de estudos em Segurança da Informação: acompanha trilhas, tópicos,
+labs, sessões e metas, organiza referências e notas, e oferece ferramentas para o
+homelab. O Radar de Ataques recebe eventos de fontes autorizadas; o Segundo Cérebro
+guarda notas pesquisáveis com trechos e fontes.
 
-## Como rodar
+## Executar localmente
 
-O projeto fica em `C:\Users\eu\OneDrive\KIRO\CONTROLE DE ESTUDO`.
-**Entre na pasta antes de rodar o npm** (o caminho tem espaços, use aspas):
+Na raiz do projeto:
 
-### Opção A — CMD (mais simples)
-```cmd
-cd "C:\Users\eu\OneDrive\KIRO\CONTROLE DE ESTUDO"
-npm install
-npm run dev
-```
-
-### Opção B — PowerShell
-O PowerShell pode bloquear o `npm.ps1` com o erro
-*"a execução de scripts foi desabilitada neste sistema"*. Destrave uma vez:
 ```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-cd "C:\Users\eu\OneDrive\KIRO\CONTROLE DE ESTUDO"
 npm install
 npm run dev
 ```
 
-A aplicação abre em **http://localhost:5173**.
+O frontend abre em `http://localhost:5173`. A Biblioteca funciona localmente; os
+módulos que usam o servidor precisam da API e de um PostgreSQL configurado.
 
-> Erro comum: `Could not read package.json ... C:\Users\eu\package.json`
-> significa que o `npm` rodou na pasta errada. Faça o `cd` para a pasta do projeto primeiro.
-
-## Estrutura (monorepo npm workspaces)
-
-```
-apps/web            # aplicação React 19 + Vite 6 + PrimeReact 10 (o que você roda)
-packages/shared     # contratos (tipos + schemas Zod) compartilhados
-docs/               # documentação da stack, tema, design system e padrões
-```
-
-## Módulos (9 telas)
-
-| Tela | O que faz |
-| --- | --- |
-| Painel | Progresso geral, horas, metas, progresso por trilha |
-| Trilhas | 11 áreas de SegInfo (Fundamentos, Firewall, Blue/Red, SIEM, OSINT, IAM...) |
-| Tópicos | Catálogo com ferramentas marcadas por referência (Gartner/OWASP/NIST); filtros + anotações |
-| Meu Ambiente | Inventário vivo do homelab CRIECOMIA (hosts Proxmox, VMs, containers, storage, VLANs, policies). Sem credenciais |
-| Labs | 7 labs práticos Blue/Red/Purple amarrados aos seus ativos reais |
-| Sessões | Registro de tempo de estudo |
-| Metas | Objetivos com prazo |
-| LinkedIn | Gerador de rascunhos de post conectando sua infra à segurança |
-| Arsenal IA | Biblioteca de prompts, skills e agentes de segurança, com artefatos anexos |
-| Biblioteca | Read-it-later: cola URL, resume e categoriza por assunto |
-| Cofre | Credenciais cifradas com AES-GCM + PBKDF2 (senha-mestra nunca é salva) |
-
-## Biblioteca de Conhecimento — dois modos
-
-- **Manual (sempre funciona):** cola a URL + o texto da página. O resumo, as
-  palavras-chave e a categoria por assunto são gerados localmente (sem IA, sem backend).
-- **Automático (Opção B):** o botão "Buscar" chama o `apps/api` (Fastify), que busca
-  a página server-side (resolve CORS) e devolve título/descrição/texto limpo. Com
-  proteção anti-SSRF (bloqueia hosts privados/internos/metadados de nuvem).
-
-Para habilitar o modo automático, rode a API em um terminal separado:
-
-```cmd
-cd "C:\Users\eu\OneDrive\KIRO\CONTROLE DE ESTUDO"
+```powershell
 npm run dev:api
 ```
 
-A API sobe em `http://localhost:3001` e o Vite já encaminha `/api` para ela.
-Sem a API no ar, a Biblioteca continua funcionando no modo manual.
+Consulte [docs/DEPLOY.md](docs/DEPLOY.md) para configuração de desenvolvimento e
+produção, e [docs/PENDENCIAS.md](docs/PENDENCIAS.md) para operações ainda dependentes
+do ambiente hospedado.
 
-## Decisões de segurança
+## Módulos
 
-- **Cofre**: senhas cifradas com AES-GCM (Web Crypto API), chave derivada por PBKDF2
-  (310k iterações). A senha-mestra vive só na memória da sessão. No disco fica apenas o
-  ciphertext. Nenhuma senha em texto puro na aplicação.
-- **Inventário**: guarda só topologia/IPs/funções/estado — nunca segredos.
+| Área | Uso |
+| --- | --- |
+| Painel, Trilhas e Tópicos | Progresso do estudo e conteúdo de referência |
+| Sessões e Metas | Registro de tempo e objetivos |
+| Labs e Meu Ambiente | Exercícios ligados ao homelab e inventário |
+| Radar | Análise de eventos recebidos pela API |
+| Biblioteca e Arsenal IA | Referências salvas, prompts, skills e artefatos |
+| Segundo Cérebro | Notas, captura de URLs, lixeira e busca textual BM25 com fontes |
+| Armazenamento | Backup cifrado do PostgreSQL para OneDrive |
+| Cofre | Segredos cifrados no cliente com AES-GCM e PBKDF2 |
 
-## Persistência
+## Onde os dados ficam
 
-MVP usa `localStorage` (roda 100% no front, sem banco). O `packages/shared` e o service
-`http.ts` (axios com interceptors) já deixam o caminho pronto para migrar ao
-`apps/api` (Fastify + Prisma + PostgreSQL) sem reescrever as telas.
+O conteúdo de trilhas, tópicos e labs é mantido no código. Dados pessoais variam
+conforme o módulo e o modo disponível: parte das telas ainda usa `localStorage`; as
+telas migradas usam a API Fastify e PostgreSQL. Consulte
+[docs/ARMAZENAMENTO.md](docs/ARMAZENAMENTO.md) para saber exatamente o que entra no
+backup externo e o que ainda permanece apenas no navegador.
+
+O Cofre cifra os segredos no navegador. O backup local inclui o inventário do
+homelab em texto legível e o blob cifrado do Cofre; proteja o arquivo exportado como
+dado sensível. O inventário inicial no código também contém detalhes reais do homelab;
+mantenha este repositório privado ou remova/redija esses dados antes de publicar. O
+backup externo cifra a exportação do banco com uma chave pública; a
+chave privada de restauração deve permanecer fora do servidor e da conta que guarda
+os backups.
+
+## Estrutura
+
+```text
+apps/web          React + Vite
+apps/api          Fastify + Prisma
+packages/shared   tipos e schemas Zod
+docs/             operação, arquitetura e decisões
+sensor/           componentes do coletor do Radar
+windows/          script de envio de eventos Windows
+```
+
+## Guias
+
+- [Radar de Ataques](docs/RADAR.md): limites, autorização e configuração do coletor.
+- [Armazenamento externo](docs/ARMAZENAMENTO.md): conexão OneDrive e restauração.
+- [Deploy](docs/DEPLOY.md): configuração de ambientes.
+- [Pendências](docs/PENDENCIAS.md): tarefas operacionais e próximos passos.

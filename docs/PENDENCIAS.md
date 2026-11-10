@@ -1,7 +1,7 @@
 # Pendências
 
 Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao concluir.
-Última atualização: 2026-11-09.
+Última atualização: 2026-11-10.
 
 ## Segurança (prioridade)
 
@@ -35,12 +35,12 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
 - [ ] Gerar a migration das tabelas `ArmazenamentoConta` e `BackupRegistro`.
 - [ ] Conectar o OneDrive, rodar o primeiro backup e **testar a restauração** com a ferramenta.
 - [ ] Anotar a data de expiração do `MS_CLIENT_SECRET` e renovar antes (senão o backup para).
-- [ ] Restauração completa: hoje `POST /api/import` não restaura `ataques` e duplica dados.
+- [ ] Ensaiar a restauração completa em banco descartável com `apps/api/src/tools/restore-backup.ts` e conferir contagens; `POST /api/import` continua sendo somente uma mesclagem das coleções locais.
 - [ ] Upload em sessão para backups acima de 240 MB.
 - [ ] **As telas ainda guardam no localStorage, então não entram no backup.** Migrar as telas
       para o PostgreSQL é o que faz o objetivo "nada só local" se cumprir de verdade.
-- [ ] Proteção CSRF (checagem de `Origin`) nas demais rotas que alteram dados; hoje só as de
-      armazenamento têm.
+- [ ] Conferir em produção que `PUBLIC_BASE_URL` corresponde à origem web publicada; as
+      rotas de escrita agora exigem `Origin` correspondente em produção.
 
 ## Radar de Ataques
 
@@ -56,9 +56,12 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
 
 ## Produto
 
+- [ ] Aplicar a migration `20261110030000_sessao_lab` no PostgreSQL hospedado antes de
+      usar `labId` via API. O cliente web ainda persiste sessões localmente.
 - [ ] **Migrar as telas do localStorage para a API/PostgreSQL**, módulo a módulo, com
       `tsc` a cada passo. Ordem sugerida: Biblioteca, Arsenal, Sessões e Metas, Posts,
-      Progresso e Tópicos, Cofre por último. Hoje só o Radar lê do servidor.
+      Progresso e Tópicos, Cofre por último. Hoje Radar e Segundo Cérebro usam o servidor;
+      a maioria das telas de estudo continua local.
 - [ ] Mover dados já cadastrados no `localhost` para o domínio novo (Cofre > Exportar
       backup, depois Restaurar), enquanto as telas ainda usam localStorage.
 - [ ] Embarcar o print "Ecossistema Python para Hackers Éticos" como tópico "Python para
@@ -67,8 +70,10 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
       `pentest-api` no Arsenal (hoje é placeholder).
 - [ ] Biblioteca: limpar o resumo quando o título vaza para o corpo (`extract.ts`);
       resumo por IA (Opção C) se você topar o custo da chave de API.
-- [ ] Itens 5 a 16 do `docs/SUGESTOES.md` (próxima sessão, revisão espaçada, busca global,
-      acessibilidade, testes dos fluxos críticos).
+- [ ] Itens ainda parciais de `docs/SUGESTOES.md`: auditoria completa de acessibilidade,
+      uniformidade dos filtros, recomendação baseada em revisão vencida, vínculo de evidência
+      em labs e cobertura de testes da UI/autotrava do Cofre. O estado detalhado de cada item
+      está no quadro de execução da própria página.
 
 ## Do seu ambiente (de notas anteriores)
 
@@ -99,7 +104,7 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
       BM25 por trechos com fonte, captura de URL, importação de notas .md/.txt, exclusão
       agendada com resgate, escopo corporativo fora do backup. Migration da tabela `Memoria` gravada
       (`20261110020000_memoria`). Falta: documentos (PDF/Word) vindos do OneDrive e conversor de arquivos; restauração das
-      memórias a partir do backup (hoje o `/api/import` não restaura memórias).
+      memórias pessoais a partir do backup com a ferramenta offline; o ensaio ainda está pendente.
 - [ ] Criar ambiente de DEV separado do de produção na SegInfo, antes de guardar material mais sensível.
 - [ ] Item 1, "segundo cérebro com IA" (Claude para desktop modo Cowork + Obsidian): pasta de
       contexto indexada e aberta como vault no Obsidian. Fica para depois do item 3.

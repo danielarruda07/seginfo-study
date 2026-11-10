@@ -26,14 +26,21 @@ Restauração (na sua máquina): arquivo .sgb + CHAVE PRIVADA RSA (fora do lab) 
 
 ## O que o backup cobre hoje (leia isto)
 
-O backup exporta **o que está no PostgreSQL**. Hoje só o **Radar de Ataques** grava
-direto no banco. Painel, Metas, Sessões, Biblioteca, Arsenal, Posts, Progresso e o Cofre
-ainda ficam no `localStorage` do navegador, e **não entram no backup** até as telas serem
-migradas para o servidor (pendência registrada em `docs/PENDENCIAS.md`).
+O backup exporta **o que está no PostgreSQL**. Hoje o Radar e o Segundo Cérebro usam o
+banco; a maioria das telas de estudo continua lendo e gravando no `localStorage`.
+Portanto, o backup externo ainda não é uma cópia completa da aplicação. O backup local
+em **Cofre → Backup & Restauração** cobre as chaves do navegador deste perfil.
 
 Enquanto isso, existe um caminho parcial: em **Cofre → Backup & Restauração**, o botão
-**"Sincronizar com servidor"** envia o que está no navegador para o banco. Clique **uma
-única vez** por navegador: repetir duplica sessões, metas, posts, arsenal e biblioteca.
+**"Importar no servidor"** mescla os registros locais no banco. Coleções com IDs locais
+estáveis podem ser enviadas novamente sem criar cópias; os registros são atualizados
+pelos mesmos IDs. Isso é uma importação pontual, não uma sincronização contínua, e não
+inclui dados que não estejam no payload local (como eventos do Radar ou memórias do
+Segundo Cérebro).
+
+O backup local inclui o inventário real do homelab em texto legível. Armazene o JSON em
+local privado. No backup externo, memórias marcadas como corporativas ficam fora da
+exportação para o OneDrive pessoal.
 
 ## 1. Gerar o par de chaves (na sua máquina, nunca no servidor)
 
@@ -113,7 +120,7 @@ o `old.prisma`.
 
 1. Abra **Armazenamento** → **Conectar OneDrive** → entre com a conta @hotmail e aceite.
 2. **Fazer backup agora**. Confira no OneDrive em `Apps/<nome do app>/backups/`.
-3. **Teste a restauração**, porque um backup que nunca foi restaurado não é backup:
+3. **Teste a decifragem em uma máquina local**, porque um backup que nunca foi aberto não foi verificado:
 
 ```powershell
 cd "C:\Users\eu\OneDrive\KIRO\CONTROLE DE ESTUDO\apps\api"
@@ -122,15 +129,45 @@ npx tsx src/tools/decrypt-backup.ts C:\caminho\seginfo-AAAAMMDD-HHMMSS.sgb C:\ca
 ```
 
 Esperado: `OK: ...saida.json`. O JSON traz progresso, sessões, metas, posts, arsenal,
-biblioteca, o blob do Cofre (ainda cifrado) e os eventos do Radar.
+biblioteca, o blob do Cofre (ainda cifrado), eventos do Radar e memórias pessoais.
+
+## Ensaio de restauração em banco descartável
+
+O script `apps/api/src/tools/restore-backup.ts` importa todas as coleções do backup,
+incluindo eventos do Radar e memórias pessoais. Ele só aceita um banco vazio cujo nome
+comece com `seginfo_restore_`; não apaga dados e deixa memórias corporativas fora da
+restauração. Use-o primeiro em um banco separado, nunca aponte para produção.
+
+1. Baixe um `.sgb` do OneDrive e decifre-o localmente conforme a seção anterior.
+2. Crie um banco PostgreSQL vazio, por exemplo `seginfo_restore_20261110`.
+3. No PowerShell, configure temporariamente a URL desse banco e aplique as migrations:
+
+```powershell
+$env:RESTORE_TARGET_DATABASE_URL = "postgresql://USUARIO:SENHA@HOST:5432/seginfo_restore_20261110"
+$env:DATABASE_URL = $env:RESTORE_TARGET_DATABASE_URL
+npm.cmd run prisma:migrate --workspace apps/api
+Remove-Item Env:DATABASE_URL
+npm.cmd run restore:test --workspace apps/api -- "C:\caminho\saida.json"
+```
+
+4. Compare as contagens impressas pelo script com as quantidades no JSON. A ferramenta
+   também confirma as contagens após a gravação e aborta se o destino já tiver usuário.
+5. Depois do ensaio, apague o banco descartável e remova os arquivos JSON/PEM temporários.
+   Mantenha a chave privada e sua senha fora do servidor e do OneDrive.
+
+Exportações antigas sem metadados de identidade ainda podem ser restauradas se contiverem
+registros; defina `RESTORE_USER_EMAIL` no terminal para informar o e-mail do usuário.
+O script exige um único `usuarioId` consistente nos registros.
 
 ## Restauração em caso de desastre
 
-1. Suba a SegInfo de novo (Coolify + banco novo + migrations).
-2. Decifre o `.sgb` mais recente na sua máquina (comando acima).
-3. Reimporte com `POST /api/import` (mesma estrutura do JSON). **Limitação conhecida:**
-   a importação atual não restaura `ataques` e duplica registros se já houver dados. Uma
-   rotina de restauração completa é uma pendência.
+1. Suba a SegInfo com um banco novo e aplique as migrations.
+2. Decifre o `.sgb` na sua máquina e restaure no banco recém-criado com o procedimento
+   acima. O script preserva os IDs do usuário e dos registros para que o Cloudflare Access
+   volte a encontrar a mesma conta pelo e-mail.
+3. Confira as contagens e o acesso ao Cofre antes de voltar a usar o ambiente. O Cofre
+   continua cifrado e exige a senha-mestra original. A conta do OneDrive não é restaurada;
+   reconecte-a pela tela **Armazenamento**.
 
 ## Limites e riscos conhecidos
 

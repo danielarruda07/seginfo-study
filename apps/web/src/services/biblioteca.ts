@@ -1,9 +1,10 @@
-import type { BiblioItem, EstadoLeitura } from '@seginfo/shared';
-import { read, write, uid } from './store';
+import { BiblioItemSchema, type BiblioItem, type EstadoLeitura } from '@seginfo/shared';
+import { read, write, uid, registerSchema } from './store';
 import { processar, metadadosDaUrl } from './textProcess';
 import { http } from './http';
 
 const KEY = 'biblioteca';
+registerSchema(KEY, { safeParse: (v) => BiblioItemSchema.array().safeParse(v) });
 
 export interface ExtractResponse {
   url: string;

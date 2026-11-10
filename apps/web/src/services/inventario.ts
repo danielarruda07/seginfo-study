@@ -1,9 +1,39 @@
-import type { Ativo, Lab, TipoAtivo, EstadoAtivo } from '@seginfo/shared';
+import { AtivoSchema, type Ativo, type Lab, type TipoAtivo, type EstadoAtivo } from '@seginfo/shared';
+import { z } from 'zod';
 import { INVENTARIO_SEED } from '@/data/inventario';
 import { LABS } from '@/data/labs';
-import { read, write, uid, paginate, matchesSearch, type Page } from './store';
+import { read, write, uid, paginate, matchesSearch, todayISO, registerSchema, type Page } from './store';
 
 const KEY = 'inventario';
+const LAB_PROGRESS_KEY = 'labs:progresso';
+const SEED_VERSION_KEY = 'inventario:seed-version';
+const SEED_VERSION = 3;
+registerSchema(KEY, { safeParse: (v) => AtivoSchema.array().safeParse(v) });
+registerSchema(LAB_PROGRESS_KEY, { safeParse: (v) => z.record(z.string(), z.object({ status: z.enum(['nao_iniciado', 'em_andamento', 'concluido']), concluidoEm: z.string().optional(), aprendizado: z.string(), evidencia: z.string().default(''), mitre: z.array(z.string()) })).safeParse(v) });
+
+export type EstadoLab = 'nao_iniciado' | 'em_andamento' | 'concluido';
+export interface ProgressoLab {
+  status: EstadoLab;
+  concluidoEm?: string;
+  aprendizado: string;
+  evidencia: string;
+  mitre: string[];
+}
+
+export const ESTADO_LAB_LABEL: Record<EstadoLab, string> = {
+  nao_iniciado: 'Não iniciado', em_andamento: 'Em andamento', concluido: 'Concluído',
+};
+
+export function getProgressoLab(id: string): ProgressoLab {
+  const all = read<Record<string, ProgressoLab>>(LAB_PROGRESS_KEY, {});
+  return all[id] ?? { status: 'nao_iniciado', aprendizado: '', evidencia: '', mitre: [] };
+}
+
+export function saveProgressoLab(id: string, progresso: ProgressoLab): void {
+  const all = read<Record<string, ProgressoLab>>(LAB_PROGRESS_KEY, {});
+  const concluidoEm = progresso.status === 'concluido' ? (progresso.concluidoEm || todayISO()) : undefined;
+  write(LAB_PROGRESS_KEY, { ...all, [id]: { ...progresso, concluidoEm } });
+}
 
 function base(): Ativo[] {
   const stored = read<Ativo[] | null>(KEY, null);
@@ -15,7 +45,25 @@ function base(): Ativo[] {
     return homelab;
   }
   write(KEY, INVENTARIO_SEED);
+  write(SEED_VERSION_KEY, SEED_VERSION);
   return INVENTARIO_SEED;
+}
+
+export function inventarioSeedUpdate() {
+  const currentVersion = read<number>(SEED_VERSION_KEY, 1);
+  const ativos = read<Ativo[]>(KEY, []);
+  const known = new Set(ativos.map((a) => a.id));
+  const novidades = INVENTARIO_SEED.filter((a) => !known.has(a.id));
+  return { disponivel: currentVersion < SEED_VERSION && novidades.length > 0, quantidade: novidades.length };
+}
+
+export function incorporarNovidadesSeed(): number {
+  const ativos = read<Ativo[]>(KEY, []);
+  const known = new Set(ativos.map((a) => a.id));
+  const novidades = INVENTARIO_SEED.filter((a) => !known.has(a.id));
+  write(KEY, [...ativos, ...novidades]);
+  write(SEED_VERSION_KEY, SEED_VERSION);
+  return novidades.length;
 }
 
 export interface AtivoFiltro {
@@ -54,6 +102,7 @@ export function removeAtivo(id: string): void {
 
 export function resetInventario(): void {
   write(KEY, INVENTARIO_SEED);
+  write(SEED_VERSION_KEY, SEED_VERSION);
 }
 
 export function resumoInventario() {

@@ -68,6 +68,7 @@ export const SessaoEstudoSchema = z.object({
   data: z.string(),
   trilhaId: z.string().optional(),
   topicoId: z.string().optional(),
+  labId: z.string().optional(),
   minutos: z.number().int().positive(),
   nota: z.string().default(''),
 });

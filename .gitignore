@@ -1,4 +1,6 @@
 node_modules/
+.npm-cache/
+*.tsbuildinfo
 dist/
 dist-ssr/
 *.local
@@ -10,3 +12,7 @@ dist-ssr/
 npm-debug.log*
 .vite/
 coverage/
+# Dados pessoais exportados; nunca versionar backups ou chaves de restauração.
+seginfo-backup-*.json
+seginfo-*.sgb
+seginfo-backup-private.pem
