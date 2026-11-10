@@ -6,6 +6,7 @@ import { registerStateRoutes } from './routes.js';
 import { registerIngestRoutes } from './ingest.js';
 import { iniciarRetencao } from './radar.js';
 import { iniciarBackupAutomatico } from './backup.js';
+import { iniciarLimpezaMemorias } from './memorias.js';
 import { requireIdentity } from './auth.js';
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
@@ -29,6 +30,9 @@ iniciarRetencao(app);
 
 // backup automático diário para o OneDrive (BACKUP_AUTOMATICO=true)
 iniciarBackupAutomatico(app);
+
+// apaga de vez as memórias da lixeira cuja carência de 7 dias venceu
+iniciarLimpezaMemorias(app);
 
 const ExtractBody = z.object({ url: z.string().url() });
 

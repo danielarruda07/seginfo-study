@@ -28,6 +28,7 @@ model Usuario {
   ataques      AtaqueEvento[]
   armazenamento ArmazenamentoConta?
   backups      BackupRegistro[]
+  memorias     Memoria[]
 }
 
 // Progresso + anotações por tópico (tópico é estático no código)
@@ -196,4 +197,24 @@ model BackupRegistro {
   criadoEm     DateTime @default(now())
 
   @@index([usuarioId, criadoEm])
+}
+
+// Segundo Cérebro: notas ("memórias") do usuário. Exclusão é AGENDADA (excluirEm): fica na
+// lixeira por 7 dias e pode ser resgatada. `escopo = corporativo` nunca vai para o backup externo.
+model Memoria {
+  id           String    @id @default(cuid())
+  usuarioId    String
+  usuario      Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  titulo       String
+  conteudo     String    @default("")
+  tags         String[]  @default([])
+  origem       String    @default("manual") // manual | url | cofre
+  urlOrigem    String?
+  escopo       String    @default("pessoal") // pessoal | corporativo
+  excluirEm    DateTime?
+  criadoEm     DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
+
+  @@index([usuarioId, atualizadoEm])
+  @@index([usuarioId, excluirEm])
 }

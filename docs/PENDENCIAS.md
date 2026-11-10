@@ -12,10 +12,13 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
 - [ ] **Rotacionar a senha do banco `seginfo_app`.** A senha atual apareceu no chat.
       No `psql` do container: `\password seginfo_app`, depois atualizar o Secret
       `DATABASE_URL` no Coolify e fazer redeploy.
+- [ ] **Conferir se o Gitea corporativo (porta 3000, HTTP) é alcançável pela internet.**
+      Teste pelo celular com dados móveis. Se abrir, está exposto sem TLS: colocar atrás de
+      HTTPS (proxy ou Cloudflare Access) e fechar a porta. Tratar com a equipe da empresa.
 - [ ] **Backup do banco `seginfo_study`.** Ele vive dentro do container Postgres 16 da
       CRIECOMIA. Se o recurso for recriado no Coolify, o banco some. Configurar backup agendado.
-- [ ] **Conferir o arquivo `t resolve 1 no alpine)` na raiz do projeto.** Parece resíduo de
-      comando colado; ver o conteúdo e apagar. Não incluir no commit.
+- [x] ~~Arquivo `t resolve 1 no alpine)` na raiz do projeto.~~ Era a tela de ajuda do `less`,
+      sem dados sensíveis; apagado em 2026-11-10. Nunca entrou no repositório.
 - [ ] **Decidir sobre o ChatGPT Codex Connector** no repositório `seginfo-study` (acesso de
       terceiro ao código com a topologia). Manter ou remover em Configure > Repository access.
 - [ ] **Verificar com qual usuário a app CRIECOMIA conecta no Postgres 16.** Se for
@@ -78,3 +81,30 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
 - [ ] Cluster Proxmox: QDevice ou tiebreaker de quorum; NFS soft mount do NAS; limpar a
       VM 101 órfã e o resource LINSTOR `pm-ef6857c4`.
 - [ ] Zabbix: agent 2 nos hosts e datasources do Grafana.
+
+## Ideias do texto de incrementos (2026-11-10)
+
+- [ ] **Item 3, RAG: chatbot que responde com base nos seus documentos, citando as fontes.**
+      Prioridade escolhida por você. Depende da conexão com o OneDrive (seção "Armazenamento
+      externo"). Fases e decisões em aberto: ver a conversa de 2026-11-10 (stack, provedor de
+      LLM/embeddings, política para material corporativo).
+      **Plano em fases (2026-11-10):** F1 documentos no OneDrive + ingestão + busca BM25 com
+      fontes + classificação pessoal/corporativo + exclusão agendada (carência de 7 dias);
+      F2 servidor MCP (`POST /mcp`) somente leitura, tokens com perfil de ferramentas, o
+      Claude do usuário gera as respostas (SegInfo sem chave de LLM); F3 embeddings e busca
+      híbrida, com Postgres dedicado usando a imagem pgvector (resolve também o risco do banco
+      viver no container da CRIECOMIA). Atenção: conteúdo capturado da web devolvido ao
+      assistente é canal de prompt injection indireta; marcar como dado não confiável.
+      **Andamento F1 (2026-11-10):** feito no código (falta validar): memórias com CRUD, busca
+      BM25 por trechos com fonte, captura de URL, importação de notas .md/.txt, exclusão
+      agendada com resgate, escopo corporativo fora do backup. Migration da tabela `Memoria` gravada
+      (`20261110020000_memoria`). Falta: documentos (PDF/Word) vindos do OneDrive e conversor de arquivos; restauração das
+      memórias a partir do backup (hoje o `/api/import` não restaura memórias).
+- [ ] Criar ambiente de DEV separado do de produção na SegInfo, antes de guardar material mais sensível.
+- [ ] Item 1, "segundo cérebro com IA" (Claude para desktop modo Cowork + Obsidian): pasta de
+      contexto indexada e aberta como vault no Obsidian. Fica para depois do item 3.
+- [ ] Item 2, assistente pessoal com agente (OpenClaw/NanoClaw em WhatsApp/Telegram/Gmail).
+      Cuidado ao implantar: um agente com acesso a mensagens e e-mail é alvo de prompt
+      injection; isolar, dar permissões mínimas e não ligar a contas corporativas.
+- [ ] Item 4, IA local offline (Ollama + Open WebUI): sem prioridade por ora. Pode virar o
+      provedor local de embeddings/respostas do item 3 (Fase 2) se o hardware permitir.

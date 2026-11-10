@@ -12,6 +12,7 @@ const NAV = [
   { to: '/posts', label: 'LinkedIn', icon: 'pi-linkedin' },
   { to: '/arsenal', label: 'Arsenal IA', icon: 'pi-sparkles' },
   { to: '/biblioteca', label: 'Biblioteca', icon: 'pi-bookmark' },
+  { to: '/cerebro', label: 'Segundo Cérebro', icon: 'pi-database' },
   { to: '/armazenamento', label: 'Armazenamento', icon: 'pi-cloud' },
   { to: '/cofre', label: 'Cofre', icon: 'pi-lock' },
 ];

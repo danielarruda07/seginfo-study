@@ -14,7 +14,7 @@ import { executarBackup } from './backup.js';
  */
 
 /** Em produção, requisições de navegador precisam vir da própria origem (proteção CSRF). */
-function origemOk(req: FastifyRequest): boolean {
+export function origemOk(req: FastifyRequest): boolean {
   if (process.env.NODE_ENV !== 'production') return true;
   const origin = req.headers.origin;
   if (!origin) return true; // clientes que não são navegador não enviam Origin

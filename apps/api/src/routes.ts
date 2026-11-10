@@ -4,6 +4,7 @@ import { prisma } from './db.js';
 import { requireUser, type AuthedRequest } from './auth.js';
 import { registerRadarRoutes } from './radar.js';
 import { registerStorageRoutes } from './storage-routes.js';
+import { registerMemoriaRoutes } from './memorias.js';
 
 /** Registra todas as rotas de estado do usuário, todas protegidas por requireUser. */
 export async function registerStateRoutes(app: FastifyInstance) {
@@ -211,4 +212,7 @@ export async function registerStateRoutes(app: FastifyInstance) {
 
   // ---------- Armazenamento externo (OneDrive) e backups ----------
   await registerStorageRoutes(app);
+
+  // ---------- Segundo Cérebro (memórias + busca) ----------
+  await registerMemoriaRoutes(app);
 }

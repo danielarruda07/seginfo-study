@@ -13,6 +13,7 @@ import { Arsenal } from '@/routes/Arsenal';
 import { Biblioteca } from '@/routes/Biblioteca';
 import { Radar } from '@/routes/Radar';
 import { Armazenamento } from '@/routes/Armazenamento';
+import { Cerebro } from '@/routes/Cerebro';
 
 const rootRoute = createRootRoute({ component: Layout });
 
@@ -30,6 +31,7 @@ const arsenalRoute = createRoute({ getParentRoute: () => rootRoute, path: '/arse
 const bibliotecaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/biblioteca', component: Biblioteca });
 const radarRoute = createRoute({ getParentRoute: () => rootRoute, path: '/radar', component: Radar });
 const armazenamentoRoute = createRoute({ getParentRoute: () => rootRoute, path: '/armazenamento', component: Armazenamento });
+const cerebroRoute = createRoute({ getParentRoute: () => rootRoute, path: '/cerebro', component: Cerebro });
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -46,6 +48,7 @@ const routeTree = rootRoute.addChildren([
   bibliotecaRoute,
   radarRoute,
   armazenamentoRoute,
+  cerebroRoute,
 ]);
 
 export const router = createRouter({ routeTree });
