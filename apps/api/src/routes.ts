@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from './db.js';
 import { requireUser, type AuthedRequest } from './auth.js';
 import { registerRadarRoutes } from './radar.js';
+import { registerStorageRoutes } from './storage-routes.js';
 
 /** Registra todas as rotas de estado do usuário, todas protegidas por requireUser. */
 export async function registerStateRoutes(app: FastifyInstance) {
@@ -207,4 +208,7 @@ export async function registerStateRoutes(app: FastifyInstance) {
 
   // ---------- Radar de Ataques (análise; herda o hook de identidade acima) ----------
   await registerRadarRoutes(app);
+
+  // ---------- Armazenamento externo (OneDrive) e backups ----------
+  await registerStorageRoutes(app);
 }

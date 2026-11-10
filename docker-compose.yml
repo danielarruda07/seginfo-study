@@ -28,6 +28,14 @@ services:
       # opcionais (valores padrão seguros)
       - RADAR_GUARDAR_SENHAS=${RADAR_GUARDAR_SENHAS:-false}
       - ATAQUES_RETENCAO_DIAS=${ATAQUES_RETENCAO_DIAS:-90}
+      # Armazenamento externo (OneDrive pessoal) e backups cifrados. Ver docs/ARMAZENAMENTO.md
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL}
+      - MS_CLIENT_ID=${MS_CLIENT_ID}
+      - MS_CLIENT_SECRET=${MS_CLIENT_SECRET}
+      - STORAGE_TOKEN_KEY=${STORAGE_TOKEN_KEY}
+      - BACKUP_PUBLIC_KEY_B64=${BACKUP_PUBLIC_KEY_B64}
+      - BACKUP_AUTOMATICO=${BACKUP_AUTOMATICO:-false}
+      - BACKUP_RETENCAO=${BACKUP_RETENCAO:-14}
     expose:
       - "3001"
     # `default`: rede privada do compose (web -> api).

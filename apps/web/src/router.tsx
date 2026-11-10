@@ -12,6 +12,7 @@ import { Cofre } from '@/routes/Cofre';
 import { Arsenal } from '@/routes/Arsenal';
 import { Biblioteca } from '@/routes/Biblioteca';
 import { Radar } from '@/routes/Radar';
+import { Armazenamento } from '@/routes/Armazenamento';
 
 const rootRoute = createRootRoute({ component: Layout });
 
@@ -28,6 +29,7 @@ const cofreRoute = createRoute({ getParentRoute: () => rootRoute, path: '/cofre'
 const arsenalRoute = createRoute({ getParentRoute: () => rootRoute, path: '/arsenal', component: Arsenal });
 const bibliotecaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/biblioteca', component: Biblioteca });
 const radarRoute = createRoute({ getParentRoute: () => rootRoute, path: '/radar', component: Radar });
+const armazenamentoRoute = createRoute({ getParentRoute: () => rootRoute, path: '/armazenamento', component: Armazenamento });
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -43,6 +45,7 @@ const routeTree = rootRoute.addChildren([
   arsenalRoute,
   bibliotecaRoute,
   radarRoute,
+  armazenamentoRoute,
 ]);
 
 export const router = createRouter({ routeTree });

@@ -26,6 +26,8 @@ model Usuario {
   biblioteca   BiblioItem[]
   cofre        CofreBlob?
   ataques      AtaqueEvento[]
+  armazenamento ArmazenamentoConta?
+  backups      BackupRegistro[]
 }
 
 // Progresso + anotações por tópico (tópico é estático no código)
@@ -165,4 +167,33 @@ model AtaqueEvento {
   @@index([usuarioId, ocorridoEm])
   @@index([usuarioId, ipOrigem])
   @@index([usuarioId, servico])
+}
+
+// Armazenamento externo (OneDrive pessoal). O refresh token é cifrado (AES-256-GCM) com
+// STORAGE_TOKEN_KEY antes de ir para o banco; nunca é exposto à API de leitura.
+model ArmazenamentoConta {
+  usuarioId           String   @id
+  usuario             Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  provedor            String   @default("onedrive")
+  contaNome           String?
+  refreshTokenCifrado String
+  conectadoEm         DateTime @default(now())
+  ultimoBackupEm      DateTime?
+  ultimoErro          String?
+}
+
+// Histórico de backups enviados. `sha256` é do arquivo CIFRADO, para conferir integridade.
+model BackupRegistro {
+  id           String   @id @default(cuid())
+  usuarioId    String
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  nomeArquivo  String
+  tamanhoBytes Int
+  sha256       String
+  status       String   // ok | erro
+  erro         String?
+  itemId       String?
+  criadoEm     DateTime @default(now())
+
+  @@index([usuarioId, criadoEm])
 }

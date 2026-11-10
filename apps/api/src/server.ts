@@ -5,6 +5,7 @@ import { extractUrl } from './extract.js';
 import { registerStateRoutes } from './routes.js';
 import { registerIngestRoutes } from './ingest.js';
 import { iniciarRetencao } from './radar.js';
+import { iniciarBackupAutomatico } from './backup.js';
 import { requireIdentity } from './auth.js';
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
@@ -25,6 +26,9 @@ await app.register(registerIngestRoutes);
 
 // retenção dos eventos de ataque (ATAQUES_RETENCAO_DIAS, padrão 90)
 iniciarRetencao(app);
+
+// backup automático diário para o OneDrive (BACKUP_AUTOMATICO=true)
+iniciarBackupAutomatico(app);
 
 const ExtractBody = z.object({ url: z.string().url() });
 
