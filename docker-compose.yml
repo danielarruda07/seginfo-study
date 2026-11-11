@@ -29,7 +29,9 @@ services:
       - RADAR_GUARDAR_SENHAS=${RADAR_GUARDAR_SENHAS:-false}
       - ATAQUES_RETENCAO_DIAS=${ATAQUES_RETENCAO_DIAS:-90}
       # Armazenamento externo (OneDrive pessoal) e backups cifrados. Ver docs/ARMAZENAMENTO.md
-      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL}
+      # Não é segredo: já vem preenchida aqui, sem precisar configurar no Coolify.
+      # Só defina a variável no Coolify se o domínio mudar.
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-https://estudo.criecom.ia.br}
       - MS_CLIENT_ID=${MS_CLIENT_ID}
       - MS_CLIENT_SECRET=${MS_CLIENT_SECRET}
       - STORAGE_TOKEN_KEY=${STORAGE_TOKEN_KEY}
