@@ -213,5 +213,7 @@ Lembre da seção "Antes de começar: autorização".
 
 KPIs (eventos, IPs únicos, falhas de login, contas bloqueadas), linha do tempo, IPs mais
 ativos, serviços visados, usuários tentados, países, técnicas MITRE ATT&CK (T1110 brute
-force, T1046 discovery, T1078, T1059) e a tabela de eventos com filtros. Países só
-aparecem se o coletor enviar `paisOrigem` (enriquecimento GeoIP é um próximo passo).
+force, T1046 discovery, T1078, T1059) e a tabela de eventos. A tabela permite buscar
+IP/serviço/usuário/alvo e filtrar por origem, país, ação, IP ou serviço; selecionar uma
+linha abre os detalhes do evento. O endpoint de detalhe não retorna `senhaTentada`.
+Países só aparecem se o coletor enviar `paisOrigem` (enriquecimento GeoIP é um próximo passo).

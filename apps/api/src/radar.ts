@@ -150,6 +150,9 @@ export async function registerRadarRoutes(app: FastifyInstance) {
     ip: z.string().max(45).optional(),
     servico: z.string().max(32).optional(),
     acao: z.string().max(16).optional(),
+    fonte: z.enum(['fortigate', 'windows', 'cowrie', 'opencanary', 'outro']).optional(),
+    pais: z.string().length(2).optional(),
+    q: z.string().trim().max(100).optional(),
     page: z.coerce.number().int().min(0).default(0),
     limit: z.coerce.number().int().min(1).max(100).default(20),
   });
@@ -158,12 +161,20 @@ export async function registerRadarRoutes(app: FastifyInstance) {
     const q = EventosQuery.safeParse(req.query);
     if (!q.success) return reply.status(400).send({ error: 'parâmetros inválidos' });
 
-    const { ip, servico, acao, page, limit } = q.data;
+    const { ip, servico, acao, fonte, pais, q: texto, page, limit } = q.data;
     const where = {
       usuarioId: uid(req),
       ...(ip ? { ipOrigem: ip } : {}),
       ...(servico ? { servico } : {}),
       ...(acao ? { acao } : {}),
+      ...(fonte ? { fonte } : {}),
+      ...(pais ? { paisOrigem: pais } : {}),
+      ...(texto ? { OR: [
+        { ipOrigem: { contains: texto, mode: 'insensitive' as const } },
+        { servico: { contains: texto, mode: 'insensitive' as const } },
+        { usuarioTentado: { contains: texto, mode: 'insensitive' as const } },
+        { alvo: { contains: texto, mode: 'insensitive' as const } },
+      ] } : {}),
     };
 
     const [total, items] = await Promise.all([
@@ -175,7 +186,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
         take: limit,
         select: {
           id: true, fonte: true, ocorridoEm: true, ipOrigem: true, paisOrigem: true, portaDestino: true,
-          servico: true, acao: true, usuarioTentado: true, alvo: true,
+          servico: true, protocolo: true, acao: true, usuarioTentado: true, alvo: true,
         },
       }),
     ]);

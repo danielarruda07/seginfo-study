@@ -8,8 +8,8 @@ export function GlobalSearch() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const navigate = useNavigate();
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setOpen(true); }
@@ -21,6 +21,7 @@ export function GlobalSearch() {
   useEffect(() => {
     if (!open) return;
     const root = dialogRef.current;
+    previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     root?.querySelector('input')?.focus();
     const trap = (event: KeyboardEvent) => {
       if (event.key !== 'Tab' || !root) return;
@@ -30,7 +31,7 @@ export function GlobalSearch() {
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     };
     document.addEventListener('keydown', trap);
-    return () => { document.removeEventListener('keydown', trap); triggerRef.current?.focus(); };
+    return () => { document.removeEventListener('keydown', trap); previousFocus.current?.focus(); };
   }, [open]);
   const q = query.trim().toLocaleLowerCase();
   useEffect(() => {
@@ -53,9 +54,6 @@ export function GlobalSearch() {
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [q, navigate]);
   return <>
-    <button ref={triggerRef} className="global-search-trigger" type="button" onClick={() => setOpen(true)} aria-label="Busca global (Ctrl+K)">
-      <i className="pi pi-search" aria-hidden="true"/><span>Buscar no SegInfo…</span><kbd>Ctrl K</kbd>
-    </button>
     {open && <div className="global-search-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
       <section ref={dialogRef} className="global-search-dialog" role="dialog" aria-modal="true" aria-labelledby="global-search-title">
       <h2 id="global-search-title">Busca global</h2>

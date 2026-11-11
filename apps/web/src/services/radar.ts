@@ -29,6 +29,7 @@ export interface RadarEvento {
   paisOrigem: string | null;
   portaDestino: number | null;
   servico: string | null;
+  protocolo?: string | null;
   acao: string;
   usuarioTentado: string | null;
   alvo: string | null;
@@ -38,6 +39,9 @@ export interface RadarEventosFiltro {
   ip?: string;
   servico?: string;
   acao?: string;
+  fonte?: 'fortigate' | 'windows' | 'cowrie' | 'opencanary' | 'outro';
+  pais?: string;
+  q?: string;
   page: number;
   limit: number;
 }

@@ -3,13 +3,24 @@ import { useQuery } from '@tanstack/react-query';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Message } from 'primereact/message';
+import { InputText } from 'primereact/inputtext';
+import { Dropdown } from 'primereact/dropdown';
+import { Sidebar } from 'primereact/sidebar';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
+import { DetailHeader, DetailLayout, DetailSection } from '@/components/ui/Detail';
 import { Kpi, StatusStrip, Chip, Pill, Bar } from '@/components/InfraKit';
 import { getRadarResumo, getRadarEventos, type RadarEvento } from '@/services/radar';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const ROWS = 15;
 const DIAS_OPTS = [1, 7, 30];
+const FONTE_OPTS = [
+  { label: 'FortiGate', value: 'fortigate' }, { label: 'Windows', value: 'windows' },
+  { label: 'Cowrie', value: 'cowrie' }, { label: 'OpenCanary', value: 'opencanary' }, { label: 'Outro', value: 'outro' },
+];
+const ACAO_OPTS = ['login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'outro'].map((value) => ({ label: value.replace('_', ' '), value }));
+const FONTE_LABEL: Record<string, string> = { fortigate: 'FortiGate', windows: 'Windows', cowrie: 'Cowrie', opencanary: 'OpenCanary', outro: 'Outro' };
 const ACAO_COLOR: Record<string, string> = {
   login_falha: '#f59e0b', lockout: '#ef4444', login_ok: '#dc2626', scan: '#0ea5e9',
   bloqueio: '#64748b', conexao: '#64748b', comando: '#7c3aed', outro: '#64748b',
@@ -50,11 +61,16 @@ export function Radar() {
   const [ip, setIp] = useState<string | undefined>();
   const [servico, setServico] = useState<string | undefined>();
   const [acao, setAcao] = useState<string | undefined>();
+  const [fonte, setFonte] = useState<'fortigate' | 'windows' | 'cowrie' | 'opencanary' | 'outro' | undefined>();
+  const [pais, setPais] = useState<string | undefined>();
+  const [qRaw, setQRaw] = useState('');
+  const q = useDebounce(qRaw, 300);
   const [page, setPage] = useState(0);
+  const [selected, setSelected] = useState<RadarEvento | null>(null);
 
   const resumo = useQuery({ queryKey: ['radar-resumo', dias], queryFn: () => getRadarResumo(dias) });
 
-  const filtros = useMemo(() => ({ ip, servico, acao, page, limit: ROWS }), [ip, servico, acao, page]);
+  const filtros = useMemo(() => ({ ip, servico, acao, fonte, pais, q: q || undefined, page, limit: ROWS }), [ip, servico, acao, fonte, pais, q, page]);
   const eventos = useQuery({ queryKey: ['radar-eventos', filtros], queryFn: () => getRadarEventos(filtros) });
 
   // qualquer mudança de filtro volta para a página 1
@@ -62,6 +78,9 @@ export function Radar() {
   const pickIp = setF(setIp);
   const pickServico = setF(setServico);
   const pickAcao = setF(setAcao);
+  const pickFonte = setF(setFonte);
+  const pickPais = setF(setPais);
+  const pickBusca = (value: string) => { setQRaw(value); setPage(0); };
 
   const r = resumo.data;
   const tone = !r ? 'ok' : r.lockouts > 0 ? 'crit' : r.total > 0 ? 'warn' : 'ok';
@@ -70,6 +89,9 @@ export function Radar() {
     ip && { key: 'ip', label: `IP: ${ip}`, onRemove: () => pickIp(undefined) },
     servico && { key: 'srv', label: `Serviço: ${servico}`, onRemove: () => pickServico(undefined) },
     acao && { key: 'acao', label: `Ação: ${acao}`, onRemove: () => pickAcao(undefined) },
+    fonte && { key: 'fonte', label: `Fonte: ${FONTE_LABEL[fonte]}`, onRemove: () => pickFonte(undefined) },
+    pais && { key: 'pais', label: `País: ${pais}`, onRemove: () => pickPais(undefined) },
+    q && { key: 'q', label: `Busca: ${q}`, onRemove: () => pickBusca('') },
   ].filter(Boolean) as { key: string; label: string; onRemove: () => void }[];
 
   const maxTl = Math.max(1, ...(r?.timeline.map((t) => t.total) ?? [1]));
@@ -98,6 +120,13 @@ export function Radar() {
         {DIAS_OPTS.map((d) => (
           <Chip key={d} label={d === 1 ? '24 h' : `${d} dias`} active={dias === d} onClick={() => { setDias(d); }} />
         ))}
+      </div>
+
+      <div className="iv-card iv-row iv-wrap iv-mt radar-filters" aria-label="Filtros dos eventos">
+        <InputText value={qRaw} onChange={(e) => pickBusca(e.target.value)} placeholder="Buscar IP, serviço, usuário ou alvo…" aria-label="Buscar eventos do Radar" />
+        <Dropdown value={fonte} options={FONTE_OPTS} onChange={(e) => pickFonte(e.value)} placeholder="Todas as fontes" showClear />
+        <Dropdown value={pais} options={(r?.topPaises ?? []).map((p) => ({ label: `${p.nome} (${p.total})`, value: p.nome }))} onChange={(e) => pickPais(e.value)} placeholder="Todos os países" showClear />
+        <Dropdown value={acao} options={ACAO_OPTS} onChange={(e) => pickAcao(e.value)} placeholder="Todas as ações" showClear />
       </div>
 
       <div className="iv-kpis iv-mt">
@@ -130,8 +159,8 @@ export function Radar() {
           itens={(r?.topServicos ?? []).map((i) => ({ rotulo: i.nome, total: i.total }))} onPick={(v) => pickServico(v)} />
         <TopList titulo="Usuários tentados"
           itens={(r?.topUsuarios ?? []).map((i) => ({ rotulo: i.nome, total: i.total }))} />
-        <TopList titulo="Países de origem"
-          itens={(r?.topPaises ?? []).map((i) => ({ rotulo: i.nome, total: i.total }))} />
+        <TopList titulo="Países de origem (clique para filtrar)"
+          itens={(r?.topPaises ?? []).map((i) => ({ rotulo: i.nome, total: i.total }))} onPick={(v) => pickPais(v)} />
         {r?.senhasHabilitadas && (
           <TopList titulo="Senhas mais tentadas (dado sensível, não publique)"
             itens={(r.topSenhas).map((i) => ({ rotulo: i.nome, total: i.total }))} />
@@ -152,7 +181,10 @@ export function Radar() {
       </div>
 
       <div className="iv-card iv-mt">
-        <h4 style={{ margin: '0 0 .6rem' }}>Eventos recentes</h4>
+        <div className="iv-row iv-wrap" style={{ justifyContent: 'space-between', marginBottom: '.6rem' }}>
+          <h4 style={{ margin: 0 }}>Eventos recentes</h4>
+          <span className="iv-muted" style={{ fontSize: '.82rem' }}>{eventos.data?.total ?? 0} resultados · selecione uma linha para detalhes</span>
+        </div>
         <ActiveFiltersBar filters={activeFilters} />
         <DataTable
           value={eventos.data?.items ?? []}
@@ -160,6 +192,9 @@ export function Radar() {
           onPage={(e) => setPage(e.page ?? 0)}
           emptyMessage="Nenhum evento para os filtros."
           dataKey="id"
+          selectionMode="single"
+          onSelectionChange={(e) => setSelected(e.value as RadarEvento)}
+          rowHover
         >
           <Column header="Quando (UTC)" style={{ width: 170 }}
             body={(e: RadarEvento) => e.ocorridoEm.replace('T', ' ').slice(0, 19)} />
@@ -167,11 +202,24 @@ export function Radar() {
             <span style={{ fontFamily: 'monospace' }}>{e.ipOrigem ?? '—'}{e.paisOrigem ? ` · ${e.paisOrigem}` : ''}</span>
           )} />
           <Column header="Serviço" body={(e: RadarEvento) => e.servico ? `${e.servico}${e.portaDestino ? `:${e.portaDestino}` : ''}` : (e.portaDestino ?? '—')} />
+          <Column header="Protocolo" field="protocolo" />
           <Column header="Ação" body={(e: RadarEvento) => <Pill label={e.acao} color={ACAO_COLOR[e.acao]} />} />
           <Column header="Usuário tentado" field="usuarioTentado" />
           <Column header="Fonte" field="fonte" style={{ width: 110 }} />
         </DataTable>
       </div>
+
+      <Sidebar visible={!!selected} position="right" onHide={() => setSelected(null)} style={{ width: 480 }}>
+        {selected && <DetailLayout>
+          <DetailHeader title="Detalhes do evento"><Pill label={selected.acao} color={ACAO_COLOR[selected.acao]} /><Pill label={FONTE_LABEL[selected.fonte] ?? selected.fonte} /></DetailHeader>
+          <DetailSection title="Quando"><p>{selected.ocorridoEm.replace('T', ' ').slice(0, 19)} UTC</p></DetailSection>
+          <DetailSection title="Origem"><p style={{ fontFamily: 'monospace' }}>{selected.ipOrigem ?? 'IP não informado'}{selected.paisOrigem ? ` · ${selected.paisOrigem}` : ''}</p></DetailSection>
+          <DetailSection title="Alvo"><p>{selected.alvo ?? '—'}</p></DetailSection>
+          <DetailSection title="Serviço"><p>{selected.servico ?? '—'}{selected.portaDestino ? `:${selected.portaDestino}` : ''}{selected.protocolo ? ` · ${selected.protocolo}` : ''}</p></DetailSection>
+          <DetailSection title="Usuário tentado"><p>{selected.usuarioTentado ?? '—'}</p></DetailSection>
+          <p className="iv-muted" style={{ fontSize: '.8rem' }}>O Radar não mostra senhas tentadas nesta tela.</p>
+        </DetailLayout>}
+      </Sidebar>
     </div>
   );
 }
