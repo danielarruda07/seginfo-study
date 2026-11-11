@@ -40,6 +40,8 @@ export const TopicoSchema = z.object({
   ferramentas: z.array(FerramentaSchema),
   recursos: z.array(RecursoSchema),
   tags: z.array(z.string()).default([]),
+  /** Técnicas MITRE ATT&CK cobertas pelo tópico (ex.: T1110). */
+  mitre: z.array(z.string()).optional(),
 });
 export type Topico = z.infer<typeof TopicoSchema>;
 
@@ -138,6 +140,8 @@ export const LabSchema = z.object({
   passos: z.array(z.string()),
   resultadoEsperado: z.string(),
   topicoId: z.string().optional(),
+  /** Técnicas MITRE ATT&CK praticadas ou detectadas no lab. */
+  mitre: z.array(z.string()).optional(),
 });
 export type Lab = z.infer<typeof LabSchema>;
 

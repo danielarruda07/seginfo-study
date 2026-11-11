@@ -11,5 +11,8 @@ export const TRILHAS: Trilha[] = [
   { id: 'osint', ordem: 8, icone: 'pi-search', titulo: 'OSINT & Reconhecimento', descricao: 'Shodan, Maltego, theHarvester, Censys, OSINT Framework.' },
   { id: 'iam', ordem: 9, icone: 'pi-users', titulo: 'IAM & AD Security', descricao: 'Active Directory hardening, MFA, PAM, RADIUS, Zero Trust.' },
   { id: 'labs', ordem: 10, icone: 'pi-desktop', titulo: 'Laboratórios Práticos', descricao: 'TryHackMe, Hack The Box, OverTheWire, CTFs.' },
+  { id: 'ir', ordem: 12, icone: 'pi-wrench', titulo: 'Resposta a Incidentes & Forense', descricao: 'NIST 800-61, Event IDs, Sysmon, forense de memória e disco, Velociraptor.' },
+  { id: 'malware', ordem: 13, icone: 'pi-microchip', titulo: 'Análise de Malware (defensiva)', descricao: 'Famílias de malware, análise estática, sandbox, YARA e IOCs.' },
+  { id: 'purple', ordem: 14, icone: 'pi-sync', titulo: 'Purple Team & Detecção', descricao: 'Engenharia de detecção, Sigma, emulação com Atomic Red Team, deception, NSM.' },
   { id: 'certs', ordem: 11, icone: 'pi-briefcase', titulo: 'Certificações-Alvo', descricao: 'Security+, CEH, CYSA+, PNPT, CISSP — trilha por certificação.' },
 ];

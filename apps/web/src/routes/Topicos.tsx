@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from '@tanstack/react-router';
+import { Link, useParams } from '@tanstack/react-router';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Sidebar } from 'primereact/sidebar';
@@ -149,6 +149,14 @@ function TopicoDetalhe({ topico, onStatus }: { topico: TopicoComStatus; onStatus
       <DetailSection title="Conceitos-chave">
         <div className="iv-row iv-wrap">{topico.conceitosChave.map((c) => <Pill key={c} label={c} />)}</div>
       </DetailSection>
+
+      {(topico.mitre ?? []).length > 0 && (
+        <DetailSection title="Técnicas MITRE ATT&CK">
+          <div className="iv-row iv-wrap">
+            {(topico.mitre ?? []).map((t) => <Link key={t} to="/attack"><Pill label={t} /></Link>)}
+          </div>
+        </DetailSection>
+      )}
 
       {topico.ferramentas.length > 0 && (
         <DetailSection title="Ferramentas de referência">

@@ -7,7 +7,7 @@ import { read, write, uid, paginate, matchesSearch, todayISO, registerSchema, ty
 const KEY = 'inventario';
 const LAB_PROGRESS_KEY = 'labs:progresso';
 const SEED_VERSION_KEY = 'inventario:seed-version';
-const SEED_VERSION = 3;
+const SEED_VERSION = 4;
 registerSchema(KEY, { safeParse: (v) => AtivoSchema.array().safeParse(v) });
 registerSchema(LAB_PROGRESS_KEY, { safeParse: (v) => z.record(z.string(), z.object({ status: z.enum(['nao_iniciado', 'em_andamento', 'concluido']), concluidoEm: z.string().optional(), aprendizado: z.string(), evidencia: z.string().default(''), mitre: z.array(z.string()) })).safeParse(v) });
 

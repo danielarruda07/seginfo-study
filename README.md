@@ -33,6 +33,8 @@ do ambiente hospedado.
 | Sessões e Metas | Registro de tempo e objetivos |
 | Labs e Meu Ambiente | Exercícios ligados ao homelab e inventário |
 | Radar | Análise de eventos recebidos pela API |
+| Matriz ATT&CK | Cobertura por técnica: estudada, praticada, detectada e vista no Radar; exporta para o ATT&CK Navigator |
+| Ameaças (KEV) | Catálogo CISA KEV filtrado pelos produtos acompanhados (requer a API) |
 | Biblioteca e Arsenal IA | Referências salvas, prompts, skills e artefatos |
 | Segundo Cérebro | Notas, captura de URLs, lixeira e busca textual BM25 com fontes |
 | Armazenamento | Backup cifrado do PostgreSQL para OneDrive |

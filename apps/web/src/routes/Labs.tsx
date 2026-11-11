@@ -17,7 +17,7 @@ import { addPost, listPosts } from '@/services/sessoes';
 import { useInvalidate } from '@/hooks/useInvalidate';
 
 type Dominio = Lab['dominio'];
-const FILTROS: Dominio[] = ['blue', 'red', 'purple'];
+const FILTROS: Dominio[] = ['blue', 'red', 'purple', 'infra'];
 const STATUS_OPTS = Object.entries(ESTADO_LAB_LABEL).map(([value, label]) => ({ value, label }));
 
 function DominioPill({ dominio }: { dominio: Dominio }) {
@@ -100,6 +100,10 @@ function LabDetalhe({ lab, progresso, onSave, onDraft }: { lab: Lab; progresso: 
       <p><strong>Objetivo:</strong> {lab.objetivo}</p>
       {lab.topicoId && getTopico(lab.topicoId) && <p>Tópico relacionado: <Link to="/trilhas/$trilhaId" params={{ trilhaId: getTopico(lab.topicoId)!.trilhaId }}>{getTopico(lab.topicoId)!.titulo}</Link></p>}
 
+      {(lab.mitre ?? []).length > 0 && (
+        <p>Técnicas ATT&CK: {(lab.mitre ?? []).map((t) => <Link key={t} to="/attack" style={{ fontFamily: 'monospace', marginRight: '.5rem' }}>{t}</Link>)}</p>
+      )}
+
       <DetailSection title="Seu progresso">
         <label className="iv-col">Status
           <Dropdown value={progresso.status} options={STATUS_OPTS} onChange={(e) => onSave({ ...progresso, status: e.value as EstadoLab })} />
@@ -114,7 +118,7 @@ function LabDetalhe({ lab, progresso, onSave, onDraft }: { lab: Lab; progresso: 
           <InputText value={progresso.evidencia} onChange={(e) => onSave({ ...progresso, evidencia: e.target.value })}
             placeholder="Ex.: relatório local lab-01.md — não cole segredos ou dados corporativos" />
         </label>
-        <label className="iv-col iv-mt">Técnicas MITRE ATT&CK (separadas por vírgula)
+        <label className="iv-col iv-mt">Técnicas MITRE ATT&CK extras (separadas por vírgula)
           <InputTextarea value={mitreText} rows={2} autoResize
             onChange={(e) => onSave({ ...progresso, mitre: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) })}
             placeholder="Ex.: T1110, T1046" />

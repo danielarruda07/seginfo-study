@@ -10,6 +10,8 @@ const NAV = [
   { to: '/ambiente', label: 'Meu Ambiente', icon: 'pi-server' },
   { to: '/labs', label: 'Labs', icon: 'pi-desktop' },
   { to: '/radar', label: 'Radar', icon: 'pi-eye' },
+  { to: '/attack', label: 'Matriz ATT&CK', icon: 'pi-table' },
+  { to: '/ameacas', label: 'Ameaças (KEV)', icon: 'pi-exclamation-triangle' },
   { to: '/sessoes', label: 'Sessões', icon: 'pi-clock' },
   { to: '/metas', label: 'Metas', icon: 'pi-flag' },
   { to: '/posts', label: 'LinkedIn', icon: 'pi-linkedin' },

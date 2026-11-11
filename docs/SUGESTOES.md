@@ -253,3 +253,143 @@ porque não tenho o arquivo `.sgb`, a chave privada nem um banco PostgreSQL de t
 4. Edição do inventário e versão do seed (23, 24).
 5. Labs com status e evidência → rascunho de post (27, 28).
 6. Trilha da certificação-alvo e gráficos no Painel (26, 30).
+
+---
+
+# Revisão de 10/11/2026 (noite): API, deploy e Segundo Cérebro
+
+Ideias de painéis, assuntos, labs (range vulnerável, Red, Blue e Purple Team) estão em
+[`docs/IDEIAS_LAB.md`](IDEIAS_LAB.md).
+
+Esta rodada leu `apps/api`, o Nginx, os Dockerfiles e os serviços do front ligados à
+API. Os itens 38 a 41 corrigem defeitos confirmados no código. Os demais propõem
+evoluções.
+
+## Prioridade alta: correções confirmadas
+
+38. **O filtro anti-SSRF do extrator deixa passar alvos internos.** `isBlockedHost()` em
+    `apps/api/src/extract.ts` compara só o texto do hostname e não verifica o IP para o
+    qual o nome resolve. Conferido com o parser de URL do Node:
+    - `new URL('http://[::1]/').hostname` é `[::1]`, com colchetes. Por isso as checagens
+      `=== '::1'`, `startsWith('fc'|'fd'|'fe80')` nunca casam, e `[::ffff:7f00:1]`
+      (127.0.0.1 em IPv6) passa;
+    - nomes de container sem ponto passam, como `http://seginfo-api:3001/` ou o host do
+      Postgres. A API está na rede `coolify`, junto com outros serviços do lab;
+    - qualquer domínio público que resolva para `10.x`/`192.168.x` também passa. Isso
+      inclui serviços de DNS curinga (`10.10.10.99.nip.io`) e DNS rebinding;
+    - com `redirect: 'follow'`, os redirecionamentos intermediários já são requisitados
+      antes da checagem do host final. Essa checagem impede ler a resposta, mas não
+      impede a requisição;
+    - falso positivo: `startsWith('fd')` bloqueia domínios legítimos como `fdic.gov`.
+
+    **Correção sugerida:** resolver o nome com `dns.lookup(host, { all: true })` e
+    recusar se *qualquer* endereço for privado, loopback, link-local, CGNAT
+    (`100.64.0.0/10`), multicast ou IPv4 mapeado em IPv6. Fixar o IP resolvido na
+    conexão (`undici` Agent com `connect.lookup`) para impedir rebinding. Seguir
+    redirecionamentos manualmente (`redirect: 'manual'`, no máximo 5), validando cada
+    salto. Ler o corpo em stream e abortar ao passar de 2 MB, em vez de `arrayBuffer()`
+    seguido da checagem de tamanho. Hoje a rota exige login, mas a fase F2 (MCP)
+    planeja expor capturas a um assistente, e aí a prompt injection pode disparar
+    `capturar-url`. Escrever testes Vitest com a lista de URLs acima.
+39. **O botão "Fazer backup agora" pode falhar com 504.** O front espera até 6 min
+    (`runBackup`), mas o Nginx corta em `proxy_read_timeout 30s` (`apps/web/nginx.conf`),
+    e o Cloudflare Tunnel corta perto de 100 s. Com upload grande, a tela mostra erro
+    enquanto o backup segue no servidor. Sugestão: responder `202` com o `id` do
+    registro, rodar o backup em segundo plano e consultar o estado via
+    `/api/storage/status`, que a tela já carrega. Isso evita mexer em timeouts.
+40. **A importação local → API descarta o `labId` das sessões.** Em `POST /api/import`,
+    o schema aceita `labId`, mas o objeto `data` gravado só leva
+    `data, minutos, trilhaId, topicoId, nota`. Incluir `labId: s.labId`. Ainda em
+    `/api/import`, o `progresso` é `z.array(z.any())`: um item sem `topicoId` gera 500.
+    Usar o mesmo schema de `ProgressoBody`.
+41. **Os cabeçalhos de segurança somem em `/assets/`.** No Nginx, um `add_header` dentro
+    de um `location` anula todos os `add_header` herdados do `server`. Os arquivos JS e
+    CSS saem sem `nosniff`, `X-Frame-Options` e `Referrer-Policy`. Repetir os cabeçalhos
+    no bloco ou usar um `include` comum. Aproveitar para adicionar uma
+    **Content-Security-Policy**. O app não carrega scripts de terceiros, então algo como
+    `default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`
+    deve servir; validar o `style-src` com o PrimeReact. A CSP reduz o estrago de um
+    XSS, que é a principal ameaça a um Cofre que decifra os segredos no navegador.
+
+## Prioridade alta: integridade dos dados
+
+42. **O Cofre não detecta conflito de versão.** `PUT /api/cofre` e `/api/import`
+    sobrescrevem o blob do servidor sem conferir versão. Quando o Cofre migrar para a
+    API, um navegador com cópia antiga, ao importar ou salvar, apaga segredos criados em
+    outro dispositivo, e nada avisa. Sugestão: devolver `atualizadoEm` (ou um contador)
+    no `GET` e exigir o valor no `PUT` (`If-Match`), respondendo `409` quando divergir.
+    Na importação, nunca sobrescrever um cofre do servidor que já existe: pedir
+    confirmação explícita na tela.
+43. **A retenção só guarda os backups mais recentes.** `aplicarRetencao` mantém só os 14
+    mais recentes. Se um dado se corromper ou for apagado por engano e isso só for notado
+    15 dias depois, nenhum backup terá a versão boa. Sugestão: retenção avô-pai-filho, com
+    7 diários, 4 semanais (o de domingo) e 6 mensais (o do dia 1). Cabe na mesma função,
+    olhando a data no nome do arquivo.
+44. **Vincular o cabeçalho do `.sgb` à cifra.** Em `cifrarBackup`, o cabeçalho
+    (`SGB1` + tamanho) não entra como AAD no AES-GCM. Usar
+    `c.setAAD(Buffer.concat([MAGIC, len]))`, criando o formato `SGB2` e mantendo a
+    leitura de `SGB1`. O custo é pequeno e protege futuras mudanças de formato.
+45. **Lembrete do ensaio de restauração.** O servidor não consegue decifrar os backups
+    (isso é intencional), então só um ensaio prova que eles funcionam. Sugestão: guardar
+    `ultimoEnsaioRestauracaoEm` e mostrar um aviso na tela Armazenamento depois de 90
+    dias sem ensaio. A ferramenta `restore-backup.ts` poderia registrar a data
+    automaticamente ao terminar com sucesso.
+
+## Prioridade média: endurecimento da API e do deploy
+
+46. **Rodar a API sem root.** `apps/api/Dockerfile` não define `USER`; a imagem
+    `node:22-alpine` já tem o usuário `node`. Adicionar `USER node`, com `chown` do
+    `/repo` se preciso. No compose, considerar `read_only: true` com `tmpfs: /tmp`,
+    `cap_drop: [ALL]` e `security_opt: [no-new-privileges:true]` nos dois serviços.
+47. **IP real nos logs.** Sem `trustProxy`, o `req.ip` que aparece nos avisos de
+    ingestão e de token inválido é o IP do Nginx. Configurar
+    `Fastify({ trustProxy: ... })` com o IP da rede do compose. Para o IP do visitante
+    atrás do Cloudflare, usar o header `CF-Connecting-IP`. Assim os próprios logs da API
+    alimentam o Radar.
+48. **Limite de requisições por usuário.** O Access protege a borda, mas as rotas
+    `/api/extract`, `capturar-url` e `/api/ingest` fazem trabalho caro (fetch externo,
+    escrita em lote). Usar `@fastify/rate-limit` com limites baixos nessas rotas, por
+    exemplo 30 capturas por minuto. A intenção é conter um script com defeito ou um
+    coletor em loop.
+49. **Healthcheck que testa o banco.** O `/health` responde `ok` mesmo com o PostgreSQL
+    fora, e o front usa esse resultado para escolher o modo servidor. Criar
+    `/api/health/ready` com `SELECT 1` (protegido ou sem detalhes) para o healthcheck do
+    container e para o aviso de "servidor indisponível" na tela.
+50. **Quem pode virar usuário.** `resolveUsuario` cria um usuário para *qualquer* e-mail
+    aceito pelo Access. Se a política do Access um dia incluir um grupo ou domínio, cada
+    pessoa ganha uma conta vazia sem aviso. Sugestão: variável `ALLOWED_EMAILS` (lista) e
+    recusa com 403 fora dela. É uma segunda camada caso alguém mude a política do Access.
+51. **CI mínima no GitHub.** O repositório não tem workflow. Um job com
+    `npm ci && npm run typecheck && npm test` para web e API, mais o `npm audit --omit=dev`
+    e o Dependabot, pega regressões antes do deploy no Coolify. As imagens base
+    (`node:22-alpine`, `nginx:1.27-alpine`) também podem ser fixadas por digest, como já
+    está previsto para o sensor.
+
+## Prioridade média: produto
+
+52. **Segundo Cérebro: ligar memórias ao resto do app.** As memórias ainda não se ligam
+    aos tópicos, labs e itens da Biblioteca. Um campo opcional `topicoId`/`labId` e um
+    bloco "Notas relacionadas" no detalhe do tópico e do lab tornariam a busca BM25 útil
+    durante o estudo, e não só na tela Cérebro. A Biblioteca e o Cérebro também se
+    sobrepõem, já que os dois capturam URLs. Avaliar unificar o fluxo: "salvar na
+    Biblioteca" cria também uma memória pesquisável.
+53. **Busca: tolerância a variações.** O stemming atual só tira o `s` final. Um stemmer
+    leve de português (RSLP simplificado) e a busca por prefixo no último termo digitado
+    (`firewa` encontra `firewall`) melhoram bastante a busca enquanto os embeddings (F3)
+    não chegam.
+54. **Radar → estudo.** O Radar já mapeia técnicas MITRE. Cada técnica observada pode
+    sugerir o tópico ou lab relacionado ("T1110 apareceu 3.200 vezes nesta semana →
+    lab Hardening de RDP"). Isso fecha o ciclo observar → estudar → praticar e alimenta
+    a "próxima ação" do Painel (item 5).
+55. **Revisão espaçada nas memórias.** Reaproveitar a agenda de 1/3/7/14/30 dias dos
+    tópicos para memórias marcadas como "para fixar", com um cartão diário no Painel.
+
+## Sequência sugerida para esta rodada
+
+1. Corrigir o SSRF (38) com testes; é a única falha explorável a partir de um dado
+   externo.
+2. Correções rápidas: `labId` na importação (40), cabeçalhos e CSP no Nginx (41).
+3. Backup assíncrono (39) e retenção avô-pai-filho (43), antes de ativar
+   `BACKUP_AUTOMATICO`.
+4. Controle de versão do Cofre (42), antes de migrar o Cofre para a API.
+5. `USER node`, `trustProxy`, rate limit e CI (46 a 51).
