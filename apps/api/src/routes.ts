@@ -6,6 +6,7 @@ import { registerRadarRoutes } from './radar.js';
 import { registerMemoriaRoutes } from './memorias.js';
 import { origemOk, registerStorageRoutes } from './storage-routes.js';
 import { registerKevRoutes } from './kev.js';
+import { registerLinkedinRoutes } from './linkedin.js';
 
 /** Registra todas as rotas de estado do usuário, todas protegidas por requireUser. */
 export async function registerStateRoutes(app: FastifyInstance) {
@@ -281,4 +282,7 @@ export async function registerStateRoutes(app: FastifyInstance) {
 
   // ---------- Ameaças: catálogo CISA KEV filtrado pelos produtos acompanhados ----------
   await registerKevRoutes(app);
+
+  // LinkedIn: posts publicados, IA (Claude) e diário do projeto
+  await registerLinkedinRoutes(app);
 }

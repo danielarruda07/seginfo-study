@@ -9,7 +9,7 @@
  */
 import 'dotenv/config';
 import { z } from 'zod';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 const [, , arquivo] = process.argv;
 const targetUrl = process.env.RESTORE_TARGET_DATABASE_URL;
@@ -36,12 +36,18 @@ const Biblioteca = z.object({ id: z.string(), usuarioId: z.string(), url: z.stri
 const Cofre = z.object({ usuarioId: z.string(), versao: z.number().int(), salt: z.string(), iv: z.string(), ciphertext: z.string(), autoLockMin: z.number().int(), atualizadoEm: z.coerce.date().optional() }).nullable();
 const Ataque = z.object({ id: z.string(), usuarioId: z.string(), fonte: z.string(), ocorridoEm: z.coerce.date(), ipOrigem: z.string().nullable(), paisOrigem: z.string().nullable(), portaDestino: z.number().int().nullable(), protocolo: z.string().nullable(), servico: z.string().nullable(), acao: z.string(), usuarioTentado: z.string().nullable(), senhaTentada: z.string().nullable(), alvo: z.string().nullable(), detalhes: z.unknown(), dedupKey: z.string(), criadoEm: z.coerce.date().optional() });
 const Memoria = z.object({ id: z.string(), usuarioId: z.string(), titulo: z.string(), conteudo: z.string(), tags: z.array(z.string()), origem: z.string(), urlOrigem: z.string().nullable(), escopo: z.string(), excluirEm: z.coerce.date().nullable(), criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional() });
+const LinkedinPost = z.object({ id: z.string(), usuarioId: z.string(), url: z.string(), urlNormalizada: z.string(), publicadoEm: z.string(), texto: z.string(), formato: z.string(), metricas: z.unknown(), origem: z.string(), analise: z.unknown().nullable(), memoriaId: z.string().nullable(), criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional() });
+const DiarioEntrada = z.object({ id: z.string(), usuarioId: z.string(), data: z.string(), titulo: z.string(), descricao: z.string(), categoria: z.string(), tags: z.array(z.string()), criadoEm: z.coerce.date().optional() });
+const LinkedinEstrategia = z.object({ usuarioId: z.string(), objetivo: z.string(), publico: z.string(), voz: z.string(), pilares: z.array(z.string()), atualizadoEm: z.coerce.date().optional() }).nullable();
 
 const Exportacao = z.object({
   formato: z.literal('seginfo-export'), versao: z.literal(1), usuario: Identidade.optional(),
   progresso: z.array(Progresso), sessoes: z.array(Sessao), metas: z.array(Meta), posts: z.array(Post),
   arsenal: z.array(Arsenal), biblioteca: z.array(Biblioteca), cofre: Cofre,
   ataques: z.array(Ataque), memorias: z.array(Memoria),
+  // LinkedIn (backups anteriores a 2026-11-11 não têm estas chaves)
+  linkedinPosts: z.array(LinkedinPost).default([]), diario: z.array(DiarioEntrada).default([]),
+  linkedinEstrategia: LinkedinEstrategia.default(null),
 });
 
 try {
@@ -51,8 +57,9 @@ try {
   if (!parsed.success) throw new Error(`Exportação inválida: ${parsed.error.issues[0]?.path.join('.') || 'formato'}`);
   const backup = parsed.data;
   const rows = [...backup.progresso, ...backup.sessoes, ...backup.metas, ...backup.posts,
-    ...backup.arsenal, ...backup.biblioteca, ...backup.ataques, ...backup.memorias];
-  const userIds = new Set([...rows.map((r) => r.usuarioId), ...(backup.cofre ? [backup.cofre.usuarioId] : [])]);
+    ...backup.arsenal, ...backup.biblioteca, ...backup.ataques, ...backup.memorias,
+    ...backup.linkedinPosts, ...backup.diario];
+  const userIds = new Set([...rows.map((r) => r.usuarioId), ...(backup.cofre ? [backup.cofre.usuarioId] : []), ...(backup.linkedinEstrategia ? [backup.linkedinEstrategia.usuarioId] : [])]);
   const userId = backup.usuario?.id ?? [...userIds][0];
   const email = backup.usuario?.email ?? process.env.RESTORE_USER_EMAIL;
   if (!userId || userIds.size > 1 || [...userIds].some((id) => id !== userId)) {
@@ -80,6 +87,20 @@ try {
       prisma.ataqueEvento.createMany({ data: backup.ataques.map((i) => ({ ...i, detalhes: i.detalhes as Prisma.InputJsonValue })) }),
       prisma.memoria.createMany({ data: pessoal }),
     ];
+    // memoriaId só é mantido se a nota também foi restaurada
+    const memoriasRestauradas = new Set(pessoal.map((m) => m.id));
+    ops.push(
+      prisma.linkedinPost.createMany({
+        data: backup.linkedinPosts.map((p) => ({
+          ...p,
+          metricas: p.metricas as Prisma.InputJsonValue,
+          analise: p.analise === null ? Prisma.DbNull : (p.analise as Prisma.InputJsonValue),
+          memoriaId: p.memoriaId && memoriasRestauradas.has(p.memoriaId) ? p.memoriaId : null,
+        })),
+      }),
+      prisma.diarioEntrada.createMany({ data: backup.diario }),
+    );
+    if (backup.linkedinEstrategia) ops.push(prisma.linkedinEstrategia.create({ data: backup.linkedinEstrategia }));
     if (backup.cofre) ops.push(prisma.cofreBlob.create({ data: backup.cofre }));
     await prisma.$transaction(ops);
 

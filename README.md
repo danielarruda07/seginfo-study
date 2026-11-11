@@ -36,6 +36,7 @@ do ambiente hospedado.
 | Matriz ATT&CK | Cobertura por técnica: estudada, praticada, detectada e vista no Radar; exporta para o ATT&CK Navigator |
 | Ameaças (KEV) | Catálogo CISA KEV filtrado pelos produtos acompanhados (requer a API) |
 | Biblioteca e Arsenal IA | Referências salvas, prompts, skills e artefatos |
+| LinkedIn | Estúdio com checklist e rascunhos por IA; registro dos posts publicados (manual ou `Shares.csv`) organizados pela IA e enviados ao Segundo Cérebro; diário de construção do app (`packages/shared/src/diarioProjeto.ts`). Dados no PostgreSQL; IA (Claude) roda na API com `ANTHROPIC_API_KEY` (requer a API) |
 | Segundo Cérebro | Notas, captura de URLs, lixeira e busca textual BM25 com fontes |
 | Armazenamento | Backup cifrado do PostgreSQL para OneDrive |
 | Cofre | Segredos cifrados no cliente com AES-GCM e PBKDF2 |

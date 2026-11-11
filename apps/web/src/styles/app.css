@@ -272,3 +272,22 @@
 /* ===== Ameaças (KEV) ===== */
 .kev-item h4 { margin:.3rem 0; }
 .kev-item p { margin:.3rem 0; font-size:.88rem; }
+
+/* ===== LinkedIn (estúdio, publicados, diário, estratégia) ===== */
+.linkedin-tabs .p-tabview-panels { padding: 1rem 0 0; background: transparent; }
+.linkedin-checklist { list-style: none; margin: .75rem 0; padding: 0; display: grid; gap: .45rem; font-size: .85rem; }
+.linkedin-checklist li { display: flex; gap: .5rem; align-items: flex-start; }
+.linkedin-checklist li .pi { margin-top: .15rem; }
+.linkedin-metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .6rem; }
+.linkedin-analise { border-top: 1px solid var(--surface-border); padding-top: .75rem; }
+.linkedin-analise__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.linkedin-ideias { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
+.linkedin-ideias li { display: flex; justify-content: space-between; align-items: center; gap: .75rem; padding: .45rem .7rem; border-radius: var(--radius-sm); background: var(--surface-hover); font-size: .88rem; }
+.linkedin-timeline { list-style: none; margin: 0; padding: 0 0 0 1.1rem; border-left: 2px solid var(--surface-border); display: grid; gap: .9rem; }
+.linkedin-timeline li { position: relative; background: var(--surface-card); border: 1px solid var(--surface-border); border-radius: var(--radius-sm); padding: .7rem .9rem; }
+.linkedin-timeline li::before { content: ''; position: absolute; left: calc(-1.1rem - 7px); top: 1rem; width: 12px; height: 12px; border-radius: 50%; background: var(--cor, var(--alvoar-teal)); border: 2px solid var(--surface-ground); }
+.linkedin-estrategia { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+.linkedin-pilares { list-style: none; margin: .5rem 0; padding: 0; display: grid; gap: .4rem; }
+.linkedin-pilares li { display: flex; gap: .25rem; }
+.linkedin-pilares li .p-inputtext { flex: 1; }
+@media (max-width: 900px) { .linkedin-estrategia { grid-template-columns: 1fr; } }

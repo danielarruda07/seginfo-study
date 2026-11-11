@@ -36,6 +36,8 @@ services:
       - BACKUP_PUBLIC_KEY_B64=${BACKUP_PUBLIC_KEY_B64}
       - BACKUP_AUTOMATICO=${BACKUP_AUTOMATICO:-false}
       - BACKUP_RETENCAO=${BACKUP_RETENCAO:-14}
+      # IA do módulo LinkedIn (Claude API). Secret no Coolify; sem ela a IA fica desligada.
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     expose:
       - "3001"
     # `default`: rede privada do compose (web -> api).

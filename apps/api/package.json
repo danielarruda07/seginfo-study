@@ -12,6 +12,7 @@
     "restore:test": "tsx src/tools/restore-backup.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@fastify/cors": "^10.0.1",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",

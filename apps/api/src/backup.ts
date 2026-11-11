@@ -13,7 +13,7 @@ import { apagarItem, enviarBackup, listarBackups, obterAccessToken } from './one
 const PADRAO_NOME = /^seginfo-\d{8}-\d{6}\.sgb$/;
 
 async function exportarDados(usuarioId: string) {
-  const [usuario, progresso, sessoes, metas, posts, arsenal, biblioteca, cofre, ataques, memorias] = await Promise.all([
+  const [usuario, progresso, sessoes, metas, posts, arsenal, biblioteca, cofre, ataques, memorias, linkedinPosts, diario, linkedinEstrategia] = await Promise.all([
     prisma.usuario.findUnique({ where: { id: usuarioId }, select: { id: true, email: true } }),
     prisma.progresso.findMany({ where: { usuarioId } }),
     prisma.sessao.findMany({ where: { usuarioId } }),
@@ -25,6 +25,9 @@ async function exportarDados(usuarioId: string) {
     prisma.ataqueEvento.findMany({ where: { usuarioId }, orderBy: { ocorridoEm: 'asc' } }),
     // material corporativo NUNCA vai para o OneDrive pessoal
     prisma.memoria.findMany({ where: { usuarioId, escopo: { not: 'corporativo' } } }),
+    prisma.linkedinPost.findMany({ where: { usuarioId } }),
+    prisma.diarioEntrada.findMany({ where: { usuarioId } }),
+    prisma.linkedinEstrategia.findUnique({ where: { usuarioId } }),
   ]);
   if (!usuario) throw new Error('Usuário do backup não encontrado.');
   return {
@@ -33,6 +36,7 @@ async function exportarDados(usuarioId: string) {
     exportadoEm: new Date().toISOString(),
     usuario,
     progresso, sessoes, metas, posts, arsenal, biblioteca, cofre, ataques, memorias,
+    linkedinPosts, diario, linkedinEstrategia,
   };
 }
 

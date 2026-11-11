@@ -5,6 +5,10 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
 
 ## Segurança (prioridade)
 
+- [ ] **Ligar a IA do LinkedIn.** Criar a chave em console.anthropic.com (com limite de gasto
+      mensal) e cadastrar como Secret `ANTHROPIC_API_KEY` no serviço `seginfo-api` do Coolify.
+      Nunca colar a chave em chat, issue ou commit.
+
 - [ ] **Tirar o RDP real da WAN.** O VIP `10.10.10.100:1401` publicado no IP público é o
       alvo do brute force. Acessar pelo `rdp.criecom.ia.br` (Cloudflare Access). Conferir nos
       logs do FortiGate se há tentativas contra a porta 1401. Relacionado ao lab

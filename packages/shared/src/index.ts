@@ -301,3 +301,7 @@ export const IngestBatchSchema = z.object({
   eventos: z.array(AtaqueEventoInSchema).min(1).max(500),
 });
 export type IngestBatch = z.infer<typeof IngestBatchSchema>;
+
+// ===================== DIÁRIO DO PROJETO =====================
+export * from './diarioProjeto';
+export * from './linkedin';

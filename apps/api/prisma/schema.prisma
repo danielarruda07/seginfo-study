@@ -29,6 +29,9 @@ model Usuario {
   armazenamento ArmazenamentoConta?
   backups      BackupRegistro[]
   memorias     Memoria[]
+  linkedinPosts LinkedinPost[]
+  diario       DiarioEntrada[]
+  linkedinEstrategia LinkedinEstrategia?
 }
 
 // Progresso + anotações por tópico (tópico é estático no código)
@@ -218,4 +221,54 @@ model Memoria {
 
   @@index([usuarioId, atualizadoEm])
   @@index([usuarioId, excluirEm])
+}
+
+// LinkedIn: posts publicados oficialmente. `urlNormalizada` (sem query string, minúsculas)
+// impede registrar o mesmo post duas vezes. `analise` é o JSON gerado pela IA (Claude);
+// `memoriaId` aponta para a nota criada no Segundo Cérebro.
+model LinkedinPost {
+  id             String   @id @default(cuid())
+  usuarioId      String
+  usuario        Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  url            String
+  urlNormalizada String
+  publicadoEm    String   // YYYY-MM-DD
+  texto          String
+  formato        String   @default("texto") // texto | imagem | carrossel | video | artigo | enquete
+  metricas       Json     @default("{}")
+  origem         String   @default("manual") // manual | importacao
+  analise        Json?
+  memoriaId      String?
+  criadoEm       DateTime @default(now())
+  atualizadoEm   DateTime @updatedAt
+
+  @@unique([usuarioId, urlNormalizada])
+  @@index([usuarioId, publicadoEm])
+}
+
+// Marcos do diário de construção criados pela tela. Os marcos escritos durante o
+// desenvolvimento ficam no código (packages/shared/src/diarioProjeto.ts).
+model DiarioEntrada {
+  id        String   @id @default(cuid())
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  data      String   // YYYY-MM-DD
+  titulo    String
+  descricao String
+  categoria String   // funcionalidade | seguranca | infra | decisao | aprendizado | plano
+  tags      String[] @default([])
+  criadoEm  DateTime @default(now())
+
+  @@index([usuarioId, data])
+}
+
+// Posicionamento no LinkedIn (objetivo, público, voz e pilares) usado pela IA.
+model LinkedinEstrategia {
+  usuarioId    String   @id
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  objetivo     String
+  publico      String
+  voz          String
+  pilares      String[]
+  atualizadoEm DateTime @updatedAt
 }

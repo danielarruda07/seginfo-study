@@ -33,7 +33,10 @@ Gitea/GitHub (ex: `danielarruda07/seginfo-study`), como você já faz com o CRIE
 4. Variáveis do serviço `seginfo-api` (já no compose, ajuste se mudar o domínio):
    - `WEB_ORIGIN=https://estudo.criecom.ia.br`
    - `PORT=3001`
-5. Deploy.
+   - `ANTHROPIC_API_KEY` (**Secret**): liga a IA do módulo LinkedIn (organizar posts e gerar
+     rascunhos). Crie em console.anthropic.com → API Keys e defina um limite de gasto mensal.
+     A chave fica só no container; sem ela o resto do app funciona e a tela avisa.
+5. Deploy. As migrations pendentes rodam sozinhas ao subir o container da API.
 
 > Observação: o serviço `seginfo-api` NÃO deve ter domínio público. Só o `web` é publicado.
 
