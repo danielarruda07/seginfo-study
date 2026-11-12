@@ -1,5 +1,7 @@
 # 4–8. Componentes, anatomia, filtros, arquitetura e checklist
 
+> ⚠️ Cores, tipografia e componentes de tela foram atualizados para o padrão tinybase — veja **[UI_GUIDE.md](UI_GUIDE.md)**, que prevalece em caso de conflito.
+
 ## 4. Componentes React
 
 ### `src/components/InfraKit.tsx` — átomos do design system

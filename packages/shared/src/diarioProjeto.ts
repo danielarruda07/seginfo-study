@@ -24,6 +24,19 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-12-ui-tinybase',
+    data: '2026-11-12',
+    titulo: 'Interface com padrão de painel corporativo: menos cor, mais hierarquia',
+    descricao:
+      'O app ganhou o visual de um painel interno de TI: barra superior com breadcrumb, menu lateral em seções, ' +
+      'tabela e diálogos com cabeçalho na cor da marca e um sistema de "tons" de estado no lugar de cores soltas. ' +
+      'A regra que mais mudou as telas: cor só onde há ação a tomar, e cada informação aparece uma vez. ' +
+      'A tela de inventário virou a referência — indicadores que filtram, gráfico clicável, ficha lateral com ' +
+      'navegação por teclado e formulário em blocos com prévia ao vivo.',
+    categoria: 'funcionalidade',
+    tags: ['ux', 'design-system', 'react'],
+  },
+  {
     id: 'proj-2026-11-10-linkedin-servidor',
     data: '2026-11-10',
     titulo: 'Tudo no servidor: LinkedIn no PostgreSQL e IA dentro da API',

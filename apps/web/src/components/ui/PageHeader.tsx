@@ -8,8 +8,10 @@ export interface PageHeaderProps {
 export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
   return (
     <header className="page-header">
-      <h1 className="page-header__title">{title}</h1>
-      {subtitle && <p className="page-header__sub">{subtitle}</p>}
+      <div>
+        <h1 className="page-header__title">{title}</h1>
+        {subtitle && <p className="page-header__sub">{subtitle}</p>}
+      </div>
       {actions && <div className="page-header__actions">{actions}</div>}
     </header>
   );

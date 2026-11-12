@@ -8,7 +8,9 @@ import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
 import 'primeflex/primeflex.css';
 import '@/styles/tokens.css';
+import '@/styles/prime-overrides.css';
 import '@/styles/iv.css';
+import '@/styles/shell.css';
 import '@/styles/app.css';
 
 import { router } from '@/router';

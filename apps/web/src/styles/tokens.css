@@ -1,45 +1,85 @@
+/*
+ * Tokens do tema — padrão tinybase (Alvoar): lara-light-teal repintado.
+ * Interface usa SEMPRE variáveis; hex fixo só aqui e em relatório impresso.
+ * Guia completo: docs/UI_GUIDE.md
+ */
 :root {
   /* marca Alvoar */
   --alvoar-navy: #0d0c55;
-  --alvoar-teal: #00d6c8;
   --alvoar-navy-700: #1a1870;
+  --alvoar-teal: #00d6c8;
   --alvoar-teal-600: #00b8ac;
+  --alvoar-crimson: #b70052;
+  --alvoar-orange: #ff8737;
+
+  /* tema PrimeReact reapontado para a marca */
+  --primary-color: var(--alvoar-navy);
+  --primary-color-text: #ffffff;
+  --highlight-bg: color-mix(in srgb, var(--alvoar-navy) 10%, #fff);
+  --highlight-text-color: var(--alvoar-navy);
+  --focus-ring: 0 0 0 0.2rem color-mix(in srgb, var(--alvoar-teal) 20%, transparent);
 
   /* superfícies */
-  --surface-ground: #f4f6fb;
+  --surface-ground: #ebeef3;
   --surface-card: #ffffff;
-  --surface-border: #e3e8f0;
-  --surface-hover: #eef2f8;
+  --surface-border: #e2e8f0;
+  --surface-hover: rgba(0, 0, 0, 0.02);
+  --surface-section: #f6f8fb;
+  --input-border: #ced4da;
 
   /* texto */
-  --text-color: #1c2333;
-  --text-color-secondary: #5b6478;
+  --text-color: #1e293b;
+  --text-color-secondary: #475569;
+  --font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-size: 14px;
 
   /* forma */
-  --radius: 12px;
-  --radius-sm: 8px;
+  --border-radius: 6px;
+  --radius: 8px;
+  --radius-sm: 6px;
 
-  /* status */
-  --iv-ok: #22c55e;
-  --iv-warn: #f59e0b;
-  --iv-crit: #ef4444;
+  /* casca */
+  --topbar-h: 52px;
+  --sidebar-w: 256px;
+  --sidebar-w-collapsed: 60px;
+  --nav-section: #9fb3ff;
 
-  /* reaponta tokens do PrimeReact para a marca */
-  --primary-color: var(--alvoar-teal-600);
-  --primary-color-text: #ffffff;
-  --highlight-bg: color-mix(in srgb, var(--alvoar-teal) 14%, #fff);
-  --highlight-text-color: var(--alvoar-navy);
+  /* tons de estado (usar via classes .tone-*) */
+  --tone-danger: var(--red-500, #ef4444);
+  --tone-serious: var(--orange-500, #f97316);
+  --tone-warning: var(--yellow-600, #ca8a04);
+  --tone-info: var(--blue-500, #3b82f6);
+  --tone-ok: var(--green-600, #16a34a);
+  --tone-muted: var(--text-color-secondary);
+
+  /* compatibilidade com telas antigas (StatusTone ok/warn/crit) */
+  --iv-ok: var(--tone-ok);
+  --iv-warn: var(--tone-serious);
+  --iv-crit: var(--tone-danger);
 }
+
+/* Sistema de tons: a classe só seta --tone; quem pinta usa var(--tone). */
+.tone-danger  { --tone: var(--tone-danger); }
+.tone-serious { --tone: var(--tone-serious); }
+.tone-warning { --tone: var(--tone-warning); }
+.tone-info    { --tone: var(--tone-info); }
+.tone-ok      { --tone: var(--tone-ok); }
+.tone-muted   { --tone: var(--tone-muted); }
 
 * { box-sizing: border-box; }
 
+html { font-size: var(--font-size); }
 html, body, #root { height: 100%; margin: 0; }
 
 body {
   background: var(--surface-ground);
   color: var(--text-color);
-  font-family: Inter, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-family);
+  font-size: 1rem;
 }
 
-a { color: var(--alvoar-teal-600); text-decoration: none; }
+a { color: var(--alvoar-navy); text-decoration: none; }
 a:hover { text-decoration: underline; }
+
+.tabular { font-variant-numeric: tabular-nums; }
+.mono { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: .82rem; }

@@ -1,5 +1,7 @@
 # 3. Design system `iv-*`
 
+> ⚠️ Cores, tipografia e componentes de tela foram atualizados para o padrão tinybase — veja **[UI_GUIDE.md](UI_GUIDE.md)**, que prevalece em caso de conflito.
+
 CSS do design system interno (prefixo `iv-` = "infra view"). Copiável inteiro.
 Fica em `apps/web/src/styles/iv.css` e é importado uma vez no `main.tsx`.
 

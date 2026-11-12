@@ -1,5 +1,7 @@
 # 2. Tema e tokens
 
+> ⚠️ Cores, tipografia e componentes de tela foram atualizados para o padrão tinybase — veja **[UI_GUIDE.md](UI_GUIDE.md)**, que prevalece em caso de conflito.
+
 Dois sistemas de cor coexistem: o **tema PrimeReact repintado** (visual global) e a
 **régua de status em código** (semântica de estado).
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { OPEN_GLOBAL_SEARCH } from './shell/Topbar';
 
 type SearchResult = { id: string; title: string; detail: string; action: () => void };
 
@@ -15,8 +16,10 @@ export function GlobalSearch() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setOpen(true); }
       if (e.key === 'Escape') setOpen(false);
     };
+    const abrir = () => setOpen(true);
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener(OPEN_GLOBAL_SEARCH, abrir);
+    return () => { window.removeEventListener('keydown', handler); window.removeEventListener(OPEN_GLOBAL_SEARCH, abrir); };
   }, []);
   useEffect(() => {
     if (!open) return;

@@ -8,6 +8,29 @@ export const STATUS_COLOR = {
 
 export type StatusTone = keyof typeof STATUS_COLOR;
 
+/**
+ * Tons de estado do guia de UI (docs/UI_GUIDE.md). A classe `tone-*` seta `--tone`.
+ * danger = vencido/crítico · serious = urgente · warning = atenção · info · ok (pouco) · muted = inativo.
+ */
+export type Tone = 'danger' | 'serious' | 'warning' | 'info' | 'ok' | 'muted';
+
+export const toneClass = (tone?: Tone) => (tone ? `tone-${tone}` : '');
+
+/** Tons que pedem ação: só eles ganham destaque em KPI e linha de tabela. */
+export const ACTION_TONES: readonly Tone[] = ['danger', 'serious', 'warning'];
+
+/** KPI só ganha destaque se o tom pede ação e há algo a fazer (valor > 0). */
+export function kpiAlert(tone: Tone | undefined, value: unknown): boolean {
+  if (!tone || !ACTION_TONES.includes(tone)) return false;
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n > 0 : false;
+}
+
+/** Converte a régua antiga (ok/warn/crit) no tom equivalente. */
+export function toneFromStatus(s: StatusTone): Tone {
+  return s === 'crit' ? 'danger' : s === 'warn' ? 'serious' : 'ok';
+}
+
 /** Converte um percentual (0-100) em um tom de status. */
 export function usageTone(pct: number): StatusTone {
   if (pct >= 85) return 'crit';
