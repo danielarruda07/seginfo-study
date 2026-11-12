@@ -42,7 +42,7 @@ export function GlobalSearch() {
     setResults([]);
     if (!q) return () => { cancelled = true; };
     const timer = window.setTimeout(async () => {
-      const [catalog, sessions, inventory, range] = await Promise.all([import('@/services/catalog'), import('@/services/sessoes'), import('@/services/inventario'), import('@/services/range')]);
+      const [catalog, sessions, inventory, range, ferramentas] = await Promise.all([import('@/services/catalog'), import('@/services/sessoes'), import('@/services/inventario'), import('@/services/range'), import('@/services/ferramentas')]);
       if (cancelled) return;
       const topics = catalog.listTopicos({ rows: 1000 }).items.filter((x) => `${x.titulo} ${x.resumo} ${x.tags.join(' ')}`.toLocaleLowerCase().includes(q)).slice(0, 8)
         .map((x) => ({ id: `t-${x.id}`, title: x.titulo, detail: 'Tópico', action: () => navigate({ to: '/trilhas/$trilhaId', params: { trilhaId: x.trilhaId } }) }));
@@ -56,7 +56,9 @@ export function GlobalSearch() {
         .map((x) => ({ id: `ra-${x.id}`, title: x.nome, detail: 'Range', action: () => navigate({ to: '/range' }) }));
       const rangeChecklist = range.listRangeChecklist().filter((x) => `${x.titulo} ${x.descricao}`.toLocaleLowerCase().includes(q)).slice(0, 5)
         .map((x) => ({ id: `rc-${x.id}`, title: x.titulo, detail: 'Range · checklist', action: () => navigate({ to: '/range' }) }));
-      setResults([...topics, ...trails, ...goals, ...labs, ...rangeAlvos, ...rangeChecklist].slice(0, 16));
+      const ferramentasRes = ferramentas.listFerramentas().filter((x) => `${x.nome} ${x.descricao}`.toLocaleLowerCase().includes(q)).slice(0, 6)
+        .map((x) => ({ id: `fe-${x.id}`, title: x.nome, detail: 'Ferramenta', action: () => navigate({ to: '/ferramentas' }) }));
+      setResults([...topics, ...trails, ...goals, ...labs, ...rangeAlvos, ...rangeChecklist, ...ferramentasRes].slice(0, 16));
     }, 180);
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [q, navigate]);

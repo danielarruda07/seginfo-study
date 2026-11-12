@@ -1,4 +1,4 @@
-import type { EstadoAtivo, Lab, RangeAlvo, RangeChecklistItem, StatusEstudo, TipoAtivo } from '@seginfo/shared';
+import type { EstadoAtivo, FaseFerramenta, Lab, RangeAlvo, RangeChecklistItem, StatusEstudo, TipoAtivo } from '@seginfo/shared';
 
 export const STATUS_COLOR = {
   ok: '#22c55e', // verde
@@ -109,6 +109,26 @@ export const CRITICIDADE_COLOR: Record<RangeChecklistItem['criticidade'], string
   media: STATUS_COLOR.warn,
   baixa: STATUS_COLOR.ok,
 };
+
+/** Fase do workflow -> rótulo (Arsenal de Ferramentas). */
+export const FASE_FERRAMENTA_LABEL: Record<FaseFerramenta, string> = {
+  reconhecimento: 'Reconhecimento & OSINT',
+  varredura: 'Varredura de rede',
+  vulnerabilidade: 'Avaliação de vulnerabilidade',
+  web: 'Aplicações web',
+  exploracao: 'Exploração',
+  senha: 'Senhas',
+  wireless: 'Segurança sem fio',
+  forense: 'Perícia & resposta a incidentes',
+  monitoramento: 'Logs & monitoramento',
+  defesa: 'Segurança defensiva',
+};
+
+/** Ordem de exibição das fases: segue o fluxo de um exercício (recon → defesa). */
+export const FASES_FERRAMENTA_ORDEM: FaseFerramenta[] = [
+  'reconhecimento', 'varredura', 'vulnerabilidade', 'web', 'exploracao',
+  'senha', 'wireless', 'forense', 'monitoramento', 'defesa',
+];
 
 /** Tipo de ativo -> rótulo (pills e chips de filtro do inventário). */
 export const TIPO_ATIVO_LABEL: Record<TipoAtivo, string> = {

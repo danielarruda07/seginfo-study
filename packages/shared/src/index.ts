@@ -189,6 +189,30 @@ export const RangeProgressoItemSchema = z.object({
 });
 export type RangeProgressoItem = z.infer<typeof RangeProgressoItemSchema>;
 
+// ===================== ARSENAL DE FERRAMENTAS (catálogo de referência) =====================
+
+/** Fase do workflow ofensivo/defensivo em que a ferramenta é usada. */
+export const FaseFerramenta = z.enum([
+  'reconhecimento', 'varredura', 'vulnerabilidade', 'web', 'exploracao',
+  'senha', 'wireless', 'forense', 'monitoramento', 'defesa',
+]);
+export type FaseFerramenta = z.infer<typeof FaseFerramenta>;
+
+/** Ferramenta de referência rápida (cheat sheet), independente do conteúdo de estudo. */
+export const FerramentaCatalogoSchema = z.object({
+  id: z.string(),
+  nome: z.string(),
+  fase: FaseFerramenta,
+  dominio: z.enum(['blue', 'red', 'infra', 'purple']),
+  descricao: z.string(),
+  url: z.string().url().optional(),
+  /** Vem pré-instalada no Kali Linux. */
+  kali: z.boolean().default(false),
+  /** Tópico de estudo relacionado (packages/shared Topico.id), quando já existe conteúdo curricular. */
+  topicoId: z.string().optional(),
+});
+export type FerramentaCatalogo = z.infer<typeof FerramentaCatalogoSchema>;
+
 // ===================== COFRE (VAULT) =====================
 
 /** Entrada de credencial — o campo `secret` SÓ existe decifrado em memória. */
