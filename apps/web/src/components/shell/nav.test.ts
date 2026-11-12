@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { breadcrumb, filterNav, findActive } from './nav';
+import { breadcrumb, filterNav, findActive, secoesAbertas } from './nav';
 
 describe('nav', () => {
   it('monta o breadcrumb seção › tela', () => {
@@ -25,5 +25,17 @@ describe('nav', () => {
     expect(filterNav('topicos').flatMap((s) => s.items.map((i) => i.label))).toEqual(['Tópicos']);
     expect(filterNav('pratica')[0].items).toHaveLength(3);
     expect(filterNav('zzz')).toEqual([]);
+  });
+});
+
+describe('secoesAbertas', () => {
+  it('abre a seção da tela atual além das salvas', () => {
+    expect(secoesAbertas(['Estudo'], '/ambiente')).toEqual(['Estudo', 'Prática']);
+    expect(secoesAbertas(['Prática'], '/ambiente')).toEqual(['Prática']);
+  });
+  it('ignora valor salvo inválido ou seção que não existe mais', () => {
+    expect(secoesAbertas('lixo', '/')).toEqual(['Estudo']);
+    expect(secoesAbertas(['Antiga', 3], '/radar')).toEqual(['Inteligência']);
+    expect(secoesAbertas(null, '/nao-existe')).toEqual([]);
   });
 });

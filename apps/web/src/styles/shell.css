@@ -80,12 +80,23 @@
 }
 .app-sidebar__search input::placeholder { color: rgba(255, 255, 255, .5); }
 .app-sidebar__search input:focus { outline: none; border-color: var(--alvoar-teal); }
-.app-nav__section { display: grid; gap: 1px; margin-top: .6rem; }
+.app-nav__section { margin-top: .35rem; }
 .app-nav__title {
-  padding: .35rem .7rem .25rem;
-  color: var(--nav-section); font-size: .72rem; font-weight: 700;
+  display: flex; align-items: center; gap: .4rem; width: 100%;
+  padding: .45rem .7rem .35rem;
+  border: 0; border-radius: var(--border-radius);
+  color: var(--nav-section); background: transparent;
+  font: inherit; font-size: .72rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: .08em;
+  cursor: pointer; white-space: nowrap;
 }
+.app-nav__title:hover { background: rgba(255, 255, 255, .06); color: #fff; }
+.app-nav__title:focus-visible { outline: 2px solid var(--alvoar-teal); outline-offset: -2px; }
+.app-nav__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--alvoar-teal); }
+.app-nav__chevron { margin-left: auto; font-size: .65rem; transition: transform .15s; }
+.app-nav__title[aria-expanded='false'] .app-nav__chevron { transform: rotate(-90deg); }
+.app-nav__items { display: grid; gap: 1px; }
+.app-nav__section:not([data-open='true']) .app-nav__items { display: none; }
 .app-nav a {
   position: relative;
   display: flex; align-items: center; gap: .65rem;
@@ -102,9 +113,25 @@
 }
 .app-nav a:focus-visible { outline: 2px solid var(--alvoar-teal); outline-offset: -2px; }
 .app-nav__empty { padding: .5rem .7rem; font-size: .86rem; opacity: .7; }
-.app-sidebar[data-collapsed='true'] { padding-inline: .45rem; }
-.app-sidebar[data-collapsed='true'] .app-nav a { justify-content: center; padding: 0; }
-.app-sidebar[data-collapsed='true'] .app-nav__section { padding-top: .4rem; border-top: 1px solid rgba(255, 255, 255, .1); }
+.app-nav__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- modo só ícones: hover/foco abre o menu por cima do conteúdo ---------- */
+.app-sidebar { width: var(--sidebar-w); transition: width .15s ease, box-shadow .15s ease; }
+.app-sidebar[data-collapsed='true'] { z-index: 55; width: var(--sidebar-w-collapsed); padding-inline: .45rem; overflow-x: hidden; }
+.app-sidebar[data-collapsed='true']:not(:hover):not(:focus-within) .app-sidebar__search,
+.app-sidebar[data-collapsed='true']:not(:hover):not(:focus-within) .app-nav__title,
+.app-sidebar[data-collapsed='true']:not(:hover):not(:focus-within) .app-nav__label,
+.app-sidebar[data-collapsed='true']:not(:hover):not(:focus-within) .app-nav__empty { display: none; }
+/* recolhido, todos os ícones aparecem (seções viram só separadores) */
+.app-sidebar[data-collapsed='true']:not(:hover):not(:focus-within) .app-nav__items { display: grid; }
+.app-sidebar[data-collapsed='true']:not(:hover):not(:focus-within) .app-nav__section { margin-top: .4rem; padding-top: .4rem; border-top: 1px solid rgba(255, 255, 255, .1); }
+.app-sidebar[data-collapsed='true']:not(:hover):not(:focus-within) .app-nav a { justify-content: center; padding: 0; }
+.app-sidebar[data-collapsed='true']:hover,
+.app-sidebar[data-collapsed='true']:focus-within {
+  width: var(--sidebar-w); padding-inline: .6rem;
+  box-shadow: 8px 0 24px rgba(13, 12, 85, .25);
+  transition-delay: .12s;
+}
 
 /* ---------- conteúdo ---------- */
 .app-main { min-width: 0; padding: 1rem 1.25rem; }
@@ -119,7 +146,7 @@
   .app-topbar__brand, .app-topbar__user span, .app-topbar__search span, .app-topbar__search kbd { display: none; }
   .app-sidebar {
     position: fixed; z-index: 50; top: var(--topbar-h); bottom: 0; left: 0;
-    width: min(82vw, 300px); height: auto;
+    width: min(82vw, 300px) !important; height: auto;
     transform: translateX(-105%); visibility: hidden;
     transition: transform .2s ease;
     box-shadow: 8px 0 28px rgba(13, 12, 85, .2);
