@@ -640,3 +640,6 @@ export const TOPICOS: Topico[] = [
     tags: ['redteam', 'relatorio', 'carreira'],
   },
 ];
+
+import { TOPICOS_AGENTES } from './topicosAgentes';
+TOPICOS.push(...TOPICOS_AGENTES);

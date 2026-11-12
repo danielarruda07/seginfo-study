@@ -1,5 +1,5 @@
-import { Suspense, useEffect, useState } from 'react';
-import { Link, Outlet } from '@tanstack/react-router';
+import { Fragment, Suspense, useEffect, useState } from 'react';
+import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { GlobalSearch } from './GlobalSearch';
 import { ensureLocalSchemaVersion } from '@/services/localVersion';
 
@@ -9,6 +9,7 @@ const NAV = [
   { to: '/topicos', label: 'Tópicos', icon: 'pi-book' },
   { to: '/ambiente', label: 'Meu Ambiente', icon: 'pi-server' },
   { to: '/labs', label: 'Labs', icon: 'pi-desktop' },
+  { to: '/range', label: 'Range Vulnerável', icon: 'pi-bullseye' },
   { to: '/radar', label: 'Radar', icon: 'pi-eye' },
   { to: '/attack', label: 'Matriz ATT&CK', icon: 'pi-table' },
   { to: '/ameacas', label: 'Ameaças (KEV)', icon: 'pi-exclamation-triangle' },
@@ -23,8 +24,20 @@ const NAV = [
   { to: '/cofre', label: 'Cofre', icon: 'pi-lock' },
 ];
 
+const AGENTS_SUB = [
+  { to: '/agents', label: 'Meus agentes' },
+  { to: '/agents/base', label: 'Base de conhecimento' },
+  { to: '/agents/ferramentas', label: 'Ferramentas e MCP' },
+  { to: '/agents/avaliacoes', label: 'Avaliações' },
+  { to: '/agents/aprender', label: 'Aprender' },
+];
+
 export function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const agentsAtivo = pathname.startsWith('/agents');
+  const [agentsAberto, setAgentsAberto] = useState(agentsAtivo);
+  useEffect(() => { if (agentsAtivo) setAgentsAberto(true); }, [agentsAtivo]);
   useEffect(() => { ensureLocalSchemaVersion(); }, []);
   useEffect(() => {
     if (!menuOpen) return;
@@ -47,9 +60,29 @@ export function Layout() {
         <div className="app-brand__sub">Segundo cérebro · Daniel Arruda</div>
         <nav className="app-nav iv-col" style={{ gap: 2 }}>
           {NAV.map((n) => (
-            <Link key={n.to} to={n.to} activeOptions={{ exact: n.exact }} activeProps={{ className: 'active' }} onClick={() => setMenuOpen(false)}>
-              <i className={`pi ${n.icon}`} aria-hidden="true" /> {n.label}
-            </Link>
+            <Fragment key={n.to}>
+              <Link to={n.to} activeOptions={{ exact: n.exact }} activeProps={{ className: 'active' }} onClick={() => setMenuOpen(false)}>
+                <i className={`pi ${n.icon}`} aria-hidden="true" /> {n.label}
+              </Link>
+              {n.to === '/cerebro' && (
+                <>
+                  <button type="button" className={`app-nav__group${agentsAtivo ? ' app-nav__group--active' : ''}`}
+                    aria-expanded={agentsAberto} aria-controls="agents-submenu" onClick={() => setAgentsAberto(!agentsAberto)}>
+                    <i className="pi pi-share-alt" aria-hidden="true" /> Agents
+                    <i className="pi pi-chevron-down app-nav__chevron" aria-hidden="true" />
+                  </button>
+                  {agentsAberto && (
+                    <div className="app-nav__sub iv-col" id="agents-submenu">
+                      {AGENTS_SUB.map((s) => (
+                        <Link key={s.to} to={s.to} activeOptions={{ exact: true }} activeProps={{ className: 'active' }} onClick={() => setMenuOpen(false)}>
+                          {s.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </Fragment>
           ))}
         </nav>
       </aside>

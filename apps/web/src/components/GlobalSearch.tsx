@@ -39,7 +39,7 @@ export function GlobalSearch() {
     setResults([]);
     if (!q) return () => { cancelled = true; };
     const timer = window.setTimeout(async () => {
-      const [catalog, sessions, inventory] = await Promise.all([import('@/services/catalog'), import('@/services/sessoes'), import('@/services/inventario')]);
+      const [catalog, sessions, inventory, range] = await Promise.all([import('@/services/catalog'), import('@/services/sessoes'), import('@/services/inventario'), import('@/services/range')]);
       if (cancelled) return;
       const topics = catalog.listTopicos({ rows: 1000 }).items.filter((x) => `${x.titulo} ${x.resumo} ${x.tags.join(' ')}`.toLocaleLowerCase().includes(q)).slice(0, 8)
         .map((x) => ({ id: `t-${x.id}`, title: x.titulo, detail: 'Tópico', action: () => navigate({ to: '/trilhas/$trilhaId', params: { trilhaId: x.trilhaId } }) }));
@@ -49,7 +49,11 @@ export function GlobalSearch() {
         .map((x) => ({ id: `m-${x.id}`, title: x.titulo, detail: 'Meta', action: () => navigate({ to: '/metas' }) }));
       const labs = inventory.listLabs().filter((x) => `${x.titulo} ${x.objetivo}`.toLocaleLowerCase().includes(q)).slice(0, 5)
         .map((x) => ({ id: `l-${x.id}`, title: x.titulo, detail: 'Lab', action: () => navigate({ to: '/labs' }) }));
-      setResults([...topics, ...trails, ...goals, ...labs].slice(0, 16));
+      const rangeAlvos = range.listRangeAlvos().filter((x) => `${x.nome} ${x.descricao}`.toLocaleLowerCase().includes(q)).slice(0, 5)
+        .map((x) => ({ id: `ra-${x.id}`, title: x.nome, detail: 'Range', action: () => navigate({ to: '/range' }) }));
+      const rangeChecklist = range.listRangeChecklist().filter((x) => `${x.titulo} ${x.descricao}`.toLocaleLowerCase().includes(q)).slice(0, 5)
+        .map((x) => ({ id: `rc-${x.id}`, title: x.titulo, detail: 'Range · checklist', action: () => navigate({ to: '/range' }) }));
+      setResults([...topics, ...trails, ...goals, ...labs, ...rangeAlvos, ...rangeChecklist].slice(0, 16));
     }, 180);
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [q, navigate]);

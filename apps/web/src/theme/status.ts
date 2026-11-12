@@ -1,4 +1,4 @@
-import type { EstadoAtivo, Lab, StatusEstudo, TipoAtivo } from '@seginfo/shared';
+import type { EstadoAtivo, Lab, RangeAlvo, RangeChecklistItem, StatusEstudo, TipoAtivo } from '@seginfo/shared';
 
 export const STATUS_COLOR = {
   ok: '#22c55e', // verde
@@ -60,6 +60,32 @@ export const STATUS_ESTUDO_OPTS = (Object.keys(STATUS_ESTUDO_LABEL) as StatusEst
   label: STATUS_ESTUDO_LABEL[value],
   value,
 }));
+
+/** Categoria de alvo do range -> rótulo. */
+export const CATEGORIA_RANGE_LABEL: Record<RangeAlvo['categoria'], string> = {
+  vm_vitima: 'VM vítima',
+  vm_atacante: 'VM atacante',
+  servico_exposto: 'Serviço exposto',
+  rede: 'Rede/segmento',
+  ferramenta_analise: 'Ferramenta de análise',
+};
+
+/** Grupo de checklist do range -> rótulo. */
+export const GRUPO_CHECKLIST_LABEL: Record<RangeChecklistItem['grupo'], string> = {
+  rede: 'Rede/VLAN',
+  vms: 'VMs',
+  firewall: 'FortiGate',
+  monitoramento: 'Monitoramento',
+  seguranca_operacional: 'Segurança operacional',
+  exercicio: 'Exercício',
+};
+
+/** Criticidade do item de checklist -> cor da pill. */
+export const CRITICIDADE_COLOR: Record<RangeChecklistItem['criticidade'], string> = {
+  alta: STATUS_COLOR.crit,
+  media: STATUS_COLOR.warn,
+  baixa: STATUS_COLOR.ok,
+};
 
 /** Tipo de ativo -> rótulo (pills e chips de filtro do inventário). */
 export const TIPO_ATIVO_LABEL: Record<TipoAtivo, string> = {

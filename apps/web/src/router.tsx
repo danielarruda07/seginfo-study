@@ -7,6 +7,7 @@ const Trilhas = lazy(async () => ({ default: (await import('@/routes/Trilhas')).
 const Topicos = lazy(async () => ({ default: (await import('@/routes/Topicos')).Topicos }));
 const Inventario = lazy(async () => ({ default: (await import('@/routes/Inventario')).Inventario }));
 const Labs = lazy(async () => ({ default: (await import('@/routes/Labs')).Labs }));
+const Range = lazy(async () => ({ default: (await import('@/routes/Range')).Range }));
 const Sessoes = lazy(async () => ({ default: (await import('@/routes/Sessoes')).Sessoes }));
 const Metas = lazy(async () => ({ default: (await import('@/routes/Metas')).Metas }));
 const Posts = lazy(async () => ({ default: (await import('@/routes/Posts')).Posts }));
@@ -20,6 +21,13 @@ const Attack = lazy(async () => ({ default: (await import('@/routes/Attack')).At
 const Ameacas = lazy(async () => ({ default: (await import('@/routes/Ameacas')).Ameacas }));
 const Portfolio = lazy(async () => ({ default: (await import('@/routes/Portfolio')).Portfolio }));
 
+const AgentsHome = lazy(async () => ({ default: (await import('@/routes/agents/AgentsHome')).AgentsHome }));
+const AgentEditor = lazy(async () => ({ default: (await import('@/routes/agents/AgentEditor')).AgentEditor }));
+const AgentsBase = lazy(async () => ({ default: (await import('@/routes/agents/AgentsBase')).AgentsBase }));
+const AgentsFerramentas = lazy(async () => ({ default: (await import('@/routes/agents/AgentsFerramentas')).AgentsFerramentas }));
+const AgentsAvaliacoes = lazy(async () => ({ default: (await import('@/routes/agents/AgentsAvaliacoes')).AgentsAvaliacoes }));
+const AgentsAprender = lazy(async () => ({ default: (await import('@/routes/agents/AgentsAprender')).AgentsAprender }));
+
 const rootRoute = createRootRoute({ component: Layout });
 
 const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: Dashboard });
@@ -28,6 +36,7 @@ const trilhaTopicosRoute = createRoute({ getParentRoute: () => rootRoute, path: 
 const topicosRoute = createRoute({ getParentRoute: () => rootRoute, path: '/topicos', component: Topicos });
 const ambienteRoute = createRoute({ getParentRoute: () => rootRoute, path: '/ambiente', component: Inventario });
 const labsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/labs', component: Labs });
+const rangeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/range', component: Range });
 const sessoesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/sessoes', component: Sessoes });
 const metasRoute = createRoute({ getParentRoute: () => rootRoute, path: '/metas', component: Metas });
 const postsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/posts', component: Posts });
@@ -41,13 +50,27 @@ const attackRoute = createRoute({ getParentRoute: () => rootRoute, path: '/attac
 const ameacasRoute = createRoute({ getParentRoute: () => rootRoute, path: '/ameacas', component: Ameacas });
 const portfolioRoute = createRoute({ getParentRoute: () => rootRoute, path: '/portfolio', component: Portfolio });
 
+const agentsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents', component: AgentsHome });
+const agentEditorRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/agente/$agenteId', component: AgentEditor });
+const agentsBaseRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/base', component: AgentsBase });
+const agentsFerramentasRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/ferramentas', component: AgentsFerramentas });
+const agentsAvaliacoesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/avaliacoes', component: AgentsAvaliacoes });
+const agentsAprenderRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/aprender', component: AgentsAprender });
+
 const routeTree = rootRoute.addChildren([
+  agentsRoute,
+  agentEditorRoute,
+  agentsBaseRoute,
+  agentsFerramentasRoute,
+  agentsAvaliacoesRoute,
+  agentsAprenderRoute,
   indexRoute,
   trilhasRoute,
   trilhaTopicosRoute,
   topicosRoute,
   ambienteRoute,
   labsRoute,
+  rangeRoute,
   sessoesRoute,
   metasRoute,
   postsRoute,

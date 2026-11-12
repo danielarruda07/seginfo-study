@@ -7,6 +7,7 @@ import { registerMemoriaRoutes } from './memorias.js';
 import { origemOk, registerStorageRoutes } from './storage-routes.js';
 import { registerKevRoutes } from './kev.js';
 import { registerLinkedinRoutes } from './linkedin.js';
+import { registerAgenteRoutes } from './agentes.js';
 
 /** Registra todas as rotas de estado do usuário, todas protegidas por requireUser. */
 export async function registerStateRoutes(app: FastifyInstance) {
@@ -285,4 +286,7 @@ export async function registerStateRoutes(app: FastifyInstance) {
 
   // LinkedIn: posts publicados, IA (Claude) e diário do projeto
   await registerLinkedinRoutes(app);
+
+  // Agents: projetos de agentes de IA, avaliações e teste da base de conhecimento
+  await registerAgenteRoutes(app);
 }

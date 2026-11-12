@@ -145,6 +145,50 @@ export const LabSchema = z.object({
 });
 export type Lab = z.infer<typeof LabSchema>;
 
+// ===================== RANGE VULNERÁVEL (cyber range controlado) =====================
+
+/**
+ * Alvo do range: uma VM, serviço ou segmento propositalmente exposto/vulnerável,
+ * usado só dentro do segmento isolado do range (nunca em produção ou na internet).
+ */
+export const RangeAlvoSchema = z.object({
+  id: z.string(),
+  nome: z.string(),
+  dominio: z.enum(['blue', 'red', 'infra', 'purple']),
+  categoria: z.enum(['vm_vitima', 'vm_atacante', 'servico_exposto', 'rede', 'ferramenta_analise']),
+  descricao: z.string(),
+  /** Portas/serviços deliberadamente abertos neste alvo, ex.: ["3389/tcp RDP", "22/tcp SSH"]. */
+  portas: z.array(z.string()).default([]),
+  /** Ferramentas/agentes instalados (Sysmon, Wazuh, Sliver, REMnux etc.). */
+  ferramentas: z.array(z.string()).default([]),
+  vlan: z.string().optional(),
+  mitre: z.array(z.string()).optional(),
+  labId: z.string().optional(),
+});
+export type RangeAlvo = z.infer<typeof RangeAlvoSchema>;
+
+/** Item do checklist operacional para montar/manter o range (uma atividade a executar e marcar). */
+export const RangeChecklistItemSchema = z.object({
+  id: z.string(),
+  grupo: z.enum(['rede', 'vms', 'firewall', 'monitoramento', 'seguranca_operacional', 'exercicio']),
+  titulo: z.string(),
+  descricao: z.string(),
+  /** Passos práticos e verificáveis (ex.: comando CLI do FortiGate, campo da VM no Proxmox). */
+  passos: z.array(z.string()),
+  dominio: z.enum(['blue', 'red', 'infra', 'purple']),
+  criticidade: z.enum(['alta', 'media', 'baixa']).default('media'),
+  referencia: z.string().optional(),
+});
+export type RangeChecklistItem = z.infer<typeof RangeChecklistItemSchema>;
+
+/** Progresso local de um item de checklist do range. */
+export const RangeProgressoItemSchema = z.object({
+  concluido: z.boolean(),
+  concluidoEm: z.string().optional(),
+  notas: z.string().default(''),
+});
+export type RangeProgressoItem = z.infer<typeof RangeProgressoItemSchema>;
+
 // ===================== COFRE (VAULT) =====================
 
 /** Entrada de credencial — o campo `secret` SÓ existe decifrado em memória. */
@@ -305,3 +349,4 @@ export type IngestBatch = z.infer<typeof IngestBatchSchema>;
 // ===================== DIÁRIO DO PROJETO =====================
 export * from './diarioProjeto';
 export * from './linkedin';
+export * from './agentes';

@@ -291,3 +291,16 @@
 .linkedin-pilares li { display: flex; gap: .25rem; }
 .linkedin-pilares li .p-inputtext { flex: 1; }
 @media (max-width: 900px) { .linkedin-estrategia { grid-template-columns: 1fr; } }
+
+/* Menu Agents (grupo colapsavel) */
+.app-nav .app-nav__group {
+  display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 40px;
+  padding: 0 .75rem; border: 0; border-radius: 6px; background: transparent;
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.app-nav .app-nav__group:hover { background: rgba(255,255,255,.08); color: #fff; }
+.app-nav .app-nav__group--active { font-weight: 700; }
+.app-nav__chevron { margin-left: auto; font-size: .75rem; transition: transform .15s; }
+.app-nav__group[aria-expanded='true'] .app-nav__chevron { transform: rotate(180deg); }
+.app-nav__sub { margin: 2px 0 4px 1.1rem; padding-left: .5rem; border-left: 1px solid rgba(255,255,255,.2); gap: 2px; }
+.app-nav__sub a { font-size: .9rem; min-height: 34px; }

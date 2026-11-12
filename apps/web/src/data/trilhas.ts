@@ -15,4 +15,5 @@ export const TRILHAS: Trilha[] = [
   { id: 'malware', ordem: 13, icone: 'pi-microchip', titulo: 'Análise de Malware (defensiva)', descricao: 'Famílias de malware, análise estática, sandbox, YARA e IOCs.' },
   { id: 'purple', ordem: 14, icone: 'pi-sync', titulo: 'Purple Team & Detecção', descricao: 'Engenharia de detecção, Sigma, emulação com Atomic Red Team, deception, NSM.' },
   { id: 'certs', ordem: 11, icone: 'pi-briefcase', titulo: 'Certificações-Alvo', descricao: 'Security+, CEH, CYSA+, PNPT, CISSP — trilha por certificação.' },
+  { id: 'agentes', ordem: 15, icone: 'pi-sparkles', titulo: 'Agentes de IA', descricao: 'Como projetar, ferramentar, avaliar e proteger agentes de IA: os 8 pilares.' },
 ];

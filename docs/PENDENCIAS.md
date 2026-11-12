@@ -117,3 +117,9 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
       injection; isolar, dar permissões mínimas e não ligar a contas corporativas.
 - [ ] Item 4, IA local offline (Ollama + Open WebUI): sem prioridade por ora. Pode virar o
       provedor local de embeddings/respostas do item 3 (Fase 2) se o hardware permitir.
+
+## Agents (ver docs/AGENTS.md)
+- [ ] Playground/execução de agentes com `ia.ts` (exige `ANTHROPIC_API_KEY`, definir limite de gasto)
+- [ ] Restaurar `agentes` e `agenteAvaliacoes` no `restore-backup.ts` (hoje só exporta)
+- [ ] Migration `20261112000000_agentes` roda no próximo deploy (aditiva)
+- [ ] RAG com embeddings (pgvector) para a base de conhecimento

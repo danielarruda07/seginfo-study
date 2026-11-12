@@ -148,6 +148,37 @@ async function obterIndice(usuarioId: string): Promise<Indice> {
   return indice;
 }
 
+// ---------- base de conhecimento dos agentes ----------
+/** Tags do Segundo Cérebro (só memórias pessoais, fora da lixeira) com a contagem de notas. */
+export async function tagsDaBase(usuarioId: string) {
+  const linhas = await prisma.memoria.findMany({
+    where: { usuarioId, excluirEm: null, escopo: 'pessoal' }, select: { tags: true },
+  });
+  const contagem = new Map<string, number>();
+  for (const l of linhas) for (const t of l.tags) contagem.set(t, (contagem.get(t) ?? 0) + 1);
+  return [...contagem.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([tag, total]) => ({ tag, total }));
+}
+
+/**
+ * Busca (BM25) restrita às tags da base de um agente. Sem tags a base é vazia: o agente só
+ * enxerga o que foi escolhido de propósito. Memórias `corporativo` nunca entram, porque o
+ * conteúdo recuperado acabaria no contexto de um modelo de linguagem.
+ */
+export async function buscarNaBase(usuarioId: string, consulta: string, tags: string[], limite = 8) {
+  if (tags.length === 0) return [];
+  const permitidas = new Set(tags.map((t) => t.toLowerCase()));
+  const indice = await obterIndice(usuarioId);
+  return pesquisar(indice, consulta, 100)
+    .filter(({ c }) => c.escopo === 'pessoal' && c.tags.some((t) => permitidas.has(t)))
+    .slice(0, limite)
+    .map(({ c, score }) => ({
+      memoriaId: c.memoriaId, titulo: c.titulo, tags: c.tags,
+      trecho: c.texto.slice(0, 600), score: Math.round(score * 100) / 100,
+    }));
+}
+
 // ---------- limpeza da lixeira ----------
 /** Apaga de vez as memórias cuja carência venceu. Roda ao subir (após 2 min) e a cada hora. */
 export function iniciarLimpezaMemorias(app: FastifyInstance) {
