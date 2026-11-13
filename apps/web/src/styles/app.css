@@ -115,6 +115,22 @@
 .weekly-target { display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin:.75rem 0; font-size:.82rem; color:var(--text-color-secondary); }
 .trilha-card[role="button"] { cursor:pointer; }
 .trilha-card[role="button"]:focus-visible { outline:2px solid var(--primary-color); outline-offset:2px; }
+.tool-card-notes { display:flex; align-items:center; gap:.4rem; margin-top:.65rem; padding-top:.55rem; border-top:1px solid var(--surface-border); color:var(--text-color-secondary); font-size:.78rem; }
+.tool-pending-count { margin-left:auto; color:#9a3412; font-weight:700; }
+.tool-entry-form { display:grid; gap:.7rem; }
+.tool-entry-form label { display:grid; gap:.35rem; color:var(--text-color); font-size:.84rem; font-weight:600; }
+.tool-entry-form__row { display:grid; grid-template-columns:minmax(120px,.7fr) minmax(0,1.3fr); gap:.65rem; }
+.tool-entry-form .p-inputtext,.tool-entry-form .p-dropdown,.tool-entry-form .p-inputtextarea { width:100%; }
+.tool-entry-list { display:grid; gap:.7rem; }
+.tool-entry { display:grid; gap:.4rem; padding:.8rem; border:1px solid var(--surface-border); border-radius:var(--radius); background:var(--surface-section); }
+.tool-entry__top { display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; }
+.tool-entry__top h4 { margin:.3rem 0 0; color:var(--alvoar-navy); }
+.tool-entry__kind { display:inline-flex; padding:.15rem .45rem; border-radius:999px; background:#e0e7ff; color:#3730a3; font-size:.72rem; font-weight:700; }
+.tool-entry__kind--pendencia { background:#fff1d6; color:#854d0e; }
+.tool-entry__kind--observacao { background:#dcfce7; color:#166534; }
+.tool-entry > small { color:var(--text-color-secondary); }
+.tool-entry > p,.tool-entry__next p { margin:.1rem 0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.tool-entry__next { padding:.55rem; border-left:3px solid #e9a23b; background:#fff8e8; font-size:.84rem; }
 @media(max-width:760px) { .dashboard-charts { grid-template-columns:1fr; } .dashboard-goal { align-items:flex-start; flex-direction:column; } }
 .portfolio-cover { padding:3rem 2rem; margin-top:1.5rem; border-radius:16px; color:white; background:linear-gradient(130deg,#102b46,#0f766e); }
 .portfolio-cover h1 { margin:.7rem 0; font-size:clamp(2rem,5vw,3.5rem); }
