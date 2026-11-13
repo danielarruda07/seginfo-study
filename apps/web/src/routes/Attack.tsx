@@ -168,14 +168,22 @@ function TecnicaDetalhe({ tecnica, onChange }: { tecnica: CoberturaTecnica; onCh
         <p className="iv-muted" style={{ marginTop: 0 }}>
           Marque só depois de testar: execute a técnica num lab isolado e confirme que o alerta disparou.
         </p>
+        <DetailSection title="Exercícios Red × Blue registrados">
+          {tecnica.exercicios.length === 0
+            ? <p className="iv-muted">Nenhuma execução registrada para esta técnica.</p>
+            : <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>{tecnica.exercicios.map((e) => (
+              <li key={e.id}><Link to="/labs">{getLab(e.labId)?.titulo ?? e.title}</Link>{' · '}{e.status.replaceAll('_', ' ')}{' · '}
+                Detecção: {e.detection === 'detectado' ? 'detectado' : e.detection === 'parcial' ? 'parcial' : e.detection === 'nao_detectado' ? 'não detectado' : 'não testado'}</li>
+            ))}</ul>}
+        </DetailSection>
         <label className="iv-col">Regra ou consulta que detecta
           <InputText value={regra} maxLength={300} onChange={(e) => setRegra(e.target.value)} placeholder="Ex.: Wazuh rule 100210 (tarefa agendada nova)" />
         </label>
-        {tecnica.detectada && <p className="iv-muted">Testada em {tecnica.detectada.testadoEm}.</p>}
+        {tecnica.detectada && <p className="iv-muted">{tecnica.detectada.automatico ? 'Confirmada pelo registro Red x Blue' : 'Confirmacao manual'} em {tecnica.detectada.testadoEm}.</p>}
         <div className="iv-row iv-wrap iv-mt">
-          <Button label={tecnica.detectada ? 'Atualizar teste' : 'Marcar como detectada'} icon="pi pi-check"
+          <Button label={tecnica.detectada?.automatico ? 'Confirmar manualmente' : tecnica.detectada ? 'Atualizar teste' : 'Marcar como detectada'} icon="pi pi-check"
             onClick={() => { marcarDeteccao(tecnica.id, regra); onChange(); }} />
-          {tecnica.detectada && <Button label="Remover" icon="pi pi-trash" severity="secondary" outlined
+          {tecnica.detectada && !tecnica.detectada.automatico && <Button label="Remover" icon="pi pi-trash" severity="secondary" outlined
             onClick={() => { removerDeteccao(tecnica.id); setRegra(''); onChange(); }} />}
         </div>
       </DetailSection>

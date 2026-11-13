@@ -16,3 +16,6 @@ coverage/
 seginfo-backup-*.json
 seginfo-*.sgb
 seginfo-backup-private.pem
+
+# Configuração pessoal do Claude Code (não versionar)
+.claude/settings.local.json

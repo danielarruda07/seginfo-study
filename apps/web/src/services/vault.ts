@@ -140,6 +140,33 @@ export async function saveEntry(entry: Omit<VaultEntry, 'id' | 'atualizadoEm'> &
   await persist();
 }
 
+const ImportSchema = z.array(z.object({
+  titulo: z.string().min(1),
+  usuario: z.string().default(''),
+  url: z.string().default(''),
+  notas: z.string().default(''),
+  ativoId: z.string().optional(),
+  confirmadoEm: z.string().optional(),
+  secret: z.string(),
+}));
+
+/**
+ * Importa credenciais de um arquivo JSON para o cofre destravado. Entrada com o mesmo
+ * título é atualizada. O arquivo de origem tem segredos em texto puro: apague-o depois.
+ */
+export async function importEntries(texto: string): Promise<{ novas: number; atualizadas: number }> {
+  assertUnlocked();
+  const lista = ImportSchema.parse(JSON.parse(texto));
+  let novas = 0;
+  let atualizadas = 0;
+  for (const item of lista) {
+    const existente = cache.find((e) => e.titulo === item.titulo);
+    if (existente) atualizadas++; else novas++;
+    await saveEntry({ ...item, id: existente?.id, ambiente: 'criecomia' });
+  }
+  return { novas, atualizadas };
+}
+
 /** Lê o segredo decifrado de uma entrada (só com o cofre destravado). */
 export function getSecret(id: string): string {
   assertUnlocked();

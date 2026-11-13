@@ -113,6 +113,14 @@ export type TipoAtivo = z.infer<typeof TipoAtivo>;
 export const EstadoAtivo = z.enum(['ativo', 'atencao', 'critico', 'planejado', 'desativado']);
 export type EstadoAtivo = z.infer<typeof EstadoAtivo>;
 
+/** Prioridade operacional para ordenar correções e exercícios autorizados. */
+export const CriticidadeAtivo = z.enum(['critica', 'alta', 'media', 'baixa']);
+export type CriticidadeAtivo = z.infer<typeof CriticidadeAtivo>;
+
+/** Exposição que informa prioridade e limites do teste. */
+export const ExposicaoAtivo = z.enum(['publica', 'interna', 'restrita', 'isolada']);
+export type ExposicaoAtivo = z.infer<typeof ExposicaoAtivo>;
+
 /** Ativo do inventário (host, VM, VLAN, policy, etc.). */
 export const AtivoSchema = z.object({
   id: z.string(),
@@ -122,10 +130,16 @@ export const AtivoSchema = z.object({
   endereco: z.string().default(''),
   funcao: z.string().default(''),
   estado: EstadoAtivo.default('ativo'),
+  criticidade: CriticidadeAtivo.optional(),
+  exposicao: ExposicaoAtivo.optional(),
   detalhes: z.record(z.string(), z.string()).default({}),
   tags: z.array(z.string()).default([]),
   /** ids de labs que usam este ativo. */
   labsRelacionados: z.array(z.string()).default([]),
+  /** Data (YYYY-MM-DD) em que a informação foi conferida no equipamento pela última vez. */
+  confirmadoEm: z.string().optional(),
+  /** De onde veio a confirmação (ex.: "API do firewall", "console do switch"). */
+  fonte: z.string().optional(),
 });
 export type Ativo = z.infer<typeof AtivoSchema>;
 
@@ -167,8 +181,33 @@ export const RangeAlvoSchema = z.object({
 });
 export type RangeAlvo = z.infer<typeof RangeAlvoSchema>;
 
+/** Algo concreto que uma etapa do range cria no ambiente (VLAN, policy, VM, aplicação...). */
+export const RangeRecursoSchema = z.object({
+  tipo: z.enum([
+    'vlan', 'interface', 'objeto', 'policy', 'vm', 'aplicacao', 'config',
+    'snapshot', 'credencial', 'deteccao', 'documento',
+  ]),
+  /** Nome exato a usar. Aceita variáveis do lab no formato {{CHAVE}}. */
+  nome: z.string(),
+  /** Equipamento/sistema onde o recurso é criado. */
+  onde: z.string(),
+  detalhe: z.string(),
+});
+export type RangeRecurso = z.infer<typeof RangeRecursoSchema>;
+
+/** Parte específica do prompt de IA de uma etapa; a espinha dorsal é montada pelo app. */
+export const RangePromptSchema = z.object({
+  /** O que pedir à IA nesta etapa. Aceita variáveis do lab no formato {{CHAVE}}. */
+  tarefa: z.string(),
+  /** Pedidos rápidos opcionais, que o usuário marca para acrescentar ao prompt. */
+  pedidos: z.array(z.string()),
+});
+export type RangePrompt = z.infer<typeof RangePromptSchema>;
+
 /** Item do checklist operacional para montar/manter o range (uma atividade a executar e marcar). */
 export const RangeChecklistItemSchema = z.object({
+  recursos: z.array(RangeRecursoSchema).optional(),
+  prompt: RangePromptSchema.optional(),
   id: z.string(),
   grupo: z.enum(['rede', 'vms', 'firewall', 'monitoramento', 'seguranca_operacional', 'exercicio']),
   titulo: z.string(),
@@ -225,6 +264,8 @@ export const VaultEntrySchema = z.object({
   ativoId: z.string().optional(),
   notas: z.string().default(''),
   atualizadoEm: z.string(),
+  /** Data (YYYY-MM-DD) em que a credencial foi testada e funcionou pela última vez. */
+  confirmadoEm: z.string().optional(),
 });
 export type VaultEntry = z.infer<typeof VaultEntrySchema>;
 

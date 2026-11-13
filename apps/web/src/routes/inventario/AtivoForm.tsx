@@ -7,6 +7,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { Chips } from 'primereact/chips';
 import type { Ativo } from '@seginfo/shared';
 import { FormField } from '@/components/ui/FormField';
+import { todayISO } from '@/services/store';
 import { TIPO_ATIVO_LABEL } from '@/theme/status';
 import { ESTADO_META, ESTADO_OPTS, TIPO_ICON, TIPO_OPTS, campoEndereco, validarAtivo, type AtivoErros } from './regras';
 
@@ -18,6 +19,14 @@ interface Props {
 
 const opcaoComIcone = (o: { label: string; icon: string } | null) =>
   o ? <span className="iv-row"><i className={`pi ${o.icon}`} aria-hidden="true" />{o.label}</span> : <span>Selecione</span>;
+
+const CRITICIDADE_OPTS = [
+  { label: 'Crítica', value: 'critica' }, { label: 'Alta', value: 'alta' }, { label: 'Média', value: 'media' }, { label: 'Baixa', value: 'baixa' },
+];
+const EXPOSICAO_OPTS = [
+  { label: 'Pública / internet', value: 'publica' }, { label: 'Interna', value: 'interna' },
+  { label: 'Restrita / administrativa', value: 'restrita' }, { label: 'Isolada', value: 'isolada' },
+];
 
 /** Cadastro/edição de ativo: diálogo navy em blocos, tipo em cartões e prévia ao vivo. */
 export function AtivoForm({ inicial, onCancel, onSave }: Props) {
@@ -77,6 +86,23 @@ export function AtivoForm({ inicial, onCancel, onSave }: Props) {
             <FormField id="at-estado" label="Estado" required>
               <Dropdown inputId="at-estado" value={d.estado} options={ESTADO_OPTS} onChange={(e) => set({ estado: e.value })}
                 itemTemplate={opcaoComIcone} valueTemplate={opcaoComIcone} />
+            </FormField>
+            <FormField id="at-criticidade" label="Criticidade operacional">
+              <Dropdown inputId="at-criticidade" value={d.criticidade ?? null} options={CRITICIDADE_OPTS} showClear
+                onChange={(e) => set({ criticidade: e.value ?? undefined })} placeholder="Não definida" />
+            </FormField>
+            <FormField id="at-exposicao" label="Exposição">
+              <Dropdown inputId="at-exposicao" value={d.exposicao ?? null} options={EXPOSICAO_OPTS} showClear
+                onChange={(e) => set({ exposicao: e.value ?? undefined })} placeholder="Não definida" />
+            </FormField>
+            <FormField id="at-conf" label="Confirmado em" hint="Última vez que você conferiu esta informação no equipamento.">
+              <span className="iv-row">
+                <InputText id="at-conf" type="date" value={d.confirmadoEm ?? ''} onChange={(e) => set({ confirmadoEm: e.target.value || undefined })} />
+                <Button type="button" label="Hoje" text size="small" onClick={() => set({ confirmadoEm: todayISO() })} />
+              </span>
+            </FormField>
+            <FormField id="at-fonte" label="Fonte da confirmação">
+              <InputText id="at-fonte" value={d.fonte ?? ''} placeholder="ex.: API do firewall, console do switch" onChange={(e) => set({ fonte: e.target.value || undefined })} />
             </FormField>
           </div>
         </fieldset>

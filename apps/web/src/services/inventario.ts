@@ -1,6 +1,7 @@
 import { AtivoSchema, type Ativo, type Lab, type TipoAtivo, type EstadoAtivo } from '@seginfo/shared';
 import { z } from 'zod';
 import { INVENTARIO_SEED } from '@/data/inventario';
+import { INVENTARIO_DOCUMENTADO } from '@/data/inventarioDocumentado';
 import { LABS } from '@/data/labs';
 import { read, write, uid, paginate, matchesSearch, todayISO, registerSchema, type Page } from './store';
 
@@ -66,6 +67,20 @@ export function incorporarNovidadesSeed(): number {
   return novidades.length;
 }
 
+/** Adiciona uma única vez os ativos recolhidos da documentação, sem sobrescrever dados já editados. */
+export function incorporarInventarioDocumentado(): number {
+  const ativos = base();
+  const known = new Set(ativos.map((a) => a.id));
+  const novos = INVENTARIO_DOCUMENTADO.filter((a) => !known.has(a.id));
+  if (novos.length) write(KEY, [...ativos, ...novos]);
+  return novos.length;
+}
+
+export function inventarioDocumentadoPendente(): number {
+  const known = new Set(base().map((a) => a.id));
+  return INVENTARIO_DOCUMENTADO.filter((a) => !known.has(a.id)).length;
+}
+
 export interface AtivoFiltro {
   search?: string;
   tipo?: TipoAtivo;
@@ -80,7 +95,7 @@ export function listAtivos(f: AtivoFiltro = {}): Page<Ativo> {
     (a) =>
       (!f.tipo || a.tipo === f.tipo) &&
       (!f.estado || a.estado === f.estado) &&
-      (!search || matchesSearch(search, a.nome, a.endereco, a.funcao, a.tags)),
+      (!search || matchesSearch(search, a.nome, a.endereco, a.funcao, a.tags, a.criticidade ?? '', a.exposicao ?? '')),
   );
   return paginate(items, f.page, f.rows);
 }
@@ -125,4 +140,22 @@ export function getLab(id: string): Lab | undefined {
 }
 export function labsDoAtivo(ativoId: string): Lab[] {
   return LABS.filter((l) => l.ativosAlvo.includes(ativoId));
+}
+
+/**
+ * Importa ativos de um arquivo JSON (lista de Ativo). Quem tem o mesmo id é atualizado,
+ * o resto é acrescentado; nada é removido. Usado para carregar o que foi levantado
+ * direto nos equipamentos, sem passar pelo repositório.
+ */
+export function importarAtivos(texto: string): { novos: number; atualizados: number } {
+  const lista = AtivoSchema.array().parse(JSON.parse(texto));
+  const all = base();
+  let novos = 0;
+  let atualizados = 0;
+  for (const ativo of lista) {
+    const idx = all.findIndex((x) => x.id === ativo.id);
+    if (idx >= 0) { all[idx] = ativo; atualizados++; } else { all.push(ativo); novos++; }
+  }
+  write(KEY, all);
+  return { novos, atualizados };
 }

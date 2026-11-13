@@ -5,6 +5,7 @@ import type { Ativo } from '@seginfo/shared';
 import { DetailFields } from '@/components/ui/Detail';
 import { Pill } from '@/components/InfraKit';
 import { copyToClipboard } from '@/lib/clipboard';
+import { idadeConfirmacao } from '@/lib/confirmacao';
 import { labsDoAtivo } from '@/services/inventario';
 import { DOMINIO_LAB, TIPO_ATIVO_LABEL } from '@/theme/status';
 import { ESTADO_META, TIPO_ICON } from './regras';
@@ -39,6 +40,7 @@ export function AtivoDrawer({ lista, index, temCredencial, onIndex, onClose, onE
   const estado = ESTADO_META[ativo.estado];
   const labs = labsDoAtivo(ativo.id);
   const detalhes = Object.entries(ativo.detalhes);
+  const confirmacao = idadeConfirmacao(ativo.confirmadoEm);
 
   return (
     <Sidebar visible position="right" onHide={onClose} className="iv-drawer" showCloseIcon={false} aria-label={`Ficha de ${ativo.nome}`}>
@@ -72,8 +74,12 @@ export function AtivoDrawer({ lista, index, temCredencial, onIndex, onClose, onE
             </span>
           ) : ''],
           ['Tipo', TIPO_ATIVO_LABEL[ativo.tipo]],
+          ['Criticidade operacional', ativo.criticidade ? ({ critica: 'Crítica', alta: 'Alta', media: 'Média', baixa: 'Baixa' }[ativo.criticidade]) : ''],
+          ['Exposição', ativo.exposicao ? ({ publica: 'Pública / internet', interna: 'Interna', restrita: 'Restrita / administrativa', isolada: 'Isolada' }[ativo.exposicao]) : ''],
           ['Tags', ativo.tags.length ? <span className="iv-row iv-wrap">{ativo.tags.map((t) => <Pill key={t} label={t} />)}</span> : ''],
           ['Credencial no Cofre', temCredencial ? 'Sim (conteúdo não exibido aqui)' : ''],
+          ['Confirmado em', confirmacao.rever && ativo.confirmadoEm ? `${confirmacao.texto} · vale conferir de novo` : confirmacao.texto],
+          ['Fonte', ativo.fonte ?? ''],
         ]} />
       </section>
 

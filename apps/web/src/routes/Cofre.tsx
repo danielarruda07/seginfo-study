@@ -16,6 +16,8 @@ import { copySensitiveToClipboard } from '@/lib/clipboard';
 import { importarDoNavegador } from '@/services/migrate';
 import { detectMode } from '@/services/mode';
 import { listAtivos } from '@/services/inventario';
+import { idadeConfirmacao } from '@/lib/confirmacao';
+import { todayISO } from '@/services/store';
 
 /** Campo de senha padrão do Cofre (sem medidor de força, com botão de mostrar). */
 function SecretInput({ value, onChange, placeholder, onKeyDown }: {
@@ -135,6 +137,7 @@ function VaultManager({ onLock }: { onLock: () => void }) {
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
 
   const [autoLock, setAutoLock] = useState<number>(vault.getAutoLockMinutes());
+  const [importMsg, setImportMsg] = useState('');
 
   function refresh() { setEntries(vault.listEntries()); }
 
@@ -148,6 +151,7 @@ function VaultManager({ onLock }: { onLock: () => void }) {
       ambiente: editing.ambiente,
       ativoId: editing.ativoId,
       notas: editing.notas ?? '',
+      confirmadoEm: editing.confirmadoEm || undefined,
       secret: editing.secret ?? '',
     });
     setEditing(null);
@@ -155,6 +159,19 @@ function VaultManager({ onLock }: { onLock: () => void }) {
   }
   async function excluir(id: string) {
     await vault.removeEntry(id);
+    refresh();
+  }
+
+  async function importarArquivo(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const r = await vault.importEntries(await file.text());
+      setImportMsg(`${r.novas} credencial(is) nova(s), ${r.atualizadas} atualizada(s). Apague o arquivo de origem: ele tem os segredos em texto puro.`);
+    } catch {
+      setImportMsg('Arquivo inválido: esperado um JSON com a lista de credenciais.');
+    }
     refresh();
   }
 
@@ -166,7 +183,14 @@ function VaultManager({ onLock }: { onLock: () => void }) {
   return (
     <div>
       <div className="iv-row iv-wrap iv-mt" style={{ justifyContent: 'space-between' }}>
-        <Button label="Nova credencial" icon="pi pi-plus" onClick={() => setEditing({ titulo: '', usuario: '', url: '', notas: '', secret: '' })} />
+        <div className="iv-row iv-wrap">
+          <Button label="Nova credencial" icon="pi pi-plus" onClick={() => setEditing({ titulo: '', usuario: '', url: '', notas: '', secret: '' })} />
+          <label className="p-button p-component p-button-outlined" style={{ cursor: 'pointer' }}>
+            <span className="p-button-icon p-button-icon-left pi pi-upload" />
+            <span className="p-button-label">Importar arquivo</span>
+            <input type="file" accept="application/json,.json" hidden onChange={importarArquivo} />
+          </label>
+        </div>
         <div className="iv-row iv-wrap">
           <span className="iv-muted" style={{ fontSize: '.82rem' }}>Travar após</span>
           <InputNumber value={autoLock} onValueChange={(e) => alterarAutoLock(e.value ?? 0)} suffix=" min" min={0} max={120} showButtons style={{ width: 130 }} />
@@ -176,6 +200,8 @@ function VaultManager({ onLock }: { onLock: () => void }) {
       <p className="iv-muted" style={{ fontSize: '.78rem', marginTop: '.5rem' }}>
         Trava automática por inatividade (0 = desligada). O cofre também trava ao ocultar a aba.
       </p>
+
+      {importMsg && <Message severity="info" style={{ width: '100%' }} text={importMsg} />}
 
       {editing && (
         <div className="iv-card iv-mt" style={{ maxWidth: 520 }}>
@@ -187,6 +213,10 @@ function VaultManager({ onLock }: { onLock: () => void }) {
             <InputText value={editing.url ?? ''} onChange={(e) => setEditing({ ...editing, url: e.target.value })} placeholder="URL / host" />
             <Dropdown value={editing.ativoId} options={listAtivos({ rows: 1000 }).items.map((a) => ({ label: `${a.nome}${a.endereco ? ` · ${a.endereco}` : ''}`, value: a.id }))} onChange={(e) => setEditing({ ...editing, ativoId: e.value, ambiente: 'criecomia' })} placeholder="Ativo relacionado (opcional)" showClear filter />
             <InputTextarea value={editing.notas ?? ''} onChange={(e) => setEditing({ ...editing, notas: e.target.value })} rows={2} placeholder="Notas" />
+            <label className="iv-row iv-wrap" style={{ fontSize: '.86rem' }}>Testada em
+              <InputText type="date" value={editing.confirmadoEm ?? ''} onChange={(e) => setEditing({ ...editing, confirmadoEm: e.target.value })} />
+              <Button type="button" label="Hoje" text size="small" onClick={() => setEditing({ ...editing, confirmadoEm: todayISO() })} />
+            </label>
             <div className="iv-row">
               <Button label="Salvar" icon="pi pi-save" onClick={salvar} />
               <Button label="Cancelar" text onClick={() => setEditing(null)} />
@@ -204,6 +234,7 @@ function VaultManager({ onLock }: { onLock: () => void }) {
                 <strong>{e.titulo}</strong>
                 {e.usuario && <span className="iv-muted"> · {e.usuario}</span>}
                 {e.url && <div className="iv-muted" style={{ fontSize: '.82rem' }}>{e.url}</div>}
+                <div className="iv-muted" style={{ fontSize: '.78rem' }}>Testada em: {idadeConfirmacao(e.confirmadoEm).texto}{e.confirmadoEm && idadeConfirmacao(e.confirmadoEm).rever ? ' · vale testar de novo' : ''}</div>
                 {e.ativoId && <div className="iv-muted" style={{ fontSize: '.78rem' }}>Vinculado a: {listAtivos({ rows: 1000 }).items.find((a) => a.id === e.ativoId)?.nome ?? 'ativo removido'}</div>}
               </div>
               <div className="iv-row">

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -113,6 +114,10 @@ export function Radar() {
           ? <>Últimos {r.dias} dia(s): <strong>{r.total}</strong> eventos de <strong>{r.ipsUnicos}</strong> IPs, {r.falhasLogin} falhas de login e <strong>{r.lockouts}</strong> bloqueios de conta.</>
           : 'Carregando…'}
         {r?.truncado && ' A janela tem mais eventos que o limite de análise; o resumo cobre os mais recentes.'}
+      </StatusStrip>
+
+      <StatusStrip tone="ok" icon="pi-shield">
+        Este painel resume eventos reais recebidos pelos coletores. Simulações de laboratório ficam em <Link to="/labs">Labs</Link> e sua cobertura em <Link to="/attack">ATT&amp;CK</Link>.
       </StatusStrip>
 
       <div className="iv-row iv-wrap iv-mt">
