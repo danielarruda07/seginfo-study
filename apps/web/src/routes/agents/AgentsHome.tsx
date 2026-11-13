@@ -64,7 +64,7 @@ export function AgentsHome() {
       {erro && <Message severity="error" style={{ width: '100%', marginBottom: '1rem' }} text={erro} />}
 
       <StatusStrip tone="ok" icon="pi-sparkles">
-        Aqui você projeta e avalia agentes. A plataforma não os executa: o projeto vira uma especificação em Markdown para usar onde você for rodá-los.
+        Aqui você projeta, executa e avalia agentes. No playground de cada agente dá para conversar com ele e ver cada passo do laço; por enquanto só ferramentas de leitura são executadas.
       </StatusStrip>
 
       <div className="iv-kpis iv-mt">
@@ -95,6 +95,11 @@ export function AgentsHome() {
               {a.ferramentasEscrita > 0 && <Pill label={`${a.ferramentasEscrita} com escrita`} color="#ef4444" />}
               <Pill label={a.avaliacoes.total ? `${Math.round((a.avaliacoes.ok / a.avaliacoes.total) * 100)}% ok em ${a.avaliacoes.total} teste(s)` : 'sem testes'} color="#0ea5e9" />
             </div>
+            {a.status !== 'arquivado' && (
+              <div className="iv-mt">
+                <Link to="/agents/agente/$agenteId/playground" params={{ agenteId: a.id }}><i className="pi pi-play" aria-hidden="true" /> Executar</Link>
+              </div>
+            )}
           </div>
         ))}
         {visiveis.length === 0 && !lista.isLoading && (

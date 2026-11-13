@@ -152,6 +152,9 @@ export function AgentEditor() {
         actions={
           <div className="iv-row iv-wrap">
             <Button label="Salvar" icon="pi pi-save" onClick={salvar} loading={salvando} />
+            {agenteId && form.status !== 'arquivado' && (
+              <Link to="/agents/agente/$agenteId/playground" params={{ agenteId }}>Executar no playground</Link>
+            )}
             <Link to="/agents">Voltar</Link>
             {form.status === 'arquivado' && <Button label="Excluir definitivamente" icon="pi pi-trash" severity="danger" outlined onClick={excluir} />}
           </div>

@@ -119,7 +119,11 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
       provedor local de embeddings/respostas do item 3 (Fase 2) se o hardware permitir.
 
 ## Agents (ver docs/AGENTS.md)
-- [ ] Playground/execução de agentes com `ia.ts` (exige `ANTHROPIC_API_KEY`, definir limite de gasto)
+- [x] Playground/execução de agentes (`agenteRuntime.ts`, só ferramentas de leitura; limites de 8 chamadas e 40 mil tokens de saída)
+- [ ] Migration `20261113000000_agente_execucao` roda no próximo deploy (aditiva)
+- [ ] Testar o playground no ambiente publicado (não foi executado contra a Claude API em desenvolvimento)
+- [ ] Fase 2: ferramentas de leitura do Proxmox; fase 3: tela de aprovação e escrita (plano em docs/AGENTS.md)
+- [ ] Incluir `AgenteExecucao` no backup
 - [ ] Restaurar `agentes` e `agenteAvaliacoes` no `restore-backup.ts` (hoje só exporta)
 - [ ] Migration `20261112000000_agentes` roda no próximo deploy (aditiva)
 - [ ] RAG com embeddings (pgvector) para a base de conhecimento

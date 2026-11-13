@@ -25,7 +25,7 @@ export class ErroIA extends Error {
 }
 
 let client: Anthropic | null = null;
-function cliente(): Anthropic {
+export function cliente(): Anthropic {
   if (!iaConfigurada()) {
     throw new ErroIA(503, 'IA não configurada: defina o Secret ANTHROPIC_API_KEY na API (Coolify) e faça redeploy.');
   }
@@ -34,7 +34,7 @@ function cliente(): Anthropic {
   return client;
 }
 
-function traduzirErro(e: unknown): never {
+export function traduzirErro(e: unknown): never {
   if (e instanceof ErroIA) throw e;
   if (e instanceof Anthropic.AuthenticationError) throw new ErroIA(502, 'A chave da Claude API foi recusada (inválida ou revogada). Troque o Secret ANTHROPIC_API_KEY no Coolify.');
   if (e instanceof Anthropic.PermissionDeniedError) throw new ErroIA(502, 'A chave da Claude API não tem acesso a este modelo.');

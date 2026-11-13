@@ -275,7 +275,7 @@ model LinkedinEstrategia {
 }
 
 // Agents: projeto de um agente de IA (8 pilares), guardado em `config` (JSON validado pelo
-// AgenteConfigSchema do shared). A plataforma não executa agentes; só os projeta e avalia.
+// AgenteConfigSchema do shared). A execução fica em AgenteExecucao (apps/api/src/agenteRuntime.ts).
 model Agente {
   id           String   @id @default(cuid())
   usuarioId    String
@@ -287,8 +287,34 @@ model Agente {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
   avaliacoes   AgenteAvaliacao[]
+  execucoes    AgenteExecucao[]
 
   @@index([usuarioId, atualizadoEm])
+}
+
+// Uma execução do agente no playground: um pedido, o laço modelo → ferramenta → modelo
+// e a resposta final. `passos` é a trilha de auditoria; `mensagens` é a conversa completa
+// no formato da API, guardada para continuar o chat (e, depois, retomar após aprovação).
+model AgenteExecucao {
+  id            String   @id @default(cuid())
+  usuarioId     String
+  agenteId      String
+  agente        Agente   @relation(fields: [agenteId], references: [id], onDelete: Cascade)
+  status        String   @default("rodando") // rodando | concluida | limite | recusada | erro
+  entrada       String
+  resposta      String   @default("")
+  erro          String   @default("")
+  modelo        String
+  passos        Json     @default("[]")
+  mensagens     Json     @default("[]")
+  tokensEntrada Int      @default(0)
+  tokensSaida   Int      @default(0)
+  duracaoMs     Int      @default(0)
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
+
+  @@index([agenteId, criadoEm])
+  @@index([usuarioId, status])
 }
 
 // Cada linha é um caso de teste executado e registrado (pilar 8: testes e avaliações).

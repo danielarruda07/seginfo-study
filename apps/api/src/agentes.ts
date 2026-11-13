@@ -5,9 +5,11 @@ import { AgenteConfigSchema, AgenteInSchema, AvaliacaoInSchema, revisarAgente } 
 import { prisma } from './db.js';
 import type { AuthedRequest } from './auth.js';
 import { buscarNaBase, tagsDaBase } from './memorias.js';
+import { registerExecucaoRoutes } from './agenteRuntime.js';
 
 /**
  * Agents: projetos de agentes de IA, avaliações e teste da base de conhecimento.
+ * A execução (playground) fica em agenteRuntime.ts.
  * Registrado DENTRO do plugin de rotas de estado: herda a identidade verificada do Access
  * e a checagem de Origin das rotas que gravam dados.
  */
@@ -145,4 +147,7 @@ export async function registerAgenteRoutes(app: FastifyInstance) {
     if (r.count === 0) return reply.status(404).send({ error: 'avaliação não encontrada' });
     return { ok: true };
   });
+
+  // ---------- execução (playground) ----------
+  await registerExecucaoRoutes(app);
 }

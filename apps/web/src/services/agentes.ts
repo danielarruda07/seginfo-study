@@ -1,4 +1,4 @@
-import type { AgenteConfig, AgenteStatus, AvaliacaoIn, AvaliacaoResultado } from '@seginfo/shared';
+import type { AgenteConfig, AgenteStatus, AvaliacaoIn, AvaliacaoResultado, ExecucaoStatus, PassoExecucao } from '@seginfo/shared';
 import { http } from './http';
 
 export interface AgenteResumo {
@@ -68,6 +68,41 @@ export const listTagsBase = () =>
   http.get<{ tags: { tag: string; total: number }[] }>('/agentes/base/tags').then((r) => r.data.tags);
 export const buscarNaBaseDoAgente = (agenteId: string, q: string) =>
   http.post<{ tags: string[]; resultados: TrechoBase[] }>('/agentes/base/buscar', { agenteId, q }).then((r) => r.data);
+
+// ---------- execução (playground) ----------
+
+export interface RuntimeInfo {
+  configurada: boolean;
+  modelo: string;
+  limites: { voltas: number; tokensSaida: number; mensagensPorConversa: number };
+  /** ferramentas do catálogo que o servidor já sabe executar */
+  ferramentas: { id: string; nome: string; permissao: 'leitura' | 'escrita'; descricao: string }[];
+}
+
+export interface ExecucaoResumo {
+  id: string;
+  status: ExecucaoStatus;
+  entrada: string;
+  resposta: string;
+  erro: string;
+  modelo: string;
+  tokensEntrada: number;
+  tokensSaida: number;
+  duracaoMs: number;
+  criadoEm: string;
+}
+
+export interface Execucao extends ExecucaoResumo {
+  passos: PassoExecucao[];
+}
+
+export const getRuntime = () => http.get<RuntimeInfo>('/agentes/runtime').then((r) => r.data);
+export const executarAgente = (agenteId: string, mensagem: string, continuarDe?: string) =>
+  http.post<{ id: string }>(`/agentes/${agenteId}/executar`, { mensagem, continuarDe }).then((r) => r.data);
+export const listExecucoes = (agenteId: string) =>
+  http.get<ExecucaoResumo[]>(`/agentes/${agenteId}/execucoes`).then((r) => r.data);
+export const getExecucao = (agenteId: string, execId: string) =>
+  http.get<Execucao>(`/agentes/${agenteId}/execucoes/${execId}`).then((r) => r.data);
 
 export const erroApi = (e: unknown, padrao: string) =>
   (e as { response?: { data?: { error?: string } } }).response?.data?.error ?? padrao;

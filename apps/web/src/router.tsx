@@ -24,6 +24,7 @@ const Portfolio = lazy(async () => ({ default: (await import('@/routes/Portfolio
 
 const AgentsHome = lazy(async () => ({ default: (await import('@/routes/agents/AgentsHome')).AgentsHome }));
 const AgentEditor = lazy(async () => ({ default: (await import('@/routes/agents/AgentEditor')).AgentEditor }));
+const AgentPlayground = lazy(async () => ({ default: (await import('@/routes/agents/AgentPlayground')).AgentPlayground }));
 const AgentsBase = lazy(async () => ({ default: (await import('@/routes/agents/AgentsBase')).AgentsBase }));
 const AgentsFerramentas = lazy(async () => ({ default: (await import('@/routes/agents/AgentsFerramentas')).AgentsFerramentas }));
 const AgentsAvaliacoes = lazy(async () => ({ default: (await import('@/routes/agents/AgentsAvaliacoes')).AgentsAvaliacoes }));
@@ -54,6 +55,7 @@ const portfolioRoute = createRoute({ getParentRoute: () => rootRoute, path: '/po
 
 const agentsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents', component: AgentsHome });
 const agentEditorRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/agente/$agenteId', component: AgentEditor });
+const agentPlaygroundRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/agente/$agenteId/playground', component: AgentPlayground });
 const agentsBaseRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/base', component: AgentsBase });
 const agentsFerramentasRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/ferramentas', component: AgentsFerramentas });
 const agentsAvaliacoesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/avaliacoes', component: AgentsAvaliacoes });
@@ -62,6 +64,7 @@ const agentsAprenderRoute = createRoute({ getParentRoute: () => rootRoute, path:
 const routeTree = rootRoute.addChildren([
   agentsRoute,
   agentEditorRoute,
+  agentPlaygroundRoute,
   agentsBaseRoute,
   agentsFerramentasRoute,
   agentsAvaliacoesRoute,

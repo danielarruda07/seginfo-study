@@ -3,7 +3,8 @@ import { z } from 'zod';
 /**
  * Módulo Agents: o projeto de um agente de IA, organizado nos 8 pilares
  * (propósito, instruções, modelo, ferramentas, memória, orquestração, interface, avaliação).
- * Aqui só existe o PROJETO e as regras de revisão. A plataforma não executa agentes.
+ * Aqui ficam o PROJETO, as regras de revisão e os tipos da execução. Quem executa é a API
+ * (apps/api/src/agenteRuntime.ts).
  */
 
 export const AgenteStatus = z.enum(['rascunho', 'teste', 'ativo', 'arquivado']);
@@ -79,6 +80,40 @@ export const AvaliacaoInSchema = z.object({
   observacao: texto(2000),
 });
 export type AvaliacaoIn = z.infer<typeof AvaliacaoInSchema>;
+
+// ---------- execução (playground) ----------
+
+/** rodando: laço em andamento; limite: parou no teto de passos ou de tokens. */
+export type ExecucaoStatus = 'rodando' | 'concluida' | 'limite' | 'recusada' | 'erro';
+
+/** Cada volta do laço deixa um passo: o que o modelo disse ou o que uma ferramenta devolveu. */
+export type PassoExecucao =
+  | {
+      tipo: 'modelo';
+      /** resumo do raciocínio, quando o modelo devolve */
+      raciocinio: string;
+      texto: string;
+      /** por que o modelo parou: end_turn (terminou), tool_use (pediu ferramenta), etc. */
+      parada: string;
+      tokensEntrada: number;
+      tokensSaida: number;
+      ms: number;
+    }
+  | {
+      tipo: 'ferramenta';
+      nome: string;
+      entrada: unknown;
+      saida: string;
+      erro: boolean;
+      ms: number;
+    };
+
+export const ExecutarInSchema = z.object({
+  mensagem: z.string().trim().min(1).max(8000),
+  /** id de uma execução anterior do mesmo agente: continua aquela conversa */
+  continuarDe: z.string().min(1).max(60).optional(),
+});
+export type ExecutarIn = z.infer<typeof ExecutarInSchema>;
 
 export function agenteConfigVazio(): AgenteConfig {
   return {

@@ -24,6 +24,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-13-agents-playground',
+    data: '2026-11-13',
+    titulo: 'Os agentes saíram do papel: playground que mostra cada volta do laço',
+    descricao:
+      'O menu Agents só projetava; agora executa. O servidor roda o laço (o modelo pede uma ferramenta, o servidor ' +
+      'valida os parâmetros, executa e devolve o resultado como dado) em segundo plano e grava cada passo, e a tela ' +
+      'mostra o raciocínio resumido, a ferramenta chamada, o que voltou e quantos tokens custou. Começa só com ' +
+      'ferramentas de leitura e com teto de chamadas e de tokens por execução. Decisão: no laboratório os agentes vão ' +
+      'operar o hipervisor, o firewall e o switch com permissão ampla, mas toda ação de escrita vai passar por uma tela ' +
+      'de aprovação validada no servidor. Lição: um agente é um laço simples; a segurança está em quem executa as ' +
+      'ferramentas, e esse alguém nunca é o modelo.',
+    categoria: 'funcionalidade',
+    tags: ['agentes', 'ia', 'tool-use', 'automacao'],
+  },
+  {
     id: 'proj-2026-11-12-ferramentas-registros',
     data: '2026-11-12',
     titulo: 'Caderno de campo por ferramenta: testes, observações e pendências',
