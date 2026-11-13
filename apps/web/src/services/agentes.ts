@@ -104,7 +104,15 @@ export const listExecucoes = (agenteId: string) =>
 export const getExecucao = (agenteId: string, execId: string) =>
   http.get<Execucao>(`/agentes/${agenteId}/execucoes/${execId}`).then((r) => r.data);
 
-export const erroApi = (e: unknown, padrao: string) =>
-  (e as { response?: { data?: { error?: string } } }).response?.data?.error ?? padrao;
+/**
+ * Mensagem de erro da API. Quando a resposta não é o JSON da API (proxy, borda, queda no meio
+ * do pedido), acrescenta o que aconteceu, para dar para diagnosticar pela tela.
+ */
+export const erroApi = (e: unknown, padrao: string) => {
+  const r = (e as { response?: { status?: number; data?: { error?: unknown } } }).response;
+  if (typeof r?.data?.error === 'string') return r.data.error;
+  if (r?.status) return `${padrao} (HTTP ${r.status}, resposta fora do formato da API)`;
+  return `${padrao} (sem resposta do servidor: API fora do ar ou tempo esgotado)`;
+};
 export const problemasApi = (e: unknown): string[] =>
   (e as { response?: { data?: { problemas?: string[] } } }).response?.data?.problemas ?? [];

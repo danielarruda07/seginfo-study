@@ -19,16 +19,38 @@ export function origemOk(req: FastifyRequest): boolean {
   const origin = req.headers.origin;
   // As rotas de estado são chamadas pelo navegador; exigir Origin em produção
   // impede que um site externo use a sessão autenticada do usuário.
-  if (!origin) return false;
-  const esperado = publicBase();
-  if (esperado) return origin === esperado;
-  // Sem PUBLIC_BASE_URL (configuração do OneDrive ainda pendente) não dá para travar tudo:
-  // aceita apenas a mesma origem do próprio Host. O Nginx repassa o Host original.
+  if (!origin) {
+    req.log.warn({ rota: req.url }, 'origem: requisição de escrita sem cabeçalho Origin');
+    return false;
+  }
+  let recebida: URL;
   try {
-    return new URL(origin).host === req.headers.host;
+    recebida = new URL(origin);
   } catch {
     return false;
   }
+  // Origens configuradas (PUBLIC_BASE_URL e WEB_ORIGIN), comparadas já normalizadas: uma barra,
+  // um caminho, aspas ou espaço a mais na variável não pode derrubar todas as gravações.
+  if (origensConfiguradas().includes(recebida.origin)) return true;
+  // Mesma origem do próprio Host: o navegador não deixa um site externo forjar o Host do pedido,
+  // e o Nginx repassa o Host original. Vale também quando a variável está errada ou ausente.
+  if (recebida.host === req.headers.host) return true;
+  req.log.warn(
+    { recebida: recebida.origin, host: req.headers.host, configuradas: origensConfiguradas() },
+    'origem: requisição de escrita recusada',
+  );
+  return false;
+}
+
+function origensConfiguradas(): string[] {
+  const brutas = [publicBase(), ...(process.env.WEB_ORIGIN ?? '').split(',')];
+  return brutas.flatMap((b) => {
+    try {
+      return b ? [new URL(b.trim().replace(/^["']|["']$/g, '')).origin] : [];
+    } catch {
+      return [];
+    }
+  });
 }
 
 export async function registerStorageRoutes(app: FastifyInstance) {

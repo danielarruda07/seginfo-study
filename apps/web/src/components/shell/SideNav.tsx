@@ -59,7 +59,9 @@ export function SideNav({ pathname, collapsed, onNavigate }: SideNavProps) {
                 {s.items.map((n) => {
                   const isActive = n.to === active?.item.to;
                   return (
-                    <Link key={n.to} to={n.to} className={isActive ? 'active' : undefined} aria-current={isActive ? 'page' : undefined}
+                    // O roteador marca como ativo todo link que é prefixo da rota (/agents em /agents/ferramentas).
+                    // Quem decide o destaque é o findActive, então a marcação automática fica desligada.
+                    <Link key={n.to} to={n.to} activeOptions={{ exact: true }} activeProps={{ className: '' }} className={isActive ? 'active' : undefined} aria-current={isActive ? 'page' : undefined}
                       title={collapsed ? n.label : undefined} onClick={onNavigate}>
                       <i className={`pi ${n.icon}`} aria-hidden="true" />
                       <span className="app-nav__label">{n.label}</span>

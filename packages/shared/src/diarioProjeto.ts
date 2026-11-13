@@ -24,6 +24,20 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-13-origem-csrf',
+    data: '2026-11-13',
+    titulo: 'A proteção contra CSRF que bloqueou o próprio dono',
+    descricao:
+      'No primeiro teste do playground em produção, criar um agente devolveu "Origem não permitida". A checagem de ' +
+      'origem das rotas de gravação comparava o cabeçalho do navegador com uma variável de ambiente por igualdade ' +
+      'exata, então qualquer diferença de formato na variável derrubava todas as gravações. A comparação passou a ser ' +
+      'feita com as origens normalizadas e também aceita a mesma origem do próprio pedido, o que continua barrando ' +
+      'sites externos. Cada recusa agora fica registrada com a origem recebida e as esperadas. Lição: um controle de ' +
+      'segurança que falha fechado precisa dizer por que falhou, senão o diagnóstico vira adivinhação.',
+    categoria: 'seguranca',
+    tags: ['csrf', 'api', 'diagnostico', 'producao'],
+  },
+  {
     id: 'proj-2026-11-13-agents-playground',
     data: '2026-11-13',
     titulo: 'Os agentes saíram do papel: playground que mostra cada volta do laço',
