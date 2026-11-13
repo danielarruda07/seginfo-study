@@ -65,6 +65,14 @@ export function linhaClasse(a: Ativo): string {
   return '';
 }
 
+/** Grupos do filtro por tipo em Meu Ambiente. Todo TipoAtivo aparece em exatamente um grupo (testado). */
+export const GRUPOS_TIPO: { id: string; label: string; icon: string; tipos: TipoAtivo[] }[] = [
+  { id: 'computacao', label: 'Computação e armazenamento', icon: 'pi-server', tipos: ['servidor', 'host', 'vm', 'container', 'storage'] },
+  { id: 'rede', label: 'Rede e segurança', icon: 'pi-shield', tipos: ['firewall_policy', 'vlan', 'rede', 'switch', 'ap', 'rota'] },
+  { id: 'usuarios', label: 'Estações e dispositivos', icon: 'pi-users', tipos: ['estacao', 'dispositivo'] },
+  { id: 'servicos', label: 'Serviços', icon: 'pi-cog', tipos: ['servico'] },
+];
+
 /** Contagem por tipo, maior primeiro (gráfico). Tipos sem ativos ficam de fora. */
 export function contarPorTipo(items: Ativo[]): { tipo: TipoAtivo; total: number; nomes: string[] }[] {
   const map = new Map<TipoAtivo, Ativo[]>();

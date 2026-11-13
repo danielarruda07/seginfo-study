@@ -24,6 +24,17 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-13-filtro-tipos',
+    data: '2026-11-13',
+    titulo: 'Filtro por tipo de ativo em cartões',
+    descricao:
+      'Com a rede real importada, o gráfico de barras por tipo ficou dominado pelas regras do firewall e escondia o ' +
+      'resto. Virou um painel de cartões agrupados por família (computação, rede e segurança, estações e dispositivos, ' +
+      'serviços), com ícone, contagem e barra proporcional; um clique filtra a lista e o seletor duplicado saiu da barra.',
+    categoria: 'funcionalidade',
+    tags: ['ux', 'inventario'],
+  },
+  {
     id: 'proj-2026-11-13-descoberta-rede',
     data: '2026-11-13',
     titulo: 'O inventário passou a vir da própria rede',

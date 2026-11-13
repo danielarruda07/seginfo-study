@@ -1,6 +1,6 @@
 # Versões
 
-A versão aparece no rodapé do menu lateral (`v0.8.0 · build dd/mm hh:mm`) e em `/api/health`. Ela fica em `packages/shared/src/versao.ts`, lida pelo front e pela API.
+A versão aparece no rodapé do menu lateral (`v0.8.1 · build dd/mm hh:mm`) e em `/api/health`. Ela fica em `packages/shared/src/versao.ts`, lida pelo front e pela API.
 
 **Como conferir se você está na versão certa:** compare o número do rodapé com o da publicação mais recente abaixo. Se o rodapé mostrar um aviso "API em vX", o front e a API estão em versões diferentes: espere o deploy terminar ou recarregue com Ctrl+F5.
 
@@ -8,6 +8,7 @@ A versão aparece no rodapé do menu lateral (`v0.8.0 · build dd/mm hh:mm`) e e
 
 | Versão | Data | O que entrou |
 |---|---|---|
+| 0.8.1 | 13/11/2026 | Meu Ambiente: o gráfico "Ativos por tipo" e o seletor de tipo viraram um painel de cartões agrupados (computação, rede e segurança, estações e dispositivos, serviços), clicáveis para filtrar |
 | 0.8.0 | 13/11/2026 | Tipos novos no inventário (servidor físico, ponto de acesso, estação, dispositivo) para receber a descoberta da rede real |
 | 0.7.0 | 13/11/2026 | Versão no rodapé do menu; painel "Acessos e integrações" em Meu Ambiente; erros do Proxmox resumidos com dica |
 | 0.6.0 | 13/11/2026 | FortiGate e Catalyst 2960 nos agentes, controle de custo diário, auditoria das ações (publicado por outra sessão, sem número na época) |

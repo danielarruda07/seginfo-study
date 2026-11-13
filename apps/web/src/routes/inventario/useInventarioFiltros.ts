@@ -13,7 +13,6 @@ export function useInventarioFiltros() {
   const [estado, setEstado] = useState<EstadoAtivo | undefined>();
   const [escopo, setEscopo] = useState<Escopo>('todos');
 
-  const toggleTipo = (t: TipoAtivo) => setTipo((v) => (v === t ? undefined : t));
   /** KPI de estado: liga/desliga e volta o escopo para "Todos", para o estado nunca ficar escondido. */
   const toggleEstado = (e: EstadoAtivo) => {
     setEstado((v) => (v === e ? undefined : e));
@@ -28,5 +27,5 @@ export function useInventarioFiltros() {
     escopo !== 'todos' && { key: 'escopo', label: ESCOPO_OPTS.find((o) => o.value === escopo)!.label, onRemove: () => setEscopo('todos') },
   ];
 
-  return { busca, setBusca, search, tipo, setTipo, toggleTipo, estado, toggleEstado, escopo, setEscopo, limpar, chips };
+  return { busca, setBusca, search, tipo, setTipo, estado, toggleEstado, escopo, setEscopo, limpar, chips };
 }

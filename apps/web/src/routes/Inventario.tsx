@@ -2,7 +2,6 @@ import { useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { Dropdown } from 'primereact/dropdown';
 import { SelectButton } from 'primereact/selectbutton';
 import { Button } from 'primereact/button';
 import { Menu } from 'primereact/menu';
@@ -19,17 +18,15 @@ import { idadeConfirmacao } from '@/lib/confirmacao';
 import { todayISO } from '@/services/store';
 import * as vault from '@/services/vault';
 import { TIPO_ATIVO_LABEL } from '@/theme/status';
-import { ESCOPO_OPTS, ESTADO_META, TIPO_ICON, TIPO_OPTS, contarPorTipo, linhaClasse, noEscopo, ordenarAtivos } from './inventario/regras';
+import { ESCOPO_OPTS, ESTADO_META, TIPO_ICON, contarPorTipo, linhaClasse, noEscopo, ordenarAtivos } from './inventario/regras';
 import { useInventarioFiltros } from './inventario/useInventarioFiltros';
 import { AtivoForm } from './inventario/AtivoForm';
 import { AtivoDrawer } from './inventario/AtivoDrawer';
-import { TipoChart } from './inventario/TipoChart';
+import { TipoFiltro } from './inventario/TipoFiltro';
 import { AvisoDadosAntigos } from './inventario/AvisoDadosAntigos';
 import { AcessosIntegracoes } from './inventario/AcessosIntegracoes';
 
 const NOVO: Ativo = { id: '', ambiente: 'criecomia', tipo: 'servico', nome: '', endereco: '', funcao: '', estado: 'ativo', detalhes: {}, tags: [], labsRelacionados: [] };
-const opcaoTipo = (o: { label: string; icon: string } | null) =>
-  o ? <span className="iv-row"><i className={`pi ${o.icon}`} aria-hidden="true" />{o.label}</span> : <span>Todos os tipos</span>;
 
 export function Inventario() {
   const f = useInventarioFiltros();
@@ -134,14 +131,12 @@ export function Inventario() {
           <Kpi label="Em atenção" icon="pi-exclamation-triangle" tone="serious" value={resumo?.atencao ?? 0} active={f.estado === 'atencao'} onClick={() => f.toggleEstado('atencao')} />
           <Kpi label="Planejados" icon="pi-calendar" value={resumo?.planejados ?? 0} active={f.estado === 'planejado'} onClick={() => f.toggleEstado('planejado')} />
         </div>
-        <TipoChart dados={porTipo} ativo={f.tipo} onSelect={f.toggleTipo} />
+        <TipoFiltro dados={porTipo} ativo={f.tipo} onSelect={f.setTipo} />
       </div>
 
       <div className="iv-card">
         <div className="iv-toolbar">
           <SearchInput value={f.busca} onChange={f.setBusca} placeholder="Buscar por nome, endereço, função ou tag" />
-          <Dropdown value={f.tipo ?? null} options={TIPO_OPTS} onChange={(e) => f.setTipo(e.value ?? undefined)} showClear
-            placeholder="Todos os tipos" itemTemplate={opcaoTipo} valueTemplate={opcaoTipo} aria-label="Filtrar por tipo" style={{ minWidth: 190 }} />
           <SelectButton value={f.escopo} options={ESCOPO_OPTS} onChange={(e) => e.value && f.setEscopo(e.value)} allowEmpty={false} aria-label="Escopo" />
           <span className="iv-toolbar__count">{lista.length} {lista.length === 1 ? 'ativo' : 'ativos'}</span>
         </div>

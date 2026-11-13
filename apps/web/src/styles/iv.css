@@ -37,9 +37,57 @@
 .iv-status--warn { --tone: var(--tone-serious); background: color-mix(in srgb, var(--tone) 6%, var(--surface-card)); }
 .iv-status--crit { --tone: var(--tone-danger); background: color-mix(in srgb, var(--tone) 6%, var(--surface-card)); }
 
-/* ===== resumo: KPIs + gráfico ===== */
-.iv-summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: .85rem; align-items: stretch; }
-.iv-summary .iv-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; }
+/* ===== resumo: KPIs + filtro por tipo ===== */
+.iv-summary { display: grid; grid-template-columns: minmax(0, 1fr); gap: .85rem; }
+.iv-summary .iv-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+/* ===== filtro por tipo (TipoFiltro.tsx) ===== */
+.tf { margin: 0; }
+.tf__head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.tf-todos {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .3rem .7rem; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--surface-border); background: var(--surface-card);
+  color: var(--text-color); font: inherit; font-size: .8rem; font-weight: 600;
+}
+.tf-todos[aria-pressed='true'] { background: var(--primary-color); border-color: var(--primary-color); color: var(--primary-color-text); }
+.tf-todos__n { font-variant-numeric: tabular-nums; opacity: .8; }
+.tf__grupos { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: .9rem 1rem; margin-top: .75rem; }
+.tf-grupo { --g: var(--alvoar-navy); min-width: 0; }
+.tf-grupo--rede { --g: var(--alvoar-teal-600); }
+.tf-grupo--usuarios { --g: var(--alvoar-orange); }
+.tf-grupo--servicos { --g: var(--alvoar-crimson); }
+.tf-grupo__titulo {
+  display: flex; align-items: center; gap: .4rem;
+  padding-bottom: .35rem; margin-bottom: .45rem;
+  border-bottom: 2px solid color-mix(in srgb, var(--g) 35%, transparent);
+  color: var(--text-color); font-size: .8rem; font-weight: 700;
+}
+.tf-grupo__titulo .pi { color: var(--g); font-size: .85rem; }
+.tf-grupo__n { margin-left: auto; color: var(--text-color-secondary); font-variant-numeric: tabular-nums; }
+.tf-grupo__itens { display: flex; flex-direction: column; gap: .35rem; }
+.tf-tipo {
+  display: flex; align-items: center; gap: .6rem; width: 100%;
+  padding: .4rem .55rem; border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid transparent; background: transparent;
+  color: var(--text-color); font: inherit; text-align: left;
+  transition: background .15s, border-color .15s, opacity .15s;
+}
+.tf-tipo:hover { background: color-mix(in srgb, var(--g) 7%, var(--surface-card)); border-color: color-mix(in srgb, var(--g) 25%, transparent); }
+.tf-tipo:focus-visible { outline: 2px solid var(--g); outline-offset: 1px; }
+.tf-tipo[aria-pressed='true'] { background: color-mix(in srgb, var(--g) 12%, var(--surface-card)); border-color: var(--g); }
+.tf-tipo[data-esmaecido] { opacity: .5; }
+.tf-tipo[data-esmaecido]:hover { opacity: 1; }
+.tf-tipo__icone {
+  display: grid; place-items: center; flex: none; width: 2rem; height: 2rem; border-radius: 8px;
+  background: color-mix(in srgb, var(--g) 13%, var(--surface-card)); color: var(--g);
+}
+.tf-tipo[aria-pressed='true'] .tf-tipo__icone { background: var(--g); color: #fff; }
+.tf-tipo__texto { display: flex; flex-direction: column; gap: .3rem; flex: 1; min-width: 0; }
+.tf-tipo__nome { font-size: .85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tf-tipo__barra { height: 4px; border-radius: 999px; background: color-mix(in srgb, var(--g) 10%, var(--surface-card)); overflow: hidden; }
+.tf-tipo__barra > span { display: block; height: 100%; border-radius: inherit; background: var(--g); transition: width .3s ease; }
+.tf-tipo__n { flex: none; min-width: 1.6rem; text-align: right; font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .iv-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .6rem; }
 .iv-kpi {
   --tone: var(--text-color-secondary);
@@ -190,7 +238,7 @@ button.iv-kpi:hover { border-color: color-mix(in srgb, var(--alvoar-navy) 30%, v
 .iv-wrap { flex-wrap: wrap; }
 
 @media (max-width: 960px) {
-  .iv-summary { grid-template-columns: minmax(0, 1fr); }
+  .iv-summary .iv-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 640px) {
   .iv-form__grid { grid-template-columns: minmax(0, 1fr); }

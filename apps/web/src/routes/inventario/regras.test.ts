@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Ativo } from '@seginfo/shared';
-import { campoEndereco, contarPorTipo, linhaClasse, noEscopo, ordenarAtivos, validarAtivo } from './regras';
+import { TIPO_ATIVO_LABEL } from '@/theme/status';
+import { GRUPOS_TIPO, campoEndereco, contarPorTipo, linhaClasse, noEscopo, ordenarAtivos, validarAtivo } from './regras';
 
 const ativo = (p: Partial<Ativo>): Ativo => ({
   id: p.nome ?? 'x', ambiente: 'criecomia', tipo: 'vm', nome: 'x', endereco: '', funcao: '',
@@ -8,6 +9,12 @@ const ativo = (p: Partial<Ativo>): Ativo => ({
 });
 
 describe('regras do inventário', () => {
+  it('cada tipo de ativo está em exatamente um grupo do filtro', () => {
+    const todos = GRUPOS_TIPO.flatMap((g) => g.tipos);
+    expect(new Set(todos).size).toBe(todos.length);
+    expect([...todos].sort()).toEqual(Object.keys(TIPO_ATIVO_LABEL).sort());
+  });
+
   it('ordena o que pede ação primeiro e depois por nome', () => {
     const r = ordenarAtivos([ativo({ nome: 'b' }), ativo({ nome: 'z', estado: 'critico' }), ativo({ nome: 'a', estado: 'desativado' }), ativo({ nome: 'a' })]);
     expect(r.map((x) => x.nome)).toEqual(['z', 'a', 'b', 'a']);
