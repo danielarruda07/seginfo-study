@@ -27,13 +27,31 @@ export async function registerAgenteRoutes(app: FastifyInstance) {
 
   app.get('/api/agentes', async (req) => {
     const usuarioId = uid(req);
-    const [agentes, avaliacoes] = await Promise.all([
+    const [agentes, avaliacoes, ultimas, pendentes] = await Promise.all([
       prisma.agente.findMany({
         where: { usuarioId }, orderBy: { atualizadoEm: 'desc' },
         select: { id: true, nome: true, resumo: true, status: true, config: true, atualizadoEm: true },
       }),
       prisma.agenteAvaliacao.findMany({ where: { usuarioId }, select: { agenteId: true, resultado: true }, take: 20_000 }),
+      // última execução de cada agente (a tela mostra "executado há X" e o passo seguinte)
+      prisma.agenteExecucao.findMany({
+        where: { usuarioId }, orderBy: { criadoEm: 'desc' }, distinct: ['agenteId'],
+        select: { agenteId: true, status: true, criadoEm: true },
+      }),
+      // execuções paradas esperando a decisão humana numa ação de escrita
+      prisma.agenteExecucao.findMany({
+        where: { usuarioId, status: 'aguardando_aprovacao' }, orderBy: { criadoEm: 'desc' },
+        select: { id: true, agenteId: true }, take: 500,
+      }),
     ]);
+
+    const ultimaPorAgente = new Map(ultimas.map((e) => [e.agenteId, { status: e.status, criadoEm: e.criadoEm }]));
+    const aprovacao = new Map<string, { total: number; maisRecente: string }>();
+    for (const p of pendentes) {
+      const atual = aprovacao.get(p.agenteId);
+      if (atual) atual.total++;
+      else aprovacao.set(p.agenteId, { total: 1, maisRecente: p.id });
+    }
 
     const placar = new Map<string, { total: number; ok: number; parcial: number; falha: number }>();
     for (const a of avaliacoes) {
@@ -54,6 +72,8 @@ export async function registerAgenteRoutes(app: FastifyInstance) {
         ferramentasEscrita: cfg.success ? cfg.data.ferramentas.filter((f) => f.permissao === 'escrita').length : 0,
         baseTags: cfg.success ? cfg.data.conhecimento.tags : [],
         avaliacoes: placar.get(a.id) ?? { total: 0, ok: 0, parcial: 0, falha: 0 },
+        ultimaExecucao: ultimaPorAgente.get(a.id) ?? null,
+        aguardandoAprovacao: aprovacao.get(a.id) ?? null,
         revisao: revisao
           ? { erros: revisao.filter((r) => r.nivel === 'erro').length, avisos: revisao.filter((r) => r.nivel === 'aviso').length }
           : null,

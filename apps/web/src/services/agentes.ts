@@ -11,6 +11,10 @@ export interface AgenteResumo {
   ferramentasEscrita: number;
   baseTags: string[];
   avaliacoes: { total: number; ok: number; parcial: number; falha: number };
+  /** última execução no playground; null se nunca rodou (opcional: API antiga não manda) */
+  ultimaExecucao?: { status: ExecucaoStatus; criadoEm: string } | null;
+  /** execuções paradas esperando a sua decisão; `maisRecente` é o id para abrir no playground */
+  aguardandoAprovacao?: { total: number; maisRecente: string } | null;
   /** null quando o JSON salvo não bate mais com o formato atual */
   revisao: { erros: number; avisos: number } | null;
 }

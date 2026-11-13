@@ -56,10 +56,16 @@ const portfolioRoute = createRoute({ getParentRoute: () => rootRoute, path: '/po
 
 const agentsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents', component: AgentsHome });
 const agentEditorRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/agente/$agenteId', component: AgentEditor });
-const agentPlaygroundRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/agente/$agenteId/playground', component: AgentPlayground });
+const agentPlaygroundRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/agente/$agenteId/playground', component: AgentPlayground,
+  // ?exec= abre uma execução específica (ex.: a que espera aprovação)
+  validateSearch: (s: Record<string, unknown>): { exec?: string } => (typeof s.exec === 'string' ? { exec: s.exec } : {}),
+});
 const agentsBaseRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/base', component: AgentsBase });
 const agentsFerramentasRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/ferramentas', component: AgentsFerramentas });
-const agentsAvaliacoesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/avaliacoes', component: AgentsAvaliacoes });
+const agentsAvaliacoesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/avaliacoes', component: AgentsAvaliacoes,
+  // ?agente= já abre a tela com esse agente selecionado
+  validateSearch: (s: Record<string, unknown>): { agente?: string } => (typeof s.agente === 'string' ? { agente: s.agente } : {}),
+});
 const agentsAprenderRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/aprender', component: AgentsAprender });
 const agentsAuditoriaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents/auditoria', component: AgentsAuditoria });
 

@@ -24,6 +24,19 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-13-agents-ciclo',
+    data: '2026-11-13',
+    titulo: 'Home de Agents guiada pelo ciclo de vida',
+    descricao:
+      'A lista de agentes mostrava contagens, mas não dizia o que fazer. Cada cartão agora traz a trilha projeto → ' +
+      'execução → avaliação → ativo e um próximo passo clicável (decidir uma ação pendente, resolver pendência grave, ' +
+      'testar no playground, registrar casos de teste, ativar). Ações de escrita esperando aprovação sobem para o topo ' +
+      'e abrem direto a execução parada. Modelos viraram um diálogo de criação, a tela vazia virou um onboarding, e ' +
+      'entraram busca, filtro por status e os tetos diários de execução.',
+    categoria: 'funcionalidade',
+    tags: ['ux', 'agentes', 'human-in-the-loop'],
+  },
+  {
     id: 'proj-2026-11-13-filtro-tipos',
     data: '2026-11-13',
     titulo: 'Filtro por tipo de ativo em cartões',

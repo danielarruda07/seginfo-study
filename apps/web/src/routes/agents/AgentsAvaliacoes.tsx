@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useSearch } from '@tanstack/react-router';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Dropdown } from 'primereact/dropdown';
@@ -35,7 +35,8 @@ const fmtData = (iso: string) => iso.replace('T', ' ').slice(0, 16);
 export function AgentsAvaliacoes() {
   const qc = useQueryClient();
   const agentes = useQuery({ queryKey: ['agentes'], queryFn: listAgentes });
-  const [agenteId, setAgenteId] = useState<string | null>(null);
+  const { agente: agenteDaUrl } = useSearch({ strict: false }) as { agente?: string };
+  const [agenteId, setAgenteId] = useState<string | null>(agenteDaUrl ?? null);
 
   const lista = agentes.data ?? [];
   const atual = agenteId ?? lista.find((a) => a.status !== 'arquivado')?.id ?? null;

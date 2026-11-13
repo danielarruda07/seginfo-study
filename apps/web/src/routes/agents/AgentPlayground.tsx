@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from '@tanstack/react-router';
+import { Link, useParams, useSearch } from '@tanstack/react-router';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
@@ -202,7 +202,8 @@ export function AgentPlayground() {
   const historico = useQuery({ queryKey: ['agente-execucoes', agenteId], queryFn: () => listExecucoes(agenteId) });
 
   /** ids das execuções da conversa aberta, em ordem; cada pergunta é uma execução */
-  const [turnos, setTurnos] = useState<string[]>([]);
+  const { exec } = useSearch({ strict: false }) as { exec?: string };
+  const [turnos, setTurnos] = useState<string[]>(() => (exec ? [exec] : []));
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');

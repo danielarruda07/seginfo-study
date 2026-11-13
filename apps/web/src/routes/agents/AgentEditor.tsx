@@ -17,7 +17,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Chip, Pill, StatusStrip } from '@/components/InfraKit';
 import { getAgente, updateAgente, deleteAgente, listTagsBase, erroApi, problemasApi } from '@/services/agentes';
 import { FERRAMENTAS_CATALOGO, RISCO_COR, RISCO_LABEL } from '@/data/agentesFerramentas';
-import { STATUS_LABEL } from './AgentsHome';
+import { STATUS_LABEL } from './home/regras';
 
 interface Form { nome: string; resumo: string; status: AgenteStatus; config: AgenteConfig }
 type Secao = Exclude<keyof AgenteConfig, 'ferramentas'>;
@@ -363,7 +363,7 @@ export function AgentEditor() {
               <Checkbox checked={cfg.supervisao.registroAuditoria} onChange={(e) => secao('supervisao', { registroAuditoria: !!e.checked })} />
               <span><strong>Registro de auditoria</strong><br /><small className="iv-muted">Guardar quem pediu o quê, o que o agente fez e quando.</small></span>
             </label>
-            <Link to="/agents/avaliacoes">Registrar testes e avaliações deste agente</Link>
+            <Link to="/agents/avaliacoes" search={{ agente: agenteId }}>Registrar testes e avaliações deste agente</Link>
           </div>
         </TabPanel>
 
