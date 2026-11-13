@@ -16,14 +16,21 @@ const respostasDoModelo = vi.hoisted(() => [] as unknown[]);
 const proxmox = vi.hoisted(() => ({ alterar: vi.fn(async () => 'Tarefa concluída com sucesso.'), get: vi.fn(async () => []) }));
 
 vi.mock('./db.js', () => {
-  const casa = (l: Linha, where: Record<string, unknown>) => Object.entries(where).every(([k, v]) => l[k] === v);
+  const casaValor = (valor: unknown, cond: unknown): boolean => {
+    if (cond && typeof cond === 'object' && 'gte' in (cond as Record<string, unknown>)) {
+      const limite = (cond as { gte: Date }).gte;
+      return valor instanceof Date ? valor >= limite : new Date(valor as string) >= limite;
+    }
+    return valor === cond;
+  };
+  const casa = (l: Linha, where: Record<string, unknown>) => Object.entries(where).every(([k, v]) => casaValor(l[k], v));
   return {
     prisma: {
       agente: { findFirst: async () => banco.agente },
       agenteExecucao: {
         count: async ({ where }: { where: Record<string, unknown> }) => banco.execucoes.filter((l) => casa(l, where)).length,
         create: async ({ data }: { data: Record<string, unknown> }) => {
-          const l = { id: `exec${banco.execucoes.length + 1}`, status: 'rodando', passos: [], pendencia: null, resposta: '', erro: '', tokensEntrada: 0, tokensSaida: 0, duracaoMs: 0, ...structuredClone(data) };
+          const l = { id: `exec${banco.execucoes.filter((x) => x.id.startsWith('exec')).length + 1}`, status: 'rodando', passos: [], pendencia: null, resposta: '', erro: '', tokensEntrada: 0, tokensSaida: 0, duracaoMs: 0, ...structuredClone(data) };
           banco.execucoes.push(l);
           return l;
         },
@@ -81,7 +88,7 @@ async function subir() {
   await registerExecucaoRoutes(app);
   return app;
 }
-const exec = () => banco.execucoes[0];
+const exec = () => banco.execucoes.find((l) => l.id.startsWith('exec'))!;
 /** espera o laço em segundo plano chegar a um estado de parada */
 async function assentar() {
   await vi.waitFor(() => expect(exec().status).not.toBe('rodando'));
@@ -195,6 +202,37 @@ describe('aprovação de ferramentas de escrita', () => {
     await assentar();
     expect(exec().status).toBe('concluida');
     expect(proxmox.alterar).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia nova execução ao atingir o teto diário de custo (não conta continuação de conversa)', async () => {
+    const app = await subir();
+    // Pré-popula o banco com execuções "de hoje" até o teto, para não precisar rodar o laço 60 vezes.
+    const LIMITE = 60; // valor padrão de LIMITES.execucoesPorDia quando a env var não está definida
+    for (let i = 0; i < LIMITE; i++) banco.execucoes.push({ id: `antiga${i}`, usuarioId: 'u1', agenteId: 'a1', status: 'concluida', passos: [], pendencia: null, criadoEm: new Date() } as unknown as Linha);
+
+    const r = await app.inject({ method: 'POST', url: '/api/agentes/a1/executar', payload: { mensagem: 'mais uma' } });
+    expect(r.statusCode).toBe(429);
+    expect(r.json().error).toContain('Limite diário');
+  });
+
+  it('bloqueia aprovação ao atingir o teto diário de escritas aprovadas', async () => {
+    const app = await subir();
+    const LIMITE_ESCRITAS = 30; // valor padrão de LIMITES.escritasAprovadasPorDia
+    const decididoEm = new Date().toISOString();
+    const passosAntigos = Array.from({ length: LIMITE_ESCRITAS }, (_, i) => ({ tipo: 'ferramenta', nome: 'x', entrada: {}, saida: 'ok', erro: false, ms: 1, decisao: 'aprovada', decididoEm }));
+    banco.execucoes.push({ id: 'velha1', usuarioId: 'u1', agenteId: 'a1', status: 'concluida', passos: passosAntigos, pendencia: null, criadoEm: new Date(), atualizadoEm: new Date() } as unknown as Linha);
+
+    respostasDoModelo.push(pedeFerramentas({ id: 't1', name: 'proxmox_ligar_vm', input: VM }));
+    await app.inject({ method: 'POST', url: '/api/agentes/a1/executar', payload: { mensagem: 'ligue a 101' } });
+    await assentar();
+    expect(exec().status).toBe('aguardando_aprovacao');
+
+    const d = await app.inject({ method: 'POST', url: '/api/agentes/a1/execucoes/exec1/decidir', payload: { decisoes: [{ id: 't1', aprovar: true }] } });
+    expect(d.statusCode).toBe(429);
+    expect(d.json().error).toContain('escrita aprovadas');
+    expect(proxmox.alterar).not.toHaveBeenCalled();
+    // ainda aguardando: a tentativa bloqueada não consumiu a pendência
+    expect(exec().status).toBe('aguardando_aprovacao');
   });
 
   it('agente sem a escrita ligada não recebe as ferramentas de escrita', async () => {

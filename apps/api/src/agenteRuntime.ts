@@ -1,6 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
+import { z } from 'zod';
 import {
   AgenteConfigSchema, DecidirInSchema, ExecutarInSchema,
   type AgenteConfig, type ExecucaoStatus, type PassoExecucao, type PedidoPendente,
@@ -38,7 +39,43 @@ export const LIMITES = {
   tokensSaida: 40_000,
   /** mensagens acumuladas numa conversa antes de exigir uma nova */
   mensagensPorConversa: 80,
+  /**
+   * Controle de custo: execuções (pedidos) que um usuário pode iniciar por dia corrido, somando
+   * todos os agentes. Configurável por AGENTES_LIMITE_DIARIO_EXECUCOES; sem a variável, usa o
+   * padrão abaixo. É um teto de SEGURANÇA DE CUSTO, não de segurança de acesso: a aprovação
+   * humana de cada ação de escrita continua sendo o controle de risco.
+   */
+  execucoesPorDia: Number(process.env.AGENTES_LIMITE_DIARIO_EXECUCOES) > 0 ? Number(process.env.AGENTES_LIMITE_DIARIO_EXECUCOES) : 60,
+  /** ações de escrita aprovadas por dia corrido, somando todos os agentes. */
+  escritasAprovadasPorDia: Number(process.env.AGENTES_LIMITE_DIARIO_ESCRITAS) > 0 ? Number(process.env.AGENTES_LIMITE_DIARIO_ESCRITAS) : 30,
 } as const;
+
+const inicioDoDia = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+
+/** Quantas execuções o usuário já iniciou hoje (todas, qualquer status). */
+async function execucoesHoje(usuarioId: string): Promise<number> {
+  return prisma.agenteExecucao.count({ where: { usuarioId, criadoEm: { gte: inicioDoDia() } } });
+}
+
+/**
+ * Quantas ações de escrita o usuário já aprovou hoje, contando os passos tipo "ferramenta" com
+ * decisao "aprovada" e decididoEm dentro do dia corrente, em todas as execuções do dia.
+ */
+async function escritasAprovadasHoje(usuarioId: string): Promise<number> {
+  const execs = await prisma.agenteExecucao.findMany({
+    where: { usuarioId, atualizadoEm: { gte: inicioDoDia() } },
+    select: { passos: true },
+  });
+  const hojeISO = inicioDoDia().toISOString();
+  let total = 0;
+  for (const e of execs) {
+    const passos = e.passos as unknown as PassoExecucao[];
+    for (const p of passos) {
+      if (p.tipo === 'ferramenta' && p.decisao === 'aprovada' && p.decididoEm && p.decididoEm >= hojeISO) total++;
+    }
+  }
+  return total;
+}
 
 /** O que uma execução carrega de uma etapa para a outra (inclusive através da pausa para aprovação). */
 interface Estado {
@@ -285,14 +322,19 @@ export async function registerExecucaoRoutes(app: FastifyInstance) {
   }
 
   // O que o runtime sabe fazer hoje: a tela usa para mostrar quais ferramentas do projeto já funcionam.
-  app.get('/api/agentes/runtime', async () => ({
-    configurada: iaConfigurada(),
-    modelo: MODELO,
-    limites: LIMITES,
-    ferramentas: REGISTRO.map((f) => ({
-      id: f.id, nome: f.nome, permissao: f.permissao, descricao: f.descricao, faltando: f.faltando?.() ?? [],
-    })),
-  }));
+  app.get('/api/agentes/runtime', async (req) => {
+    const usuarioId = uid(req);
+    const [execucoesUsadas, escritasUsadas] = await Promise.all([execucoesHoje(usuarioId), escritasAprovadasHoje(usuarioId)]);
+    return {
+      configurada: iaConfigurada(),
+      modelo: MODELO,
+      limites: LIMITES,
+      custoHoje: { execucoes: execucoesUsadas, escritasAprovadas: escritasUsadas },
+      ferramentas: REGISTRO.map((f) => ({
+        id: f.id, nome: f.nome, permissao: f.permissao, descricao: f.descricao, faltando: f.faltando?.() ?? [],
+      })),
+    };
+  });
 
   app.post('/api/agentes/:id/executar', async (req, reply) => {
     const b = ExecutarInSchema.safeParse(req.body);
@@ -305,6 +347,16 @@ export async function registerExecucaoRoutes(app: FastifyInstance) {
 
     if (await prisma.agenteExecucao.count({ where: { usuarioId, status: 'rodando' } }) > 0) {
       return reply.status(409).send({ error: 'Já existe uma execução em andamento. Aguarde ela terminar.' });
+    }
+
+    // Controle de custo: só conta para o teto quando é um pedido novo (não uma continuação de conversa).
+    if (!b.data.continuarDe) {
+      const usadas = await execucoesHoje(usuarioId);
+      if (usadas >= LIMITES.execucoesPorDia) {
+        return reply.status(429).send({
+          error: `Limite diário de ${LIMITES.execucoesPorDia} execuções atingido (controle de custo). Tente de novo depois da meia-noite, ou ajuste AGENTES_LIMITE_DIARIO_EXECUCOES no servidor.`,
+        });
+      }
     }
 
     let mensagens: Mensagem[] = [];
@@ -361,6 +413,18 @@ export async function registerExecucaoRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'A decisão não corresponde às ações pendentes. Recarregue a tela e decida de novo.' });
     }
 
+    // Controle de custo: teto diário de ações de escrita APROVADAS (negar não conta).
+    const novasAprovacoes = b.data.decisoes.filter((d) => d.aprovar).length;
+    if (novasAprovacoes > 0) {
+      const aprovadasHoje = await escritasAprovadasHoje(usuarioId);
+      if (aprovadasHoje + novasAprovacoes > LIMITES.escritasAprovadasPorDia) {
+        return reply.status(429).send({
+          error: `Limite diário de ${LIMITES.escritasAprovadasPorDia} ações de escrita aprovadas atingido (controle de custo/segurança). ` +
+            `Você já aprovou ${aprovadasHoje} hoje. Negue esta ação ou ajuste AGENTES_LIMITE_DIARIO_ESCRITAS no servidor.`,
+        });
+      }
+    }
+
     // Reivindica a execução de forma atômica: dois cliques (ou duas abas) não executam a ação duas vezes.
     const tomada = await prisma.agenteExecucao.updateMany({
       where: { id: exec.id, status: 'aguardando_aprovacao' }, data: { status: 'rodando', pendencia: Prisma.DbNull },
@@ -401,5 +465,64 @@ export async function registerExecucaoRoutes(app: FastifyInstance) {
     if (!e) return reply.status(404).send({ error: 'execução não encontrada' });
     const { pendencia, ...resto } = e;
     return { ...resto, pendentes: (pendencia as unknown as Pendencia | null)?.pedidos ?? [] };
+  });
+
+  // ===================== auditoria (sem SIEM ainda: visão própria + formato p/ outra IA ler) =====================
+  //
+  // Achata todas as execuções do usuário (de todos os agentes) numa lista de AÇÕES DE FERRAMENTA,
+  // mais recentes primeiro. Pensado para dois consumidores:
+  //  1. a tela /agents/auditoria (humano revisando o que os agentes fizeram);
+  //  2. outra IA/agente que precise LER isto como pendência (ex.: "liste as ações de escrita
+  //     negadas na última semana"), por isso o formato é estável e documentado em docs/AGENTS.md.
+  const AuditoriaQuery = z.object({
+    agenteId: z.string().min(1).max(60).optional(),
+    somenteEscrita: z.coerce.boolean().optional(),
+    somenteErro: z.coerce.boolean().optional(),
+    desde: z.string().datetime().optional(),
+    limite: z.coerce.number().int().min(1).max(500).default(200),
+  });
+
+  app.get('/api/agentes/auditoria', async (req, reply) => {
+    const q = AuditoriaQuery.safeParse(req.query);
+    if (!q.success) return reply.status(400).send({ error: 'parâmetros inválidos' });
+    const usuarioId = uid(req);
+    const execs = await prisma.agenteExecucao.findMany({
+      where: {
+        usuarioId,
+        ...(q.data.agenteId ? { agenteId: q.data.agenteId } : {}),
+        ...(q.data.desde ? { criadoEm: { gte: new Date(q.data.desde) } } : {}),
+      },
+      orderBy: { criadoEm: 'desc' },
+      take: 2000, // teto de execuções examinadas; o "limite" é sobre as AÇÕES já achatadas
+      select: { id: true, agenteId: true, passos: true, criadoEm: true },
+    });
+
+    const agentesIds = [...new Set(execs.map((e) => e.agenteId))];
+    const nomes = new Map(
+      (await prisma.agente.findMany({ where: { id: { in: agentesIds }, usuarioId }, select: { id: true, nome: true } }))
+        .map((a) => [a.id, a.nome]),
+    );
+
+    const acoes: Array<{
+      execucaoId: string; agenteId: string; agenteNome: string; ferramenta: string;
+      entrada: unknown; saida: string; erro: boolean; decisao: 'aprovada' | 'negada' | 'automatica';
+      decididoEm: string | null; ms: number;
+    }> = [];
+    for (const e of execs) {
+      const passos = e.passos as unknown as PassoExecucao[];
+      for (const p of passos) {
+        if (p.tipo !== 'ferramenta') continue;
+        if (q.data.somenteErro && !p.erro) continue;
+        if (q.data.somenteEscrita && !p.decisao) continue; // só passos com decisão são ação de escrita
+        acoes.push({
+          execucaoId: e.id, agenteId: e.agenteId, agenteNome: nomes.get(e.agenteId) ?? '(excluído)',
+          ferramenta: p.nome, entrada: p.entrada, saida: p.saida, erro: p.erro,
+          decisao: p.decisao ?? 'automatica', decididoEm: p.decididoEm ?? null, ms: p.ms,
+        });
+      }
+    }
+    // mais recente primeiro: usa decididoEm quando existe, senão a ordem de criação da execução (já decrescente)
+    acoes.sort((a, b) => (b.decididoEm ?? '').localeCompare(a.decididoEm ?? ''));
+    return { total: acoes.length, acoes: acoes.slice(0, q.data.limite) };
   });
 }

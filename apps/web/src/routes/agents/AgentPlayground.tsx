@@ -272,6 +272,14 @@ export function AgentPlayground() {
         O laço para quando o modelo responde sem pedir ferramenta, ou ao atingir {runtime.data?.limites.voltas ?? 8} chamadas ao modelo.
       </StatusStrip>
 
+      {runtime.data && (
+        <StatusStrip tone={runtime.data.custoHoje.execucoes >= runtime.data.limites.execucoesPorDia * 0.8 ? 'warn' : 'ok'} icon="pi-wallet">
+          Controle de custo: {runtime.data.custoHoje.execucoes}/{runtime.data.limites.execucoesPorDia} execuções hoje
+          {' · '}{runtime.data.custoHoje.escritasAprovadas}/{runtime.data.limites.escritasAprovadasPorDia} ações de escrita aprovadas hoje.
+          Reinicia à meia-noite.
+        </StatusStrip>
+      )}
+
       <div className="iv-card iv-mt">
         <div className="iv-row iv-wrap">
           <span className="iv-muted" style={{ fontSize: '.84rem' }}>Modelo:</span>

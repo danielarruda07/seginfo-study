@@ -74,7 +74,12 @@ export const buscarNaBaseDoAgente = (agenteId: string, q: string) =>
 export interface RuntimeInfo {
   configurada: boolean;
   modelo: string;
-  limites: { voltas: number; tokensSaida: number; mensagensPorConversa: number };
+  limites: {
+    voltas: number; tokensSaida: number; mensagensPorConversa: number;
+    execucoesPorDia: number; escritasAprovadasPorDia: number;
+  };
+  /** quanto do teto diário de custo já foi usado hoje, pelo usuário logado */
+  custoHoje: { execucoes: number; escritasAprovadas: number };
   /** ferramentas que o servidor já sabe executar; um id do catálogo pode ter várias */
   ferramentas: {
     id: string; nome: string; permissao: 'leitura' | 'escrita'; descricao: string;
@@ -103,6 +108,32 @@ export interface Execucao extends ExecucaoResumo {
 }
 
 export const getRuntime = () => http.get<RuntimeInfo>('/agentes/runtime').then((r) => r.data);
+
+// ---------- auditoria ----------
+
+export interface AcaoAuditoria {
+  execucaoId: string;
+  agenteId: string;
+  agenteNome: string;
+  ferramenta: string;
+  entrada: unknown;
+  saida: string;
+  erro: boolean;
+  decisao: 'aprovada' | 'negada' | 'automatica';
+  decididoEm: string | null;
+  ms: number;
+}
+
+export interface FiltroAuditoria {
+  agenteId?: string;
+  somenteEscrita?: boolean;
+  somenteErro?: boolean;
+  desde?: string;
+  limite?: number;
+}
+
+export const listAuditoria = (f: FiltroAuditoria = {}) =>
+  http.get<{ total: number; acoes: AcaoAuditoria[] }>('/agentes/auditoria', { params: f }).then((r) => r.data);
 export const executarAgente = (agenteId: string, mensagem: string, continuarDe?: string) =>
   http.post<{ id: string }>(`/agentes/${agenteId}/executar`, { mensagem, continuarDe }).then((r) => r.data);
 export const listExecucoes = (agenteId: string) =>
