@@ -30,6 +30,12 @@ export function proxmoxGet(caminho: string): Promise<unknown> {
   } catch {
     return Promise.reject(new Error('PROXMOX_URL inválida. Use o formato https://endereco:8006.'));
   }
+  let token: string;
+  try {
+    token = tokenConfigurado();
+  } catch (e) {
+    return Promise.reject(e);
+  }
   // Com a verificação desligada, a CA não é usada: um valor ruim nela não pode impedir a consulta.
   const inseguro = process.env.PROXMOX_TLS_INSEGURO === 'true';
   let ca: string | undefined;
@@ -46,7 +52,7 @@ export function proxmoxGet(caminho: string): Promise<unknown> {
         port: base.port || 8006,
         path: `/api2/json${caminho}`,
         method: 'GET',
-        headers: { Authorization: `PVEAPIToken=${process.env.PROXMOX_TOKEN}`, Accept: 'application/json' },
+        headers: { Authorization: `PVEAPIToken=${token}`, Accept: 'application/json' },
         timeout: 10_000,
         ca,
         rejectUnauthorized: !inseguro,
@@ -56,7 +62,14 @@ export function proxmoxGet(caminho: string): Promise<unknown> {
         res.on('data', (c: Buffer) => partes.push(c));
         res.on('end', () => {
           const status = res.statusCode ?? 0;
-          if (status === 401 || status === 403) return reject(new Error(`O Proxmox recusou o token (HTTP ${status}): confira o token e as permissões dele.`));
+          if (status === 401) {
+            const [id] = token.split('=');
+            return reject(new Error(
+              `O Proxmox não reconheceu o token (HTTP 401). O formato está certo e o token enviado foi "${id}" (segredo omitido). ` +
+              'Então: ou esse usuário/nome de token não existe exatamente assim no Proxmox, ou o segredo não é o desse token, ou o token expirou.',
+            ));
+          }
+          if (status === 403) return reject(new Error(`O token foi aceito, mas não tem permissão para ${caminho} (HTTP 403): dê uma role ao token em Datacenter → Permissions.`));
           if (status >= 400) return reject(new Error(`O Proxmox respondeu HTTP ${status} para ${caminho}.`));
           try {
             resolve((JSON.parse(Buffer.concat(partes).toString('utf8')) as { data: unknown }).data);
@@ -75,6 +88,29 @@ export function proxmoxGet(caminho: string): Promise<unknown> {
     });
     req.end();
   });
+}
+
+// ---------- token ----------
+
+/**
+ * Lê PROXMOX_TOKEN e confere o formato usuario@realm!nome=segredo antes de enviar, para o erro
+ * dizer o que está errado no valor (sem mostrar o segredo) em vez de um 401 genérico.
+ */
+function tokenConfigurado(): string {
+  let t = (process.env.PROXMOX_TOKEN ?? '').trim().replace(/^["']|["']$/g, '');
+  if (t.startsWith('PVEAPIToken=')) t = t.slice('PVEAPIToken='.length);
+  const erro = (motivo: string) => new Error(`PROXMOX_TOKEN em formato errado: ${motivo}. O formato é usuario@realm!nome=segredo, por exemplo root@pam!agente=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.`);
+  const igual = t.indexOf('=');
+  if (igual < 0) throw erro('falta o "=" seguido do segredo (parece que só uma parte foi colada)');
+  const id = t.slice(0, igual);
+  const segredo = t.slice(igual + 1);
+  if (!id.includes('!')) throw erro('falta o "!" entre o usuário e o nome do token');
+  if (!id.split('!')[0].includes('@')) throw erro('o usuário precisa do realm, como root@pam');
+  if (/\s/.test(t)) throw erro('há espaço no meio do valor');
+  if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(segredo)) {
+    throw erro(`o segredo depois do "=" tem ${segredo.length} caracteres e não parece o UUID de 36 caracteres que o Proxmox gera`);
+  }
+  return t;
 }
 
 // ---------- certificado ----------
