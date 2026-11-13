@@ -5,11 +5,11 @@
   grid-template-rows: var(--topbar-h) 1fr;
   min-height: 100vh;
   /* a coluna do menu fica navy até o fim, mesmo quando a página é mais alta que a tela */
-  background: linear-gradient(90deg, var(--alvoar-navy) 0 var(--sidebar-w), transparent 0);
+  background: linear-gradient(90deg, var(--sidebar-bg) 0 var(--sidebar-w), transparent 0);
 }
 .app-shell--collapsed {
   grid-template-columns: var(--sidebar-w-collapsed) minmax(0, 1fr);
-  background: linear-gradient(90deg, var(--alvoar-navy) 0 var(--sidebar-w-collapsed), transparent 0);
+  background: linear-gradient(90deg, var(--sidebar-bg) 0 var(--sidebar-w-collapsed), transparent 0);
 }
 
 /* ---------- barra superior ---------- */
@@ -66,20 +66,20 @@
   height: calc(100vh - var(--topbar-h));
   overflow-y: auto;
   padding: .75rem .6rem 1.5rem;
-  color: rgba(255, 255, 255, .82);
-  background: var(--alvoar-navy);
+  color: #f8fafc;
+  background: var(--sidebar-bg);
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, .2) transparent;
 }
 .app-sidebar__search { position: relative; margin: 0 .15rem .5rem; }
-.app-sidebar__search .pi { position: absolute; left: .6rem; top: 50%; transform: translateY(-50%); font-size: .8rem; opacity: .6; }
+.app-sidebar__search .pi { position: absolute; left: .6rem; top: 50%; transform: translateY(-50%); font-size: .8rem; color: #cbd5ff; }
 .app-sidebar__search input {
   width: 100%; height: 32px; padding: 0 .6rem 0 1.9rem;
-  border: 1px solid rgba(255, 255, 255, .18); border-radius: var(--border-radius);
-  color: #fff; background: rgba(255, 255, 255, .07); font: inherit; font-size: .86rem;
+  border: 1px solid rgba(255, 255, 255, .3); border-radius: var(--border-radius);
+  color: #fff; background: rgba(255, 255, 255, .1); font: inherit; font-size: .86rem;
 }
-.app-sidebar__search input::placeholder { color: rgba(255, 255, 255, .5); }
-.app-sidebar__search input:focus { outline: none; border-color: var(--alvoar-teal); }
+.app-sidebar__search input::placeholder { color: #cbd5e1; opacity: 1; }
+.app-sidebar__search input:focus { outline: 2px solid var(--alvoar-teal); outline-offset: 1px; border-color: var(--alvoar-teal); }
 .app-nav__section { margin-top: .35rem; }
 .app-nav__title {
   display: flex; align-items: center; gap: .4rem; width: 100%;
@@ -102,11 +102,11 @@
   display: flex; align-items: center; gap: .65rem;
   min-height: 36px; padding: 0 .7rem;
   border-radius: var(--border-radius);
-  color: rgba(255, 255, 255, .82); font-size: .93rem;
+  color: #f8fafc; font-size: .93rem;
 }
 .app-nav a .pi { width: 1rem; font-size: .95rem; text-align: center; }
 .app-nav a:hover { background: rgba(255, 255, 255, .1); color: #fff; text-decoration: none; }
-.app-nav a.active { background: #fff; color: var(--alvoar-navy); font-weight: 600; }
+.app-nav a.active { background: var(--alvoar-teal); color: #062b35; font-weight: 700; }
 .app-nav a.active::before {
   content: ''; position: absolute; left: 0; top: 6px; bottom: 6px;
   width: 3px; border-radius: 0 3px 3px 0; background: var(--alvoar-teal);

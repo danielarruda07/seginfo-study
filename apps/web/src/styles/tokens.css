@@ -7,6 +7,7 @@
   /* marca Alvoar */
   --alvoar-navy: #0d0c55;
   --alvoar-navy-700: #1a1870;
+  --sidebar-bg: #141642;
   --alvoar-teal: #00d6c8;
   --alvoar-teal-600: #00b8ac;
   --alvoar-crimson: #b70052;
@@ -42,7 +43,7 @@
   --topbar-h: 52px;
   --sidebar-w: 256px;
   --sidebar-w-collapsed: 60px;
-  --nav-section: #9fb3ff;
+  --nav-section: #d1d8ff;
 
   /* tons de estado (usar via classes .tone-*) */
   --tone-danger: var(--red-500, #ef4444);

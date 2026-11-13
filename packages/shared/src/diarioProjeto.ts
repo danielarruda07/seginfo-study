@@ -24,6 +24,17 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-12-ferramentas-registros',
+    data: '2026-11-12',
+    titulo: 'Caderno de campo por ferramenta: testes, observações e pendências',
+    descricao:
+      'Cada ferramenta do arsenal ganhou um histórico próprio: registro do teste feito em ambiente autorizado, ' +
+      'resultado (funcionou, parcial, não funcionou), relato com a evidência e o próximo passo. O card mostra ' +
+      'quantos registros e pendências existem. A ideia é transformar "já usei essa ferramenta" em prática documentada.',
+    categoria: 'funcionalidade',
+    tags: ['pentest', 'documentacao', 'pratica'],
+  },
+  {
     id: 'proj-2026-11-12-ui-tinybase',
     data: '2026-11-12',
     titulo: 'Interface com padrão de painel corporativo: menos cor, mais hierarquia',
