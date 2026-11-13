@@ -104,6 +104,12 @@ export const FERRAMENTAS_CATALOGO: FerramentaCatalogo[] = [
     cuidados: 'Crie um usuário de API somente leitura, limitado aos grupos de hosts necessários.',
   },
   {
+    id: 'proxmox-leitura', nome: 'Proxmox: consultar nós, VMs, snapshots e armazenamento', categoria: 'infra',
+    descricao: 'Lê o estado do hipervisor pela API do Proxmox: hosts, máquinas virtuais, configuração, snapshots e espaço em disco.', risco: 'baixo',
+    permissaoSugerida: 'leitura', aprovacaoSugerida: false,
+    cuidados: 'O token de API fica só no servidor. Nomes de VM, endereços e configuração vão para o modelo de IA: use apenas com o laboratório.',
+  },
+  {
     id: 'infra-escrita', nome: 'Alterar infraestrutura (firewall, hipervisor, rede)', categoria: 'infra',
     descricao: 'Aplica mudanças em equipamentos ou VMs.', risco: 'alto',
     permissaoSugerida: 'escrita', aprovacaoSugerida: true,

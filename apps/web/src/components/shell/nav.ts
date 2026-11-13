@@ -108,7 +108,7 @@ export function breadcrumb(pathname: string): string[] {
   if (!active) return [];
   const segs = [active.section.title, active.item.label];
   const extra = EXTRA_SEGMENTS.find((e) => pathname.startsWith(e.prefix));
-  if (extra && active.item.to === extra.parent) segs.push(extra.label);
+  if (extra && active.item.to === extra.parent) segs.push(pathname.endsWith('/playground') ? 'Playground' : extra.label);
   return segs;
 }
 

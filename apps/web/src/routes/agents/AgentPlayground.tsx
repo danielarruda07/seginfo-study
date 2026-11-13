@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { InputTextarea } from 'primereact/inputtextarea';
@@ -6,6 +6,7 @@ import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import type { ExecucaoStatus, PassoExecucao } from '@seginfo/shared';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { TextoMarkdown } from '@/components/ui/TextoMarkdown';
 import { Pill, StatusStrip } from '@/components/InfraKit';
 import {
   getAgente, getRuntime, executarAgente, listExecucoes, getExecucao, erroApi, type Execucao,
@@ -63,12 +64,13 @@ function Passo({ p, n }: { p: PassoExecucao; n: number }) {
           <p className="iv-muted" style={{ whiteSpace: 'pre-wrap', fontSize: '.84rem', margin: '.4rem 0 0' }}>{p.raciocinio}</p>
         </details>
       )}
-      {p.texto && p.parada === 'tool_use' && <p style={{ whiteSpace: 'pre-wrap', fontSize: '.88rem', margin: '.4rem 0 0' }}>{p.texto}</p>}
+      {p.texto && p.parada === 'tool_use' && <div style={{ fontSize: '.88rem', marginTop: '.4rem' }}><TextoMarkdown texto={p.texto} /></div>}
     </div>
   );
 }
 
 function Turno({ agenteId, execId }: { agenteId: string; execId: string }) {
+  const qc = useQueryClient();
   const q = useQuery({
     queryKey: ['agente-execucao', agenteId, execId],
     queryFn: () => getExecucao(agenteId, execId),
@@ -76,6 +78,11 @@ function Turno({ agenteId, execId }: { agenteId: string; execId: string }) {
     refetchInterval: (query) => ((query.state.data as Execucao | undefined)?.status === 'rodando' ? 1200 : false),
   });
   const e = q.data;
+  // quando a execução termina, a lista de execuções anteriores deixa de mostrar "rodando"
+  const terminou = !!e && e.status !== 'rodando';
+  useEffect(() => {
+    if (terminou) qc.invalidateQueries({ queryKey: ['agente-execucoes', agenteId] });
+  }, [terminou, agenteId, qc]);
   if (q.isError) return <Message severity="error" text="Não foi possível carregar esta execução." style={{ width: '100%' }} />;
   if (!e) return <div className="route-loading" role="status"><i className="pi pi-spin pi-spinner" aria-hidden="true" /> Carregando…</div>;
   const st = STATUS_EXEC[e.status];
@@ -106,7 +113,7 @@ function Turno({ agenteId, execId }: { agenteId: string; execId: string }) {
               </span>
             </div>
           </div>
-          {e.resposta && <p style={{ whiteSpace: 'pre-wrap', margin: '.5rem 0 0' }}>{e.resposta}</p>}
+          {e.resposta && <div style={{ marginTop: '.5rem' }}><TextoMarkdown texto={e.resposta} /></div>}
           {e.erro && <p style={{ color: e.status === 'erro' ? 'var(--iv-crit)' : undefined, fontSize: '.86rem', margin: '.5rem 0 0' }}>{e.erro}</p>}
         </div>
       )}
@@ -162,9 +169,11 @@ export function AgentPlayground() {
   }
 
   const ligadas = agente.data?.config.ferramentas ?? [];
-  const reais = new Map((runtime.data?.ferramentas ?? []).map((f) => [f.id, f]));
-  const ativas = ligadas.filter((f) => reais.get(f.id)?.permissao === 'leitura');
-  const semExecucao = ligadas.filter((f) => !ativas.includes(f));
+  // Um item do projeto (id do catálogo) pode virar várias ferramentas reais no servidor.
+  const reais = runtime.data?.ferramentas ?? [];
+  const ativas = reais.filter((r) => r.permissao === 'leitura' && ligadas.some((f) => f.id === r.id));
+  const semExecucao = ligadas.filter((f) => !ativas.some((r) => r.id === f.id));
+  const faltando = [...new Set(ativas.flatMap((r) => r.faltando))];
 
   return (
     <div>
@@ -196,8 +205,13 @@ export function AgentPlayground() {
           <Pill label={runtime.data?.modelo ?? '…'} color="#64748b" />
           <span className="iv-muted" style={{ fontSize: '.84rem' }}>Ferramentas ativas:</span>
           {ativas.length === 0 && <span className="iv-muted" style={{ fontSize: '.84rem' }}>nenhuma (o agente só conversa)</span>}
-          {ativas.map((f) => <Pill key={f.id} label={reais.get(f.id)?.nome ?? f.nome} color="#8b5cf6" />)}
+          {ativas.map((r) => <Pill key={r.nome} label={r.nome} color={r.faltando.length > 0 ? '#94a3b8' : '#8b5cf6'} />)}
         </div>
+        {faltando.length > 0 && (
+          <p style={{ color: 'var(--iv-crit)', fontSize: '.82rem', margin: '.5rem 0 0' }}>
+            As ferramentas em cinza vão falhar: falta definir {faltando.join(' e ')} no serviço da API (Coolify) e fazer redeploy.
+          </p>
+        )}
         {semExecucao.length > 0 && (
           <p className="iv-muted" style={{ fontSize: '.82rem', margin: '.5rem 0 0' }}>
             Ligadas no projeto, mas ainda sem execução no servidor: {semExecucao.map((f) => f.nome).join('; ')}.

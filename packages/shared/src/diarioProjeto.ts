@@ -24,6 +24,20 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-13-agents-proxmox-leitura',
+    data: '2026-11-13',
+    titulo: 'O agente aprendeu a ler o hipervisor',
+    descricao:
+      'O primeiro teste do playground em produção funcionou, e veio a segunda etapa: cinco ferramentas de leitura do ' +
+      'hipervisor (hosts, máquinas virtuais, configuração, snapshots e armazenamento) e um agente modelo que responde ' +
+      'sobre o laboratório consultando na hora. O modelo só enxerga nome, descrição e parâmetros de cada ferramenta; o ' +
+      'token de API e o endereço ficam no servidor. Os parâmetros que entram no caminho da consulta têm formato ' +
+      'restrito, e a conexão confia na autoridade certificadora do próprio cluster em vez de desligar a verificação. ' +
+      'Lição: várias funções estreitas, cada uma com uma descrição clara, valem mais que uma ferramenta genérica.',
+    categoria: 'funcionalidade',
+    tags: ['agentes', 'virtualizacao', 'tool-use', 'tls'],
+  },
+  {
     id: 'proj-2026-11-13-origem-csrf',
     data: '2026-11-13',
     titulo: 'A proteção contra CSRF que bloqueou o próprio dono',

@@ -40,6 +40,13 @@ services:
       - BACKUP_RETENCAO=${BACKUP_RETENCAO:-14}
       # IA do módulo LinkedIn (Claude API). Secret no Coolify; sem ela a IA fica desligada.
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Agents: ferramentas do Proxmox (docs/AGENTS.md). Sem elas, as ferramentas avisam que falta configurar.
+      #   PROXMOX_URL=https://ENDERECO:8006   PROXMOX_TOKEN=usuario@realm!nome=segredo (Secret)
+      #   PROXMOX_CA_B64=pve-root-ca.pem em base64 (recomendado)  ou  PROXMOX_TLS_INSEGURO=true (só laboratório)
+      - PROXMOX_URL=${PROXMOX_URL}
+      - PROXMOX_TOKEN=${PROXMOX_TOKEN}
+      - PROXMOX_CA_B64=${PROXMOX_CA_B64}
+      - PROXMOX_TLS_INSEGURO=${PROXMOX_TLS_INSEGURO:-false}
     expose:
       - "3001"
     # `default`: rede privada do compose (web -> api).

@@ -1,7 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { FastifyInstance } from 'fastify';
 import type { Prisma } from '@prisma/client';
-import { z } from 'zod';
 import {
   AgenteConfigSchema, ExecutarInSchema,
   type AgenteConfig, type ExecucaoStatus, type PassoExecucao,
@@ -9,7 +8,7 @@ import {
 import { prisma } from './db.js';
 import type { AuthedRequest } from './auth.js';
 import { cliente, ErroIA, iaConfigurada, MODELO, traduzirErro } from './ia.js';
-import { buscarNaBase } from './memorias.js';
+import { ferramentasDoId, REGISTRO, type Contexto, type FerramentaReal } from './agenteFerramentas.js';
 
 /**
  * Runtime dos agentes: o laço que transforma um projeto (tabela Agente) em execução.
@@ -20,10 +19,10 @@ import { buscarNaBase } from './memorias.js';
  *   ...até o modelo responder sem pedir ferramenta, ou um limite parar o laço.
  *
  * - O modelo nunca executa nada: ele só PEDE. Quem executa é este arquivo, e só o que está
- *   no REGISTRO abaixo e foi ligado ao agente no editor.
+ *   no REGISTRO (agenteFerramentas.ts) e foi ligado ao agente no editor.
  * - A execução roda em segundo plano e grava cada passo; a tela acompanha por consulta.
  *   Assim uma execução longa não depende de uma requisição HTTP aberta (o túnel corta em ~100 s).
- * - Fase 1: só ferramentas de leitura. Ferramentas de escrita entram junto com a tela de
+ * - Por enquanto só ferramentas de leitura. Ferramentas de escrita entram junto com a tela de
  *   aprovação (o laço pausa, você aprova, o servidor executa).
  */
 
@@ -37,68 +36,6 @@ export const LIMITES = {
   /** mensagens acumuladas numa conversa antes de exigir uma nova */
   mensagensPorConversa: 80,
 } as const;
-
-// ===================== ferramentas reais =====================
-
-interface Contexto {
-  usuarioId: string;
-  config: AgenteConfig;
-}
-
-interface FerramentaReal {
-  /** id no catálogo (apps/web/src/data/agentesFerramentas.ts) */
-  id: string;
-  /** nome que o modelo enxerga */
-  nome: string;
-  permissao: 'leitura' | 'escrita';
-  /** é por este texto que o modelo decide quando chamar a ferramenta */
-  descricao: string;
-  esquema: Anthropic.Beta.BetaTool['input_schema'];
-  rodar(ctx: Contexto, entrada: unknown): Promise<string>;
-}
-
-function definir<T extends z.ZodType>(f: Omit<FerramentaReal, 'rodar'> & {
-  entrada: T;
-  executar(ctx: Contexto, entrada: z.infer<T>): Promise<string>;
-}): FerramentaReal {
-  const { entrada, executar, ...resto } = f;
-  return {
-    ...resto,
-    // A entrada vem do modelo: é validada como qualquer dado externo antes de executar.
-    async rodar(ctx, bruto) {
-      const p = entrada.safeParse(bruto);
-      if (!p.success) throw new Error('Entrada inválida: ' + p.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; '));
-      return executar(ctx, p.data);
-    },
-  };
-}
-
-const REGISTRO: FerramentaReal[] = [
-  definir({
-    id: 'busca-base',
-    nome: 'buscar_base',
-    permissao: 'leitura',
-    descricao:
-      'Busca trechos nas notas pessoais do usuário (Segundo Cérebro), restrita às tags ligadas a este agente. ' +
-      'Use antes de responder qualquer pergunta que dependa do que o usuário anotou. Devolve título, tags e trecho de cada nota encontrada.',
-    esquema: {
-      type: 'object',
-      properties: { consulta: { type: 'string', description: 'Palavras-chave da busca, em português.' } },
-      required: ['consulta'],
-      additionalProperties: false,
-    },
-    entrada: z.object({ consulta: z.string().trim().min(1).max(200) }),
-    async executar(ctx, { consulta }) {
-      const tags = ctx.config.conhecimento.tags;
-      if (tags.length === 0) return 'A base deste agente está vazia: nenhuma tag foi ligada a ele.';
-      const achados = await buscarNaBase(ctx.usuarioId, consulta, tags);
-      if (achados.length === 0) return 'Nenhuma nota encontrada para esta consulta.';
-      return JSON.stringify(achados.map((a) => ({ titulo: a.titulo, tags: a.tags, trecho: a.trecho })));
-    },
-  }),
-];
-
-const porId = new Map(REGISTRO.map((f) => [f.id, f]));
 
 // ===================== prompt do sistema =====================
 
@@ -160,14 +97,16 @@ async function rodar(execId: string, ctx: Contexto, sistema: string, ferramentas
         messages: mensagens,
       }).catch(traduzirErro);
 
-      tokensEntrada += r.usage.input_tokens + (r.usage.cache_read_input_tokens ?? 0) + (r.usage.cache_creation_input_tokens ?? 0);
+      // entrada total da chamada: a parte nova mais o que foi lido ou gravado no cache de prompt
+      const entradaDaChamada = r.usage.input_tokens + (r.usage.cache_read_input_tokens ?? 0) + (r.usage.cache_creation_input_tokens ?? 0);
+      tokensEntrada += entradaDaChamada;
       tokensSaida += r.usage.output_tokens;
 
       const texto = r.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('\n').trim();
       const raciocinio = r.content.flatMap((b) => (b.type === 'thinking' ? [b.thinking] : [])).join('\n').trim();
       passos.push({
         tipo: 'modelo', raciocinio, texto, parada: r.stop_reason ?? 'desconhecida',
-        tokensEntrada: r.usage.input_tokens, tokensSaida: r.usage.output_tokens, ms: Date.now() - t0,
+        tokensEntrada: entradaDaChamada, tokensSaida: r.usage.output_tokens, ms: Date.now() - t0,
       });
 
       // Recusa ou corte por tamanho: o turno não entra no histórico e nenhuma ferramenta dele roda
@@ -242,7 +181,9 @@ export async function registerExecucaoRoutes(app: FastifyInstance) {
     configurada: iaConfigurada(),
     modelo: MODELO,
     limites: LIMITES,
-    ferramentas: REGISTRO.map((f) => ({ id: f.id, nome: f.nome, permissao: f.permissao, descricao: f.descricao })),
+    ferramentas: REGISTRO.map((f) => ({
+      id: f.id, nome: f.nome, permissao: f.permissao, descricao: f.descricao, faltando: f.faltando?.() ?? [],
+    })),
   }));
 
   app.post('/api/agentes/:id/executar', async (req, reply) => {
@@ -276,8 +217,8 @@ export async function registerExecucaoRoutes(app: FastifyInstance) {
 
     // Só entra o que foi ligado ao agente E tem implementação. Escrita fica de fora até existir a tela de aprovação.
     const ferramentas = cfg.data.ferramentas
-      .map((f) => porId.get(f.id))
-      .filter((f): f is FerramentaReal => !!f && f.permissao === 'leitura');
+      .flatMap((f) => ferramentasDoId(f.id))
+      .filter((f) => f.permissao === 'leitura');
 
     const exec = await prisma.agenteExecucao.create({
       data: {

@@ -20,13 +20,28 @@ O código está em `apps/api/src/agenteRuntime.ts`.
 Cada pergunta é uma execução. Para continuar uma conversa, a tela envia `continuarDe` com o id da execução anterior.
 
 ### Ferramentas executáveis
-Só roda o que está no `REGISTRO` do runtime **e** foi ligado ao agente no editor.
+Só roda o que está no `REGISTRO` (`apps/api/src/agenteFerramentas.ts`) **e** foi ligado ao agente no editor. Um id do catálogo pode virar várias ferramentas.
 
-| id do catálogo | nome para o modelo | permissão |
+| id do catálogo | nomes para o modelo | permissão |
 |---|---|---|
 | `busca-base` | `buscar_base` | leitura |
+| `proxmox-leitura` | `proxmox_listar_nos`, `proxmox_listar_vms`, `proxmox_detalhar_vm`, `proxmox_listar_snapshots`, `proxmox_listar_armazenamento` | leitura |
 
 Para criar uma ferramenta nova: acrescente uma entrada com `definir({...})` no `REGISTRO`, usando o mesmo `id` do catálogo em `apps/web/src/data/agentesFerramentas.ts`.
+
+### Proxmox
+Cliente em `apps/api/src/proxmox.ts` (só GET). Variáveis no serviço `seginfo-api` do Coolify:
+
+| Variável | Valor |
+|---|---|
+| `PROXMOX_URL` | `https://ENDERECO:8006` |
+| `PROXMOX_TOKEN` (Secret) | `usuario@realm!nome=segredo` |
+| `PROXMOX_CA_B64` | conteúdo de `/etc/pve/pve-root-ca.pem` em base64 (`base64 -w0 /etc/pve/pve-root-ca.pem`) |
+| `PROXMOX_TLS_INSEGURO` | `true` desliga a verificação do certificado; alternativa à CA, só para laboratório |
+
+Criar o token no Proxmox: Datacenter → Permissions → API Tokens → Add. Com "Privilege Separation" marcado, dê a permissão ao próprio token em Datacenter → Permissions → Add → API Token Permission (caminho `/`, role `PVEAuditor` para leitura ou `Administrator` para o que vier depois).
+
+O container da API precisa alcançar o Proxmox na porta 8006. Enquanto faltar variável, o playground mostra as ferramentas em cinza e diz o que falta.
 
 ## Regras
 - Agente só fica `ativo` sem erros em `revisarAgente()` (ex.: ferramenta de escrita exige aprovação humana). Validado no servidor (422).
@@ -39,7 +54,7 @@ Para criar uma ferramenta nova: acrescente uma entrada com `definir({...})` no `
 
 ## Plano
 1. **Playground com ferramentas de leitura** (feito).
-2. Ferramentas de leitura do Proxmox (nós, VMs, storage, snapshots).
+2. **Ferramentas de leitura do Proxmox** (feito; falta configurar o token e testar contra o Proxmox real).
 3. Tela de aprovação: o laço pausa numa ferramenta de escrita e só continua quando você aprova. Escrita no Proxmox.
 4. FortiGate (API REST) e Catalyst 2960 (SSH): leitura, depois escrita com aprovação e backup da configuração antes de cada mudança.
 5. Gatilhos por agenda e por evento, e avaliações automáticas.

@@ -75,8 +75,12 @@ export interface RuntimeInfo {
   configurada: boolean;
   modelo: string;
   limites: { voltas: number; tokensSaida: number; mensagensPorConversa: number };
-  /** ferramentas do catálogo que o servidor já sabe executar */
-  ferramentas: { id: string; nome: string; permissao: 'leitura' | 'escrita'; descricao: string }[];
+  /** ferramentas que o servidor já sabe executar; um id do catálogo pode ter várias */
+  ferramentas: {
+    id: string; nome: string; permissao: 'leitura' | 'escrita'; descricao: string;
+    /** variáveis de ambiente que faltam no servidor para a ferramenta funcionar */
+    faltando: string[];
+  }[];
 }
 
 export interface ExecucaoResumo {

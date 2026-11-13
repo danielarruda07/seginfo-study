@@ -121,8 +121,10 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
 ## Agents (ver docs/AGENTS.md)
 - [x] Playground/execução de agentes (`agenteRuntime.ts`, só ferramentas de leitura; limites de 8 chamadas e 40 mil tokens de saída)
 - [ ] Migration `20261113000000_agente_execucao` roda no próximo deploy (aditiva)
-- [ ] Testar o playground no ambiente publicado (não foi executado contra a Claude API em desenvolvimento)
-- [ ] Fase 2: ferramentas de leitura do Proxmox; fase 3: tela de aprovação e escrita (plano em docs/AGENTS.md)
+- [x] Testar o playground no ambiente publicado (funcionou em 13/11/2026)
+- [x] Fase 2: ferramentas de leitura do Proxmox (cliente testado só contra servidor simulado)
+- [ ] Definir `PROXMOX_URL`, `PROXMOX_TOKEN` e `PROXMOX_CA_B64` no Coolify e testar o agente "Operador do Proxmox" contra o Proxmox real
+- [ ] Fase 3: tela de aprovação e escrita no Proxmox (plano em docs/AGENTS.md)
 - [ ] Incluir `AgenteExecucao` no backup
 - [ ] Restaurar `agentes` e `agenteAvaliacoes` no `restore-backup.ts` (hoje só exporta)
 - [ ] Migration `20261112000000_agentes` roda no próximo deploy (aditiva)
