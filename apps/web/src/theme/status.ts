@@ -142,4 +142,8 @@ export const TIPO_ATIVO_LABEL: Record<TipoAtivo, string> = {
   rota: 'Rota',
   firewall_policy: 'Firewall',
   servico: 'Serviço',
+  servidor: 'Servidor físico',
+  ap: 'Ponto de acesso',
+  estacao: 'Estação',
+  dispositivo: 'Dispositivo',
 };

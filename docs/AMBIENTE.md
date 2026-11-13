@@ -37,6 +37,21 @@ O teste `apps/api/src/integracoes.test.ts` confere que nenhum valor secreto apar
 
 Variáveis de cada sistema: ver `docs/AGENTS.md` (seções Proxmox, FortiGate e Catalyst 2960) e `.env.example`.
 
+## Descoberta do ambiente real
+
+O inventário é preenchido a partir dos próprios equipamentos, só com leitura, por scripts que ficam **fora do repositório** (na pasta de trabalho do range nesta máquina, junto com o arquivo de acessos). O resultado é um arquivo JSON importado pelo botão **Importar arquivo** de Meu Ambiente; nenhum endereço real passa pelo GitHub.
+
+| Arquivo gerado | Script | O que traz |
+|---|---|---|
+| `import-inventario.json` | `gerar_import.py` | FortiGate (modelo, interfaces e VLANs, policies, VIPs), nós e storages do Proxmox, VMs, switch |
+| `import-rede.json` | `coletar_rede.py` e depois `gerar_import_rede.py` | O que a rede revela: servidores físicos, NAS, pontos de acesso, estações, celulares e outros dispositivos; VMs com hostname, sistema e porta do switch |
+
+**Fontes da descoberta de rede:** concessões DHCP, tabela ARP e detecção de dispositivos do FortiGate; tabela MAC e descrição das portas do switch (só comandos `show`); configuração das VMs e IPs vistos pelo agente QEMU no Proxmox.
+
+**Como cada dispositivo é classificado:** os dados são juntados pelo MAC. Placas com o mesmo prefixo de MAC viram um equipamento só (por exemplo a placa de gerência e a placa de rede de um servidor). A classificação usa o identificador do cliente DHCP (`MSFT` = Windows, `ubnt` = Ubiquiti, `android-dhcp`, `udhcp` = equipamento embarcado), o hostname e a família informada pelo FortiGate. MACs do próprio FortiGate e do switch são ignorados. Celulares com MAC aleatório mudam de endereço com o tempo, então podem aparecer duplicados em importações futuras.
+
+**Atualizar:** rodar os scripts de novo e reimportar. A importação substitui cada ativo pelo mesmo identificador, então o que você editou à mão num ativo descoberto é sobrescrito; anotações próprias ficam melhores num ativo criado por você.
+
 ## Registro de incidentes
 
 ### 13/11/2026: snapshot recusado pelo armazenamento replicado

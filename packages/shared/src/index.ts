@@ -106,6 +106,9 @@ export type Ambiente = z.infer<typeof Ambiente>;
 /** Categoria de ativo de infraestrutura. */
 export const TipoAtivo = z.enum([
   'host', 'vm', 'container', 'vlan', 'firewall_policy', 'storage', 'servico', 'rede', 'switch', 'rota',
+  // equipamentos encontrados na rede (DHCP, ARP, tabela MAC): servidor físico, ponto de acesso,
+  // estação de trabalho e dispositivo (celular, relógio, TV, IoT)
+  'servidor', 'ap', 'estacao', 'dispositivo',
 ]);
 export type TipoAtivo = z.infer<typeof TipoAtivo>;
 

@@ -15,6 +15,10 @@ export const TIPO_ICON: Record<TipoAtivo, string> = {
   rota: 'pi-directions',
   firewall_policy: 'pi-shield',
   servico: 'pi-cog',
+  servidor: 'pi-server',
+  ap: 'pi-wifi',
+  estacao: 'pi-desktop',
+  dispositivo: 'pi-mobile',
 };
 
 export const TIPO_OPTS = (Object.keys(TIPO_ATIVO_LABEL) as TipoAtivo[]).map((value) => ({

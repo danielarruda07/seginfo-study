@@ -24,6 +24,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-13-descoberta-rede',
+    data: '2026-11-13',
+    titulo: 'O inventário passou a vir da própria rede',
+    descricao:
+      'Em vez de digitar o ambiente, o inventário agora nasce dos equipamentos, só com leitura: concessões DHCP, tabela ' +
+      'ARP e detecção de dispositivos do firewall, tabela MAC do switch e configuração das máquinas virtuais. Juntando ' +
+      'tudo pelo MAC apareceram coisas que não estavam documentadas: um servidor físico com placa de gerência ligada à ' +
+      'rede errada, um equipamento embarcado sem nome, o ponto de acesso fora da porta reservada para ele e descrições ' +
+      'de porta desatualizadas. O inventário ganhou tipos novos (servidor físico, ponto de acesso, estação e ' +
+      'dispositivo), e os dados reais entram por arquivo, sem passar pelo repositório público. Lição: o que a rede vê ' +
+      'é o inventário de verdade; a documentação é só a intenção.',
+    categoria: 'funcionalidade',
+    tags: ['inventario', 'descoberta', 'rede', 'gestao-de-ativos'],
+  },
+  {
     id: 'proj-2026-11-13-mapa-acessos',
     data: '2026-11-13',
     titulo: 'Primeira ação real do agente, recusada pelo armazenamento, e um mapa de onde ficam os segredos',
