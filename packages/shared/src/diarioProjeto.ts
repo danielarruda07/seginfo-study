@@ -24,6 +24,18 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-13-acessos-ficha',
+    data: '2026-11-13',
+    titulo: 'Acessos e integrações saem do caminho do inventário',
+    descricao:
+      'O mapa de onde ficam endereços e credenciais abria por padrão, com duas tabelas largas, entre o cabeçalho e os ' +
+      'indicadores do inventário. Virou uma barra de uma linha com o essencial (integrações prontas, estado do cofre, ' +
+      'variáveis preenchidas), que fica destacada só quando há algo a resolver; o detalhe abre numa ficha lateral, com ' +
+      'cartões por integração e as variáveis faltantes marcadas.',
+    categoria: 'funcionalidade',
+    tags: ['ux', 'inventario', 'segredos'],
+  },
+  {
     id: 'proj-2026-11-13-agents-ciclo',
     data: '2026-11-13',
     titulo: 'Home de Agents guiada pelo ciclo de vida',
