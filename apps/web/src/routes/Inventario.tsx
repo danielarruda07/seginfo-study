@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -12,9 +12,11 @@ import type { Ativo } from '@seginfo/shared';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
 import { SearchInput } from '@/components/ui/SearchInput';
-import { EmptyState, Kpi, Pill } from '@/components/InfraKit';
+import { EmptyState, Kpi, Pill, StatusStrip } from '@/components/InfraKit';
 import { useInvalidate } from '@/hooks/useInvalidate';
-import { incorporarNovidadesSeed, inventarioSeedUpdate, listAtivos, removeAtivo, resumoInventario, saveAtivo } from '@/services/inventario';
+import { importarAtivos, incorporarInventarioDocumentado, incorporarNovidadesSeed, inventarioDocumentadoPendente, inventarioSeedUpdate, listAtivos, removeAtivo, resumoInventario, saveAtivo } from '@/services/inventario';
+import { idadeConfirmacao } from '@/lib/confirmacao';
+import { todayISO } from '@/services/store';
 import * as vault from '@/services/vault';
 import { TIPO_ATIVO_LABEL } from '@/theme/status';
 import { ESCOPO_OPTS, ESTADO_META, TIPO_ICON, TIPO_OPTS, contarPorTipo, linhaClasse, noEscopo, ordenarAtivos } from './inventario/regras';
@@ -43,6 +45,7 @@ export function Inventario() {
   const lista = useMemo(() => ordenarAtivos((query.data?.items ?? []).filter((a) => noEscopo(a, f.escopo))), [query.data, f.escopo]);
   const porTipo = useMemo(() => contarPorTipo(todos.filter((a) => noEscopo(a, f.escopo))), [todos, f.escopo]);
   const seed = inventarioSeedUpdate();
+  const documentadosPendentes = inventarioDocumentadoPendente();
   const selIndex = lista.findIndex((a) => a.id === selId);
 
   const atualizar = () => invalidate('ativos', 'resumo-inv');
@@ -67,9 +70,29 @@ export function Inventario() {
     toast.current?.show({ severity: 'success', summary: 'Catálogo incorporado', detail: `${n} ativo(s) adicionados`, life: 3000 });
   }
 
+  function importarDocumentados() {
+    const n = incorporarInventarioDocumentado();
+    atualizar();
+    toast.current?.show({ severity: 'success', summary: 'Referências adicionadas', detail: `${n} ativo(s) documentados. Confirme endereços e estado no equipamento.`, life: 5000 });
+  }
+
+  function importarArquivo(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    file.text().then((texto) => {
+      const r = importarAtivos(texto);
+      atualizar();
+      toast.current?.show({ severity: 'success', summary: 'Arquivo importado', detail: `${r.novos} novo(s), ${r.atualizados} atualizado(s)`, life: 4000 });
+    }).catch(() => {
+      toast.current?.show({ severity: 'error', summary: 'Arquivo inválido', detail: 'Esperado um JSON com a lista de ativos.', life: 5000 });
+    });
+  }
+
   const menuItens = menuAtivo ? [
     { label: 'Ver detalhes', icon: 'pi pi-eye', command: () => setSelId(menuAtivo.id) },
     { label: 'Editar', icon: 'pi pi-pencil', command: () => setForm(menuAtivo) },
+    { label: 'Confirmar hoje', icon: 'pi pi-check-circle', command: () => salvar({ ...menuAtivo, confirmadoEm: todayISO() }) },
     { label: 'Marcar como desativado', icon: 'pi pi-power-off', disabled: menuAtivo.estado === 'desativado', command: () => salvar({ ...menuAtivo, estado: 'desativado' }) },
     { separator: true },
     { label: 'Remover', icon: 'pi pi-trash', className: 'menu-danger', command: () => confirmarRemocao(menuAtivo) },
@@ -84,10 +107,22 @@ export function Inventario() {
       <PageHeader title="Meu Ambiente" subtitle="Inventário do homelab: hosts, VMs, rede e serviços. Credenciais ficam no Cofre."
         actions={<>
           {seed.disponivel && <Button label={`Importar novidades (${seed.quantidade})`} icon="pi pi-download" outlined onClick={importarSeed} />}
+          {documentadosPendentes > 0 && <Button label={`Adicionar dados das notas (${documentadosPendentes})`} icon="pi pi-file-import" severity="warning" outlined onClick={importarDocumentados} tooltip="Inclui referências de docs/DEPLOY.md, docs/PENDENCIAS.md e docs/RADAR.md como itens a conferir" />}
+          <label className="p-button p-component p-button-outlined" style={{ cursor: 'pointer' }}>
+            <span className="p-button-icon p-button-icon-left pi pi-upload" />
+            <span className="p-button-label">Importar arquivo</span>
+            <input type="file" accept="application/json,.json" hidden onChange={importarArquivo} />
+          </label>
           <Button label="Novo ativo" icon="pi pi-plus" onClick={() => setForm(NOVO)} />
         </>} />
 
       <AvisoDadosAntigos />
+
+      {todos.some((a) => a.tags.includes('documentação')) && (
+        <StatusStrip tone="warn" icon="pi-info-circle">
+          Itens com a tag “documentação” vieram de notas do projeto, não de consulta ao equipamento. Confira os endereços e o estado atual antes de executar mudanças; os campos sem fonte verificável ficaram vazios.
+        </StatusStrip>
+      )}
 
       <div className="iv-summary">
         <div className="iv-kpis">
@@ -127,6 +162,16 @@ export function Inventario() {
             </div>
           )} />
           <Column header="Endereço" className="iv-hide-sm" headerClassName="iv-hide-sm" body={(a: Ativo) => a.endereco ? <span className="mono">{a.endereco}</span> : <span className="iv-muted">—</span>} />
+          <Column header="Criticidade" className="iv-hide-sm" headerClassName="iv-hide-sm" body={(a: Ativo) => a.criticidade
+            ? <Pill label={{ critica: 'Crítica', alta: 'Alta', media: 'Média', baixa: 'Baixa' }[a.criticidade]} color={{ critica: '#b91c1c', alta: '#c2410c', media: '#a16207', baixa: '#475569' }[a.criticidade]} />
+            : <span className="iv-muted">—</span>} />
+          <Column header="Exposição" className="iv-hide-sm" headerClassName="iv-hide-sm" body={(a: Ativo) => a.exposicao
+            ? <Pill label={{ publica: 'Pública', interna: 'Interna', restrita: 'Restrita', isolada: 'Isolada' }[a.exposicao]} />
+            : <span className="iv-muted">—</span>} />
+          <Column header="Confirmado" className="iv-hide-sm" headerClassName="iv-hide-sm" body={(a: Ativo) => {
+            const c = idadeConfirmacao(a.confirmadoEm);
+            return <span className={c.rever ? 'iv-muted' : undefined} style={{ fontSize: '.82rem' }} title={a.fonte}>{c.rever && a.confirmadoEm ? `${c.texto} · rever` : c.texto}</span>;
+          }} />
           <Column header="Tags" className="iv-hide-sm" headerClassName="iv-hide-sm" body={(a: Ativo) => (
             <span className="iv-row iv-wrap">{a.tags.slice(0, 2).map((t) => <Pill key={t} label={t} />)}{a.tags.length > 2 && <span className="iv-muted" style={{ fontSize: '.75rem' }}>+{a.tags.length - 2}</span>}</span>
           )} />

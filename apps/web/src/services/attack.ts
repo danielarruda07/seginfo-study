@@ -4,6 +4,7 @@ import { TOPICOS } from '@/data/topicos';
 import { LABS } from '@/data/labs';
 import { getStatusMap } from './catalog';
 import { getProgressoLab } from './inventario';
+import { listPurpleExercises, type PurpleExercise } from './exerciciosPurple';
 import { read, write, registerSchema, todayISO } from './store';
 
 /**
@@ -15,7 +16,7 @@ import { read, write, registerSchema, todayISO } from './store';
  */
 
 const DETECCOES_KEY = 'attack:deteccoes';
-const DeteccaoSchema = z.object({ regra: z.string().max(300), testadoEm: z.string() });
+const DeteccaoSchema = z.object({ regra: z.string().max(300), testadoEm: z.string(), automatico: z.boolean().optional(), exercicioId: z.string().optional() });
 registerSchema(DETECCOES_KEY, { safeParse: (v) => z.record(z.string(), DeteccaoSchema).safeParse(v) });
 
 export type Deteccao = z.infer<typeof DeteccaoSchema>;
@@ -27,6 +28,7 @@ export interface CoberturaTecnica extends Tecnica {
   observada: number;
   topicos: string[];
   labs: string[];
+  exercicios: PurpleExercise[];
 }
 
 const normalizar = (id: string) => id.trim().toUpperCase().split('.')[0];
@@ -49,20 +51,33 @@ export function removerDeteccao(tecnicaId: string): void {
 export function calcularCobertura(observadas: Record<string, number> = {}): CoberturaTecnica[] {
   const status = getStatusMap();
   const deteccoes = getDeteccoes();
+  const todosExercicios = listPurpleExercises();
   return TECNICAS.map((t) => {
     const topicos = TOPICOS.filter((tp) => (tp.mitre ?? []).map(normalizar).includes(t.id));
     const labs = LABS.filter((l) => {
       const anotadas = getProgressoLab(l.id).mitre.map(normalizar);
       return [...(l.mitre ?? []).map(normalizar), ...anotadas].includes(t.id);
     });
+    const exercicios = todosExercicios.filter((e) => e.status !== 'planejado' && e.techniques.some((id) => normalizar(id) === t.id));
+    const resultadoDeteccao = exercicios.find((e) => e.detection !== 'nao_testado');
+    const manual = deteccoes[t.id] ?? null;
+    const detectada = resultadoDeteccao
+      ? resultadoDeteccao.detection === 'detectado'
+        ? {
+          regra: [resultadoDeteccao.logSources, resultadoDeteccao.expectedDetection].filter(Boolean).join(' · ').slice(0, 300),
+          testadoEm: resultadoDeteccao.updatedAt.slice(0, 10), automatico: true, exercicioId: resultadoDeteccao.id,
+        }
+        : null
+      : manual;
     return {
       ...t,
       estudada: topicos.some((tp) => status[tp.id] === 'concluido'),
-      praticada: labs.some((l) => getProgressoLab(l.id).status === 'concluido'),
-      detectada: deteccoes[t.id] ?? null,
+      praticada: labs.some((l) => getProgressoLab(l.id).status === 'concluido') || exercicios.length > 0,
+      detectada,
       observada: observadas[t.id] ?? 0,
       topicos: topicos.map((tp) => tp.id),
       labs: labs.map((l) => l.id),
+      exercicios,
     };
   });
 }

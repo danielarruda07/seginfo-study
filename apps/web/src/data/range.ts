@@ -1,4 +1,5 @@
 import type { RangeAlvo, RangeChecklistItem } from '@seginfo/shared';
+import { RANGE_DETALHES } from './rangeDetalhes';
 
 /**
  * Catálogo do "Range Vulnerável": segmento isolado e propositalmente exposto para
@@ -107,7 +108,7 @@ export const RANGE_ALVOS: RangeAlvo[] = [
   },
 ];
 
-export const RANGE_CHECKLIST: RangeChecklistItem[] = [
+const CHECKLIST_BASE: RangeChecklistItem[] = [
   {
     id: 'range-ck-vlan',
     grupo: 'rede',
@@ -349,3 +350,9 @@ export const RANGE_CHECKLIST: RangeChecklistItem[] = [
     referencia: 'docs/IDEIAS_LAB.md — Lab 11',
   },
 ];
+
+/** Checklist completo: cada etapa com os recursos a criar e o prompt de IA (data/rangeDetalhes.ts). */
+export const RANGE_CHECKLIST: RangeChecklistItem[] = CHECKLIST_BASE.map((item) => ({
+  ...item,
+  ...RANGE_DETALHES[item.id],
+}));

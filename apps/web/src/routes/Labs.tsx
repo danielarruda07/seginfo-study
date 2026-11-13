@@ -7,7 +7,7 @@ import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { Link } from '@tanstack/react-router';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { StatusStrip, Chip, Pill } from '@/components/InfraKit';
+import { StatusStrip, Chip, Pill, Kpi } from '@/components/InfraKit';
 import { DetailHeader, DetailLayout, DetailSection } from '@/components/ui/Detail';
 import { listLabs, getAtivo, getProgressoLab, saveProgressoLab, ESTADO_LAB_LABEL, type EstadoLab, type ProgressoLab } from '@/services/inventario';
 import { DOMINIO_LAB } from '@/theme/status';
@@ -15,6 +15,8 @@ import type { Lab } from '@seginfo/shared';
 import { getTopico } from '@/services/catalog';
 import { addPost, listPosts } from '@/services/sessoes';
 import { useInvalidate } from '@/hooks/useInvalidate';
+import { PurpleExerciseJournal } from './labs/PurpleExerciseJournal';
+import { listPurpleExercises } from '@/services/exerciciosPurple';
 
 type Dominio = Lab['dominio'];
 const FILTROS: Dominio[] = ['blue', 'red', 'purple', 'infra'];
@@ -35,6 +37,11 @@ export function Labs() {
   );
 
   const labs = (data ?? []).filter((l) => (!dominio || l.dominio === dominio) && (!status || progresso[l.id]?.status === status) && (!search || `${l.titulo} ${l.objetivo}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())));
+  const exercicios = listPurpleExercises();
+  const executados = exercicios.filter((e) => e.status !== 'planejado');
+  const detectados = executados.filter((e) => e.detection === 'detectado').length;
+  const lacunas = executados.filter((e) => e.detection === 'parcial' || e.detection === 'nao_detectado').length;
+  const retestes = executados.filter((e) => e.retestResult === 'aprovado').length;
   const invalidate = useInvalidate();
 
   function salvar(labId: string, novo: ProgressoLab) {
@@ -48,6 +55,14 @@ export function Labs() {
       <StatusStrip tone="ok" icon="pi-desktop">
         {labs.length} labs. Cada um referencia equipamentos que você realmente tem — pratique e documente para o LinkedIn.
       </StatusStrip>
+
+      <div className="iv-kpis iv-mt">
+        <Kpi label="Execuções Red × Blue" value={executados.length} />
+        <Kpi label="Detecções confirmadas" value={detectados} />
+        <Kpi label="Lacunas de detecção" value={lacunas} />
+        <Kpi label="Retestes aprovados" value={retestes} />
+      </div>
+      <p className="iv-muted" style={{ marginTop: '.4rem' }}>Exercícios medem controles testados; eventos reais do Radar permanecem separados.</p>
 
       <div className="iv-row iv-wrap iv-mt">
         <Chip label="Todos" active={!dominio} onClick={() => setDominio(undefined)} />
@@ -141,6 +156,7 @@ function LabDetalhe({ lab, progresso, onSave, onDraft }: { lab: Lab; progresso: 
       </DetailSection>
 
       <StatusStrip tone="ok" icon="pi-flag-fill"><strong>Resultado esperado:</strong> {lab.resultadoEsperado}</StatusStrip>
+      <PurpleExerciseJournal lab={lab} />
       {progresso.status === 'concluido' && <Button className="iv-mt" label="Criar rascunho para LinkedIn" icon="pi pi-linkedin" onClick={onDraft} />}
     </DetailLayout>
   );

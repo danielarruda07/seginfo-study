@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Kpi, StatusStrip, Chip, Pill } from '@/components/InfraKit';
 import { getKev, getTermos, setTermos, TERMOS_PADRAO } from '@/services/kev';
+import { listAtivos } from '@/services/inventario';
+import { listPurpleExercises } from '@/services/exerciciosPurple';
 
 const PERIODOS = [
   { dias: 30, label: '30 dias' },
@@ -28,6 +31,17 @@ export function Ameacas() {
   const hoje = new Date().toISOString().slice(0, 10);
   const ransomware = itens.filter((i) => i.ransomware).length;
   const recentes = itens.filter((i) => i.adicionadoEm >= new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10)).length;
+  const ativos = listAtivos({ rows: 10_000 }).items;
+  const exercicios = listPurpleExercises();
+  const normalizar = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+  function ativosRelacionados(fabricante: string, produto: string, termo: string) {
+    const palavras = [produto, fabricante, termo].flatMap((v) => normalizar(v).split(/[^a-z0-9]+/)).filter((v) => v.length >= 4);
+    return ativos.filter((a) => {
+      const texto = normalizar([a.nome, a.funcao, ...a.tags, ...Object.values(a.detalhes)].join(' '));
+      return palavras.some((p) => texto.includes(p));
+    });
+  }
 
   return (
     <div>
@@ -87,6 +101,19 @@ export function Ameacas() {
           <div className="iv-col iv-mt">
             {itens.map((i) => (
               <article key={i.cve} className="iv-card kev-item">
+                {(() => { const relacionados = ativosRelacionados(i.fabricante, i.produto, i.termo); return relacionados.length > 0 && (
+                  <div className="iv-row iv-wrap kev-related-assets">
+                    <strong>Possíveis ativos afetados:</strong>
+                    {relacionados.map((a) => <Link key={a.id} to="/ambiente" className="kev-related-assets__link">{a.nome}</Link>)}
+                  </div>
+                ); })()}
+                <div className="iv-row iv-wrap kev-related-assets">
+                  <strong>Validação:</strong>
+                  {exercicios.filter((e) => e.findingReference.toUpperCase() === i.cve.toUpperCase()).length > 0
+                    ? exercicios.filter((e) => e.findingReference.toUpperCase() === i.cve.toUpperCase()).map((e) => <Pill key={e.id} label={`${e.status.replaceAll('_', ' ')} · reteste ${e.retestResult}`} />)
+                    : <span className="iv-muted">sem exercício ou reteste registrado</span>}
+                  <Link to="/labs" className="kev-related-assets__link">Abrir lab de validação</Link>
+                </div>
                 <div className="iv-row iv-wrap" style={{ justifyContent: 'space-between' }}>
                   <a href={`https://nvd.nist.gov/vuln/detail/${i.cve}`} target="_blank" rel="noreferrer noopener"><strong style={{ fontFamily: 'monospace' }}>{i.cve}</strong></a>
                   <div className="iv-row iv-wrap">
@@ -98,6 +125,7 @@ export function Ameacas() {
                 <h4>{i.nome}</h4>
                 <p>{i.descricao}</p>
                 <p className="iv-muted"><strong>Ação:</strong> {i.acao}</p>
+                <p className="iv-muted" style={{ fontSize: '.8rem' }}>O vínculo com ativos é uma sugestão por nome/tag; confirme produto, edição e versão antes de concluir aplicabilidade.</p>
                 <p className="iv-muted">Entrou no KEV em {i.adicionadoEm}.</p>
               </article>
             ))}

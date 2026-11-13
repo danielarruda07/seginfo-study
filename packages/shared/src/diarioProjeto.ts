@@ -83,6 +83,33 @@ export const DIARIO_PROJETO: EntradaDiario[] = [
     tags: ['agentes', 'ia', 'tool-use', 'automacao'],
   },
   {
+    id: 'proj-2026-11-12-confirmado-em',
+    data: '2026-11-12',
+    titulo: 'Inventário com prazo de validade: toda informação tem data de confirmação',
+    descricao:
+      'Ativos do ambiente e credenciais do cofre passaram a registrar quando foram conferidos pela última vez e de onde ' +
+      'veio a confirmação. Depois de 90 dias o registro aparece como "vale conferir de novo". O inventário, as variáveis ' +
+      'do laboratório e o cofre ganharam importação por arquivo, o que permite carregar o que foi lido direto dos ' +
+      'equipamentos por um acesso somente leitura, sem que nenhum dado real passe pelo repositório. Lição: documentação ' +
+      'de rede sem data envelhece em silêncio; com data, dá para saber em que confiar.',
+    categoria: 'funcionalidade',
+    tags: ['inventario', 'cofre', 'documentacao', 'automacao'],
+  },
+  {
+    id: 'proj-2026-11-12-range-prompts',
+    data: '2026-11-12',
+    titulo: 'Cada etapa do range virou um plano executável: recursos exatos e prompt pronto',
+    descricao:
+      'O checklist do range vulnerável agora diz, etapa por etapa, o que precisa existir no ambiente (VLAN, objetos e ' +
+      'regras de firewall, máquinas virtuais, aplicações, snapshots) com nomes padronizados. Cada etapa traz um prompt de ' +
+      'IA já montado com o contexto do laboratório, as regras de isolamento e o formato de resposta (pré-requisitos, ' +
+      'comandos, validação e rollback); dá para marcar pedidos extras ou editar antes de copiar. Os dados reais do ' +
+      'ambiente ficam só no navegador, fora do repositório. Lição do desenho: tráfego entre máquinas do mesmo segmento ' +
+      'não passa pelo firewall nem pelo espelhamento do switch, então isso precisa ser decidido antes de criar regras.',
+    categoria: 'funcionalidade',
+    tags: ['range', 'ia', 'documentacao', 'segmentacao'],
+  },
+  {
     id: 'proj-2026-11-12-ferramentas-registros',
     data: '2026-11-12',
     titulo: 'Caderno de campo por ferramenta: testes, observações e pendências',
