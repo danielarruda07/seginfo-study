@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { filterNav, findActive, secoesAbertas } from './nav';
+import { RodapeVersao } from './RodapeVersao';
 
 const OPEN_KEY = 'seginfo.menu.secoes';
 
@@ -74,6 +75,7 @@ export function SideNav({ pathname, collapsed, onNavigate }: SideNavProps) {
         })}
         {sections.length === 0 && <p className="app-nav__empty">Nada no menu com “{term}”.</p>}
       </nav>
+      <RodapeVersao />
     </aside>
   );
 }

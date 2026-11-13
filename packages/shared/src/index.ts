@@ -415,3 +415,4 @@ export type IngestBatch = z.infer<typeof IngestBatchSchema>;
 export * from './diarioProjeto';
 export * from './linkedin';
 export * from './agentes';
+export * from './versao';

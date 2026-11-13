@@ -126,6 +126,17 @@
 
 /* ---------- modo só ícones: hover/foco abre o menu por cima do conteúdo ---------- */
 .app-sidebar { width: var(--sidebar-w); transition: width .15s ease, box-shadow .15s ease; }
+
+/* rodapé com a versão: fica preso no fim do menu, mesmo com rolagem */
+.app-version {
+  position: sticky; bottom: -1.5rem; margin: 1rem -.6rem -1.5rem; padding: .5rem .8rem .7rem;
+  background: var(--sidebar-bg); border-top: 1px solid rgba(255, 255, 255, .12);
+  font-size: .72rem; line-height: 1.35; color: rgba(248, 250, 252, .7);
+}
+.app-version strong { color: #f8fafc; font-weight: 700; }
+.app-version__alerta { color: #fbbf24; }
+.app-sidebar[data-collapsed='true']:not(:hover):not(:focus-within) .app-version { margin-inline: -.45rem; padding-inline: .2rem; text-align: center; }
+.app-sidebar[data-collapsed='true']:not(:hover):not(:focus-within) .app-version__detalhe { display: none; }
 .app-sidebar[data-collapsed='true'] { z-index: 55; width: var(--sidebar-w-collapsed); padding-inline: .45rem; overflow-x: hidden; }
 .app-sidebar[data-collapsed='true']:not(:hover):not(:focus-within) .app-sidebar__search,
 .app-sidebar[data-collapsed='true']:not(:hover):not(:focus-within) .app-nav__title,

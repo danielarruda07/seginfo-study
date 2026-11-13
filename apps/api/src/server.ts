@@ -8,6 +8,7 @@ import { iniciarRetencao } from './radar.js';
 import { iniciarBackupAutomatico } from './backup.js';
 import { iniciarLimpezaMemorias } from './memorias.js';
 import { requireIdentity } from './auth.js';
+import { VERSAO } from '@seginfo/shared';
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
 
@@ -17,7 +18,8 @@ await app.register(cors, {
   allowedHeaders: ['Content-Type'],
 });
 
-const health = async () => ({ ok: true, service: 'seginfo-api', time: new Date().toISOString() });
+// versao: o rodapé do front compara com a dele para saber se os dois containers foram atualizados
+const health = async () => ({ ok: true, service: 'seginfo-api', versao: VERSAO, time: new Date().toISOString() });
 app.get('/health', health);
 // O frontend e o proxy de produção acessam a API sob /api/.
 app.get('/api/health', health);

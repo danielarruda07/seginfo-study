@@ -4,6 +4,8 @@ import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
   plugins: [react()],
+  // momento do build, mostrado no rodapé ao lado da versão
+  define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()) },
   test: { environment: 'node', include: ['src/**/*.test.ts'], restoreMocks: true },
   resolve: {
     alias: {
