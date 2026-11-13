@@ -47,6 +47,21 @@ services:
       - PROXMOX_TOKEN=${PROXMOX_TOKEN}
       - PROXMOX_CA_B64=${PROXMOX_CA_B64}
       - PROXMOX_TLS_INSEGURO=${PROXMOX_TLS_INSEGURO:-false}
+      # Agents: ferramentas do FortiGate (docs/AGENTS.md). Token de um admin REST API dedicado.
+      #   FORTIGATE_URL=https://ENDERECO:PORTA   FORTIGATE_TOKEN=token do admin REST API (Secret)
+      - FORTIGATE_URL=${FORTIGATE_URL}
+      - FORTIGATE_TOKEN=${FORTIGATE_TOKEN}
+      - FORTIGATE_TLS_INSEGURO=${FORTIGATE_TLS_INSEGURO:-false}
+      # Agents: ferramentas do Catalyst 2960, por SSH (docs/AGENTS.md). Senha OU chave privada.
+      #   CATALYST_HOST=IP do switch   CATALYST_USER=usuario   CATALYST_PASSWORD=senha (Secret)
+      - CATALYST_HOST=${CATALYST_HOST}
+      - CATALYST_PORT=${CATALYST_PORT:-22}
+      - CATALYST_USER=${CATALYST_USER}
+      - CATALYST_PASSWORD=${CATALYST_PASSWORD}
+      - CATALYST_PRIVATE_KEY_B64=${CATALYST_PRIVATE_KEY_B64}
+      # Agents: controle de custo diário (docs/AGENTS.md). Opcional; sem definir, usa os padrões (60 e 30).
+      - AGENTES_LIMITE_DIARIO_EXECUCOES=${AGENTES_LIMITE_DIARIO_EXECUCOES:-60}
+      - AGENTES_LIMITE_DIARIO_ESCRITAS=${AGENTES_LIMITE_DIARIO_ESCRITAS:-30}
     expose:
       - "3001"
     # `default`: rede privada do compose (web -> api).

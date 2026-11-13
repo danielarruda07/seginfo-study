@@ -116,10 +116,28 @@ export const FERRAMENTAS_CATALOGO: FerramentaCatalogo[] = [
     cuidados: 'Cada ação para na tela de aprovação e só roda depois da sua decisão. Reverter e apagar snapshot não têm volta: leia o resumo antes de aprovar.',
   },
   {
-    id: 'infra-escrita', nome: 'Alterar infraestrutura (firewall, hipervisor, rede)', categoria: 'infra',
-    descricao: 'Aplica mudanças em equipamentos ou VMs.', risco: 'alto',
+    id: 'fortigate-leitura', nome: 'FortiGate: consultar interfaces, policies, endereços e sessões', categoria: 'infra',
+    descricao: 'Lê a configuração do firewall pela API REST do FortiGate: interfaces/VLANs, regras de firewall e objetos de endereço.', risco: 'baixo',
+    permissaoSugerida: 'leitura', aprovacaoSugerida: false,
+    cuidados: 'O token de API fica só no servidor. A configuração do firewall vai para o modelo de IA: use apenas com o laboratório.',
+  },
+  {
+    id: 'fortigate-escrita', nome: 'FortiGate: criar e ativar/desativar policies de firewall', categoria: 'infra',
+    descricao: 'Cria uma nova regra de firewall (entra desativada por padrão) ou liga/desliga uma regra existente pelo id.', risco: 'alto',
     permissaoSugerida: 'escrita', aprovacaoSugerida: true,
-    cuidados: 'Um agente propõe; um humano aprova e executa. Nunca autônomo em produção, sempre com janela de mudança e plano de volta.',
+    cuidados: 'Cada ação para na tela de aprovação. Uma policy mal configurada pode isolar ou expor um segmento: confira origem/destino/ação no resumo antes de aprovar.',
+  },
+  {
+    id: 'catalyst-leitura', nome: 'Catalyst 2960: consultar VLANs, interfaces, trunk e SPAN', categoria: 'infra',
+    descricao: 'Lê o estado do switch por SSH (show vlan brief, show interfaces status/trunk, show monitor session).', risco: 'baixo',
+    permissaoSugerida: 'leitura', aprovacaoSugerida: false,
+    cuidados: 'A senha/chave SSH fica só no servidor. A saída (texto de terminal do IOS) vai para o modelo de IA: use apenas com o laboratório.',
+  },
+  {
+    id: 'catalyst-escrita', nome: 'Catalyst 2960: criar VLAN, configurar porta, trunk e SPAN', categoria: 'infra',
+    descricao: 'Aplica mudanças por SSH com comandos fixos e validados (nunca shell livre): criar VLAN, configurar porta access, acrescentar VLAN a um trunk existente, configurar SPAN.', risco: 'alto',
+    permissaoSugerida: 'escrita', aprovacaoSugerida: true,
+    cuidados: 'Cada ação para na tela de aprovação. "Acrescentar ao trunk" nunca substitui a lista existente; ainda assim, uma porta errada pode isolar o switch da gerência — confira a interface no resumo.',
   },
   {
     id: 'mcp-servidor', nome: 'Servidor MCP', categoria: 'mcp',

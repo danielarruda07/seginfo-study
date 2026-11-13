@@ -3,6 +3,8 @@ import { z } from 'zod';
 import type { AgenteConfig } from '@seginfo/shared';
 import { buscarNaBase } from './memorias.js';
 import { proxmoxAlterar, proxmoxFaltando, proxmoxGet } from './proxmox.js';
+import { fortigateAlterar, fortigateFaltando, fortigateGet } from './fortigate.js';
+import { catalystExecutar, catalystFaltando } from './catalyst.js';
 
 /**
  * Ferramentas que o servidor sabe executar para os agentes.
@@ -262,6 +264,269 @@ const PROXMOX_ESCRITA: FerramentaReal[] = [
   }),
 ];
 
+// ---------- FortiGate (leitura) ----------
+
+const fortigate = { id: 'fortigate-leitura', permissao: 'leitura', faltando: fortigateFaltando } as const;
+const resultadosCmdb = (dados: unknown): Record<string, unknown>[] => {
+  const r = (dados as { results?: unknown })?.results;
+  return Array.isArray(r) ? (r as Record<string, unknown>[]) : [];
+};
+
+const FORTIGATE: FerramentaReal[] = [
+  definir({
+    ...fortigate,
+    nome: 'fortigate_listar_interfaces',
+    descricao: 'Lista as interfaces e sub-interfaces VLAN do FortiGate, com nome, IP, zona e status. Use para confirmar o que já existe antes de criar algo.',
+    esquema: semParametros,
+    entrada: z.object({}),
+    async executar() {
+      const dados = resultadosCmdb(await fortigateGet('/api/v2/cmdb/system/interface'));
+      return JSON.stringify(dados.map((i: Record<string, unknown>) => ({
+        nome: i.name, alias: i.alias, ip: i['ip'], vlanid: i.vlanid, interfaceBase: i.interface, zona: i.role, status: i.status,
+      })));
+    },
+  }),
+  definir({
+    ...fortigate,
+    nome: 'fortigate_listar_policies',
+    descricao: 'Lista as policies de firewall (regras) na ordem em que são avaliadas, com origem, destino, serviço, ação e status.',
+    esquema: semParametros,
+    entrada: z.object({}),
+    async executar() {
+      const dados = resultadosCmdb(await fortigateGet('/api/v2/cmdb/firewall/policy'));
+      return JSON.stringify(dados.map((p: Record<string, unknown>) => ({
+        id: p.policyid, nome: p.name, origemInterface: p.srcintf, destinoInterface: p.dstintf,
+        origemEndereco: p.srcaddr, destinoEndereco: p.dstaddr, servico: p.service, acao: p.action,
+        status: p.status, log: p.logtraffic,
+      })));
+    },
+  }),
+  definir({
+    ...fortigate,
+    nome: 'fortigate_listar_enderecos',
+    descricao: 'Lista os objetos de endereço (firewall address) cadastrados: nome, tipo e sub-rede/host/FQDN.',
+    esquema: semParametros,
+    entrada: z.object({}),
+    async executar() {
+      const dados = resultadosCmdb(await fortigateGet('/api/v2/cmdb/firewall/address'));
+      return JSON.stringify(dados.map((a: Record<string, unknown>) => ({ nome: a.name, tipo: a.type, subnet: a.subnet, fqdn: a.fqdn, comentario: a.comment })));
+    },
+  }),
+  definir({
+    ...fortigate,
+    nome: 'fortigate_contar_sessoes_negadas',
+    descricao: 'Conta sessões negadas recentes do log de tráfego, agrupadas por policy — útil para confirmar que uma regra de isolamento está funcionando.',
+    esquema: {
+      type: 'object',
+      properties: { minutos: { type: 'integer', description: 'Janela de tempo a olhar, em minutos (padrão 60, máximo 1440).' } },
+      additionalProperties: false,
+    },
+    entrada: z.object({ minutos: z.number().int().min(1).max(1440).optional() }),
+    async executar(_ctx, { minutos }) {
+      const dados = await fortigateGet(`/api/v2/monitor/firewall/policy/select?policyid=0`).catch(() => undefined);
+      // Monitor de log de tráfego varia por versão/licença de disco; devolve o que der, sem inventar campo.
+      return JSON.stringify({ aviso: 'Consulta de log depende do disco de log do FortiGate estar habilitado.', janelaMinutos: minutos ?? 60, amostra: dados ?? null });
+    },
+  }),
+];
+
+// ---------- FortiGate (escrita) ----------
+// Nenhuma destas roda sem aprovação: o runtime pausa a execução e mostra o resumo na tela.
+
+const fortigateEscrita = { id: 'fortigate-escrita', permissao: 'escrita', faltando: fortigateFaltando } as const;
+const AVISO_FGT = 'Altera a configuração do FortiGate: o usuário precisa aprovar na tela antes de executar.';
+const NomeFortigate = z.string().min(1).max(63).regex(/^[^"\n]+$/, 'não pode conter aspas duplas ou quebra de linha');
+
+const FORTIGATE_ESCRITA: FerramentaReal[] = [
+  definir({
+    ...fortigateEscrita,
+    nome: 'fortigate_criar_policy',
+    descricao:
+      'Cria uma nova policy (regra) de firewall. Use nomes de interface e de endereço que já existem (confirme com ' +
+      `fortigate_listar_interfaces/fortigate_listar_enderecos antes). A policy entra desativada (status=disable) por padrão, para revisão antes de valer. ${AVISO_FGT}`,
+    esquema: {
+      type: 'object',
+      properties: {
+        nome: { type: 'string', description: 'Nome da policy.' },
+        origemInterface: { type: 'string', description: 'Nome da interface de origem (ex.: a VLAN do range).' },
+        destinoInterface: { type: 'string', description: 'Nome da interface de destino.' },
+        origemEndereco: { type: 'string', description: 'Nome do objeto de endereço de origem (ex.: "all" ou um address group).' },
+        destinoEndereco: { type: 'string', description: 'Nome do objeto de endereço de destino.' },
+        servico: { type: 'string', description: 'Nome do serviço ou service group (ex.: "ALL", "HTTPS").' },
+        acao: { type: 'string', enum: ['accept', 'deny'], description: 'accept libera, deny bloqueia.' },
+        ativarAgora: { type: 'boolean', description: 'true cria já habilitada. Padrão false (entra desativada para revisão).' },
+      },
+      required: ['nome', 'origemInterface', 'destinoInterface', 'origemEndereco', 'destinoEndereco', 'servico', 'acao'],
+      additionalProperties: false,
+    },
+    entrada: z.object({
+      nome: NomeFortigate, origemInterface: NomeFortigate, destinoInterface: NomeFortigate,
+      origemEndereco: NomeFortigate, destinoEndereco: NomeFortigate, servico: NomeFortigate,
+      acao: z.enum(['accept', 'deny']), ativarAgora: z.boolean().optional(),
+    }),
+    resumo: (v) => `Criar a policy "${v.nome}" (${v.acao === 'accept' ? 'permitir' : 'negar'} ${v.origemInterface} → ${v.destinoInterface}, serviço ${v.servico})${v.ativarAgora ? ', já ATIVA' : ', desativada para revisão'}`,
+    executar: (_ctx, v) => fortigateAlterar('POST', '/api/v2/cmdb/firewall/policy', {
+      name: v.nome, srcintf: [{ name: v.origemInterface }], dstintf: [{ name: v.destinoInterface }],
+      srcaddr: [{ name: v.origemEndereco }], dstaddr: [{ name: v.destinoEndereco }], service: [{ name: v.servico }],
+      action: v.acao, status: v.ativarAgora ? 'enable' : 'disable', schedule: 'always', logtraffic: 'all',
+    }).then((r) => JSON.stringify(r)),
+  }),
+  definir({
+    ...fortigateEscrita,
+    nome: 'fortigate_definir_status_policy',
+    descricao: `Ativa ou desativa uma policy existente pelo id (confirme o id com fortigate_listar_policies antes). ${AVISO_FGT}`,
+    esquema: {
+      type: 'object',
+      properties: { policyId: { type: 'integer', description: 'ID da policy (campo "id" de fortigate_listar_policies).' }, ativar: { type: 'boolean', description: 'true habilita, false desabilita.' } },
+      required: ['policyId', 'ativar'],
+      additionalProperties: false,
+    },
+    entrada: z.object({ policyId: z.number().int().positive(), ativar: z.boolean() }),
+    resumo: (v) => `${v.ativar ? 'Ativar' : 'Desativar'} a policy ${v.policyId}`,
+    executar: (_ctx, v) => fortigateAlterar('PUT', `/api/v2/cmdb/firewall/policy/${v.policyId}`, { status: v.ativar ? 'enable' : 'disable' }).then((r) => JSON.stringify(r)),
+  }),
+];
+
+// ---------- Catalyst 2960 (leitura) ----------
+// A saída é a resposta CRUA do IOS (texto de terminal): não há parsing estruturado aqui de propósito,
+// o modelo lê o texto como um operador humano leria.
+
+const catalyst = { id: 'catalyst-leitura', permissao: 'leitura', faltando: catalystFaltando } as const;
+
+const CATALYST: FerramentaReal[] = [
+  definir({
+    ...catalyst,
+    nome: 'catalyst_mostrar_vlans',
+    descricao: 'Mostra as VLANs cadastradas no switch (show vlan brief): id, nome, status e portas atribuídas.',
+    esquema: semParametros,
+    entrada: z.object({}),
+    executar: () => catalystExecutar(['show vlan brief']),
+  }),
+  definir({
+    ...catalyst,
+    nome: 'catalyst_mostrar_interfaces',
+    descricao: 'Mostra o resumo das interfaces (show interfaces status): porta, VLAN, modo (trunk/access), velocidade e status de link.',
+    esquema: semParametros,
+    entrada: z.object({}),
+    executar: () => catalystExecutar(['show interfaces status']),
+  }),
+  definir({
+    ...catalyst,
+    nome: 'catalyst_mostrar_trunk',
+    descricao: 'Mostra as portas trunk e quais VLANs cada uma permite (show interfaces trunk). Use para confirmar se uma VLAN já está liberada num trunk.',
+    esquema: semParametros,
+    entrada: z.object({}),
+    executar: () => catalystExecutar(['show interfaces trunk']),
+  }),
+  definir({
+    ...catalyst,
+    nome: 'catalyst_mostrar_span',
+    descricao: 'Mostra as sessões de monitor/SPAN configuradas (show monitor session all).',
+    esquema: semParametros,
+    entrada: z.object({}),
+    executar: () => catalystExecutar(['show monitor session all']),
+  }),
+  definir({
+    ...catalyst,
+    nome: 'catalyst_mostrar_running_config_interface',
+    descricao: 'Mostra a configuração atual de uma interface específica (show running-config interface X). Use antes de propor uma mudança nela.',
+    esquema: {
+      type: 'object',
+      properties: { interface: { type: 'string', description: 'Nome exato da interface, ex.: "GigabitEthernet0/5" ou "Vlan80".' } },
+      required: ['interface'],
+      additionalProperties: false,
+    },
+    entrada: z.object({ interface: z.string().min(1).max(40).regex(/^[A-Za-z0-9/.]+$/, 'use só o nome da interface, sem espaços ou comandos extras') }),
+    executar: (_ctx, { interface: iface }) => catalystExecutar([`show running-config interface ${iface}`]),
+  }),
+];
+
+// ---------- Catalyst 2960 (escrita) ----------
+// Funções estreitas e validadas por schema, nunca "rodar este comando livre": a lista de comandos
+// que chega ao switch é sempre montada aqui, nunca escrita pelo modelo diretamente.
+
+const catalystEscrita = { id: 'catalyst-escrita', permissao: 'escrita', faltando: catalystFaltando } as const;
+const AVISO_SW = 'Altera a configuração do switch: o usuário precisa aprovar na tela antes de executar.';
+const NomeVlan = z.string().min(1).max(32).regex(/^[A-Za-z0-9_-]+$/, 'use letras, números, "_" e "-"');
+const Interface = z.string().min(1).max(40).regex(/^[A-Za-z0-9/.]+$/, 'use só o nome da interface (ex.: GigabitEthernet0/5)');
+
+const CATALYST_ESCRITA: FerramentaReal[] = [
+  definir({
+    ...catalystEscrita,
+    nome: 'catalyst_criar_vlan',
+    descricao: `Cria uma VLAN no banco de VLANs do switch (sem atribuir nenhuma porta ainda). ${AVISO_SW}`,
+    esquema: {
+      type: 'object',
+      properties: { vlanId: { type: 'integer', description: 'Número da VLAN (1-4094).' }, nome: { type: 'string', description: 'Nome da VLAN, ex.: "RANGE".' } },
+      required: ['vlanId', 'nome'],
+      additionalProperties: false,
+    },
+    entrada: z.object({ vlanId: z.number().int().min(1).max(4094), nome: NomeVlan }),
+    resumo: (v) => `Criar a VLAN ${v.vlanId} com o nome "${v.nome}"`,
+    executar: (_ctx, v) => catalystExecutar([
+      'configure terminal', `vlan ${v.vlanId}`, `name ${v.nome}`, 'exit', 'exit', 'show vlan brief',
+    ]),
+  }),
+  definir({
+    ...catalystEscrita,
+    nome: 'catalyst_configurar_porta_access',
+    descricao: `Configura uma porta como access numa VLAN (switchport mode access + switchport access vlan). ${AVISO_SW}`,
+    esquema: {
+      type: 'object',
+      properties: { interface: { type: 'string' }, vlanId: { type: 'integer', description: 'VLAN de acesso dessa porta.' } },
+      required: ['interface', 'vlanId'],
+      additionalProperties: false,
+    },
+    entrada: z.object({ interface: Interface, vlanId: z.number().int().min(1).max(4094) }),
+    resumo: (v) => `Configurar ${v.interface} como access na VLAN ${v.vlanId}`,
+    executar: (_ctx, v) => catalystExecutar([
+      'configure terminal', `interface ${v.interface}`, 'switchport mode access', `switchport access vlan ${v.vlanId}`, 'exit', 'exit',
+      `show running-config interface ${v.interface}`,
+    ]),
+  }),
+  definir({
+    ...catalystEscrita,
+    nome: 'catalyst_adicionar_vlan_ao_trunk',
+    descricao: `Acrescenta uma VLAN à lista de VLANs permitidas num trunk existente, SEM remover as que já estavam (switchport trunk allowed vlan add). ${AVISO_SW}`,
+    esquema: {
+      type: 'object',
+      properties: { interface: { type: 'string' }, vlanId: { type: 'integer' } },
+      required: ['interface', 'vlanId'],
+      additionalProperties: false,
+    },
+    entrada: z.object({ interface: Interface, vlanId: z.number().int().min(1).max(4094) }),
+    resumo: (v) => `Acrescentar a VLAN ${v.vlanId} ao trunk de ${v.interface} (sem remover as demais)`,
+    executar: (_ctx, v) => catalystExecutar([
+      'configure terminal', `interface ${v.interface}`, `switchport trunk allowed vlan add ${v.vlanId}`, 'exit', 'exit',
+      'show interfaces trunk',
+    ]),
+  }),
+  definir({
+    ...catalystEscrita,
+    nome: 'catalyst_configurar_span',
+    descricao: `Cria ou substitui uma sessão de monitor/SPAN: origem uma VLAN, destino uma porta física. ${AVISO_SW}`,
+    esquema: {
+      type: 'object',
+      properties: {
+        sessao: { type: 'integer', description: 'Número da sessão de monitor (ex.: 1).' },
+        vlanOrigem: { type: 'integer', description: 'VLAN a espelhar.' },
+        interfaceDestino: { type: 'string', description: 'Porta física que recebe o tráfego espelhado (o sensor NSM).' },
+      },
+      required: ['sessao', 'vlanOrigem', 'interfaceDestino'],
+      additionalProperties: false,
+    },
+    entrada: z.object({ sessao: z.number().int().min(1).max(66), vlanOrigem: z.number().int().min(1).max(4094), interfaceDestino: Interface }),
+    resumo: (v) => `Configurar o monitor session ${v.sessao}: origem VLAN ${v.vlanOrigem} → destino ${v.interfaceDestino}`,
+    executar: (_ctx, v) => catalystExecutar([
+      'configure terminal',
+      `no monitor session ${v.sessao}`,
+      `monitor session ${v.sessao} source vlan ${v.vlanOrigem}`,
+      `monitor session ${v.sessao} destination interface ${v.interfaceDestino}`,
+      'exit', 'show monitor session all',
+    ]),
+  }),
+];
+
 // ---------- registro ----------
 
 export const REGISTRO: FerramentaReal[] = [
@@ -289,6 +554,10 @@ export const REGISTRO: FerramentaReal[] = [
   }),
   ...PROXMOX,
   ...PROXMOX_ESCRITA,
+  ...FORTIGATE,
+  ...FORTIGATE_ESCRITA,
+  ...CATALYST,
+  ...CATALYST_ESCRITA,
 ];
 
 /** Ferramentas reais ligadas a um id do catálogo. */
