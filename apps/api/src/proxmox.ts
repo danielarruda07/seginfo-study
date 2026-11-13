@@ -30,9 +30,11 @@ export function proxmoxGet(caminho: string): Promise<unknown> {
   } catch {
     return Promise.reject(new Error('PROXMOX_URL inválida. Use o formato https://endereco:8006.'));
   }
+  // Com a verificação desligada, a CA não é usada: um valor ruim nela não pode impedir a consulta.
+  const inseguro = process.env.PROXMOX_TLS_INSEGURO === 'true';
   let ca: string | undefined;
   try {
-    ca = caConfigurada()?.pem;
+    ca = inseguro ? undefined : caConfigurada()?.pem;
   } catch (e) {
     return Promise.reject(e);
   }
@@ -47,7 +49,7 @@ export function proxmoxGet(caminho: string): Promise<unknown> {
         headers: { Authorization: `PVEAPIToken=${process.env.PROXMOX_TOKEN}`, Accept: 'application/json' },
         timeout: 10_000,
         ca,
-        rejectUnauthorized: process.env.PROXMOX_TLS_INSEGURO !== 'true',
+        rejectUnauthorized: !inseguro,
       },
       (res) => {
         const partes: Buffer[] = [];
@@ -90,7 +92,12 @@ function caConfigurada(): { pem: string; nome: string } | undefined {
   const texto = bruto.includes('BEGIN CERTIFICATE') ? bruto : Buffer.from(bruto.replace(/\s+/g, ''), 'base64').toString('utf8');
   const corpos = [...texto.matchAll(/-----BEGIN CERTIFICATE-----([\s\S]*?)-----END CERTIFICATE-----/g)].map((m) => m[1].replace(/\s+/g, ''));
   if (corpos.length === 0) {
-    throw new Error('PROXMOX_CA_B64 está definida, mas não contém um certificado. Gere de novo com: base64 -w0 /etc/pve/pve-root-ca.pem (uma linha só, copiada inteira).');
+    // Tamanho e forma do valor ajudam a ver o que foi colado, sem expor o conteúdo.
+    const forma = bruto.startsWith('LS0tLS1CRUdJTi') ? 'começa certo, então foi cortado no fim' : 'não começa como um certificado em base64 (deveria começar com LS0tLS1CRUdJTi)';
+    throw new Error(
+      `PROXMOX_CA_B64 está definida, mas não contém um certificado: o valor tem ${bruto.length} caracteres (o esperado é perto de 2800) e ${forma}. ` +
+      'Corrija o valor, ou defina PROXMOX_TLS_INSEGURO=true para o laboratório (aí a CA é ignorada).',
+    );
   }
   const pem = corpos
     .map((c) => ['-----BEGIN CERTIFICATE-----', ...(c.match(/.{1,64}/g) ?? []), '-----END CERTIFICATE-----', ''].join('\n'))
