@@ -50,14 +50,23 @@
 }
 .app-topbar__search:hover { background: rgba(255, 255, 255, .12); color: #fff; }
 .app-topbar__search kbd { padding: 0 .3rem; border-radius: 4px; background: rgba(255, 255, 255, .14); font: inherit; font-size: .72rem; }
-.app-topbar__user { display: flex; align-items: center; gap: .5rem; line-height: 1.15; }
-.app-topbar__user > .pi {
+.app-topbar__env { display: flex; align-items: center; gap: .5rem; line-height: 1.15; }
+.app-topbar__env > .pi {
   display: grid; place-items: center; width: 30px; height: 30px;
   border-radius: 50%; background: rgba(255, 255, 255, .14);
 }
-.app-topbar__user span { display: grid; }
-.app-topbar__user strong { font-size: .8rem; letter-spacing: .3px; }
-.app-topbar__user small { font-size: .72rem; color: rgba(255, 255, 255, .65); }
+.app-topbar__env span { display: grid; }
+.app-topbar__env strong { font-size: .8rem; letter-spacing: .3px; }
+.app-topbar__env small { font-size: .72rem; color: rgba(255, 255, 255, .65); }
+.app-topbar__integrations {
+  display: inline-flex; align-items: center; gap: .4rem;
+  height: 28px; padding: 0 .55rem;
+  border-radius: 999px; border: 1px solid rgba(255, 255, 255, .22);
+  color: #fde68a; background: rgba(217, 119, 6, .18);
+  font-size: .78rem; font-weight: 600; white-space: nowrap; text-decoration: none;
+}
+.app-topbar__integrations[data-ok] { color: #bbf7d0; background: rgba(22, 163, 74, .16); }
+.app-topbar__integrations:hover { filter: brightness(1.15); text-decoration: none; }
 .app-topbar :focus-visible { outline: 2px solid var(--alvoar-teal); outline-offset: 2px; }
 
 /* ---------- menu lateral ---------- */

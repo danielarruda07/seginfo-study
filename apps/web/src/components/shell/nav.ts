@@ -54,6 +54,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: '/agents/base', label: 'Base de conhecimento', icon: 'pi-folder-open' },
       { to: '/agents/ferramentas', label: 'Ferramentas e MCP', icon: 'pi-wrench' },
       { to: '/agents/avaliacoes', label: 'Avaliações', icon: 'pi-check-square' },
+      { to: '/agents/auditoria', label: 'Auditoria', icon: 'pi-history' },
       { to: '/agents/aprender', label: 'Aprender', icon: 'pi-graduation-cap' },
     ],
   },

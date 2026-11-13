@@ -22,9 +22,13 @@ export function getRangeAlvo(id: string) {
   return RANGE_ALVOS.find((a) => a.id === id);
 }
 
+/** Checklist de preparação do segmento (tudo menos os exercícios, que têm aba própria). */
 export function listRangeChecklist() {
-  // A execução de ataques pertence ao diário de Labs; o Range fica com a preparação e a segurança do segmento.
   return RANGE_CHECKLIST.filter((item) => item.grupo !== 'exercicio');
+}
+/** Exercícios ofensivos/purple do range (Lab 9, Atomic Red Team/Caldera): aba "Exercícios". */
+export function listRangeExercicios() {
+  return RANGE_CHECKLIST.filter((item) => item.grupo === 'exercicio');
 }
 export function getRangeChecklistItem(id: string) {
   return RANGE_CHECKLIST.find((c) => c.id === id);
@@ -45,12 +49,21 @@ export function saveProgressoChecklist(id: string, progresso: RangeProgressoItem
   write(PROGRESS_KEY, { ...all, [id]: { ...progresso, concluidoEm } });
 }
 
-/** Resumo de conclusão do checklist (para o cabeçalho da tela). */
+/** Resumo de conclusão do checklist de preparação (para o cabeçalho da aba). */
 export function resumoChecklist() {
   const all = listProgressoChecklist();
   const checklist = listRangeChecklist();
   const total = checklist.length;
   const concluidos = checklist.filter((c) => all[c.id]?.concluido).length;
+  return { total, concluidos, pct: total ? Math.round((concluidos / total) * 100) : 0 };
+}
+
+/** Resumo de conclusão dos exercícios (aba "Exercícios"). */
+export function resumoExercicios() {
+  const all = listProgressoChecklist();
+  const exercicios = listRangeExercicios();
+  const total = exercicios.length;
+  const concluidos = exercicios.filter((c) => all[c.id]?.concluido).length;
   return { total, concluidos, pct: total ? Math.round((concluidos / total) * 100) : 0 };
 }
 

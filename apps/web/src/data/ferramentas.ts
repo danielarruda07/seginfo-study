@@ -68,13 +68,12 @@ export const FERRAMENTAS: FerramentaCatalogo[] = [
   // ===================== 9. Análise de logs e monitoramento =====================
   { id: 'fer-splunk', nome: 'Splunk', fase: 'monitoramento', dominio: 'blue', descricao: 'Plataforma SIEM líder de mercado para análise de eventos de segurança.', url: 'https://www.splunk.com', kali: false, topicoId: 'siem-mercado' },
   { id: 'fer-elk', nome: 'ELK Stack', fase: 'monitoramento', dominio: 'blue', descricao: 'Elasticsearch + Logstash + Kibana — centraliza e busca logs.', url: 'https://www.elastic.co/elastic-stack', kali: false },
-  { id: 'fer-wazuh-mon', nome: 'Wazuh', fase: 'monitoramento', dominio: 'blue', descricao: 'Plataforma open source de SIEM/XDR — monitora ameaças e integridade.', url: 'https://wazuh.com', kali: false, topicoId: 'siem-mercado' },
+  { id: 'fer-wazuh-mon', nome: 'Wazuh', fase: 'monitoramento', dominio: 'blue', descricao: 'Plataforma open source de SIEM/XDR — monitora ameaças, integridade e conformidade.', url: 'https://wazuh.com', kali: false, topicoId: 'siem-mercado' },
   { id: 'fer-graylog', nome: 'Graylog', fase: 'monitoramento', dominio: 'blue', descricao: 'Gerenciamento e análise centralizada de dados de log.', url: 'https://graylog.org', kali: false },
 
   // ===================== 10. Operações de segurança defensiva =====================
   { id: 'fer-suricata', nome: 'Suricata', fase: 'defesa', dominio: 'blue', descricao: 'Motor de IDS/IPS e NSM — detecta ameaças de rede.', url: 'https://suricata.io', kali: false },
   { id: 'fer-snort', nome: 'Snort', fase: 'defesa', dominio: 'blue', descricao: 'Sistema de detecção de intrusão de rede, monitora tráfego suspeito.', url: 'https://www.snort.org', kali: false },
   { id: 'fer-ossec', nome: 'OSSEC', fase: 'defesa', dominio: 'blue', descricao: 'Detecção de intrusão baseada em host (HIDS).', url: 'https://www.ossec.net', kali: false },
-  { id: 'fer-wazuh-def', nome: 'Wazuh (conformidade)', fase: 'defesa', dominio: 'blue', descricao: 'Monitoramento de eventos de segurança e conformidade contínua.', url: 'https://wazuh.com', kali: false, topicoId: 'siem-mercado' },
   { id: 'fer-fail2ban', nome: 'Fail2Ban', fase: 'defesa', dominio: 'blue', descricao: 'Bloqueia automaticamente IPs com tentativas de login suspeitas.', url: 'https://github.com/fail2ban/fail2ban', kali: false },
 ];

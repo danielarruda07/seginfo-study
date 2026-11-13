@@ -14,7 +14,8 @@ import { Chip, Pill, StatusStrip, Bar } from '@/components/InfraKit';
 import { CATEGORIA_RANGE_LABEL, CRITICIDADE_COLOR, DOMINIO_LAB, GRUPO_CHECKLIST_LABEL } from '@/theme/status';
 import {
   getLabVars, getProgressoChecklist, getPromptEditado, listProgressoChecklist, listRangeAlvos,
-  listRangeChecklist, resumoChecklist, saveLabVars, saveProgressoChecklist, savePromptEditado,
+  listRangeChecklist, listRangeExercicios, resumoChecklist, resumoExercicios, saveLabVars,
+  saveProgressoChecklist, savePromptEditado,
 } from '@/services/range';
 import { faltandoNoPrompt, montarPrompt, preencher, valorVar, type LabVars } from '@/services/rangePrompt';
 import { GRUPO_LAB_VAR_LABEL, GRUPOS_LAB_VAR, LAB_VARS, PEDIDOS_GERAIS, TIPO_RECURSO_LABEL } from '@/data/rangeLab';
@@ -27,13 +28,22 @@ function DominioPill({ dominio }: { dominio: Dominio }) {
   return <Pill label={DOMINIO_LAB[dominio].label} color={DOMINIO_LAB[dominio].color} />;
 }
 
+const ABA_CONFIGURAR = 0;
+const ABA_ALVOS = 1;
+const ABA_CHECKLIST = 2;
+const ABA_EXERCICIOS = 3;
+
 export function Range() {
-  const [aba, setAba] = useState(0);
+  const [aba, setAba] = useState(ABA_CONFIGURAR);
   const [vars, setVars] = useState<LabVars>(() => getLabVars());
   function salvarVars(novas: LabVars) {
     saveLabVars(novas);
     setVars(novas);
   }
+
+  const faltandoVars = LAB_VARS.filter((v) => !valorVar(v.chave, vars)).length;
+  const prep = resumoChecklist();
+  const exerc = resumoExercicios();
 
   return (
     <div>
@@ -48,21 +58,48 @@ export function Range() {
       </StatusStrip>
 
       <StatusStrip tone="ok" icon="pi-directions">
-        O Range organiza a preparação e o isolamento do laboratório. Registre os testes Red × Blue em <Link to="/labs">Labs</Link>; eventos reais continuam no <Link to="/radar">Radar</Link>.
+        O Range organiza a preparação e o isolamento do laboratório. Os modelos <strong>Operador do FortiGate</strong>,{' '}
+        <strong>Operador do Catalyst 2960</strong> e <strong>Operador do Proxmox</strong> em <Link to="/agents">Agents</Link> executam
+        o checklist abaixo com aprovação sua; eventos reais continuam no <Link to="/radar">Radar</Link>.
       </StatusStrip>
 
+      <div className="iv-row iv-wrap iv-mt" style={{ gap: '1.5rem' }}>
+        <ProgressoResumo label="Ambiente configurado" pct={faltandoVars === 0 ? 100 : Math.round(((LAB_VARS.length - faltandoVars) / LAB_VARS.length) * 100)}
+          hint={faltandoVars === 0 ? 'Tudo preenchido' : `${faltandoVars} em branco`} onClick={() => setAba(ABA_CONFIGURAR)} />
+        <ProgressoResumo label="Checklist de preparação" pct={prep.pct} hint={`${prep.concluidos}/${prep.total}`} onClick={() => setAba(ABA_CHECKLIST)} />
+        <ProgressoResumo label="Exercícios" pct={exerc.pct} hint={`${exerc.concluidos}/${exerc.total}`} onClick={() => setAba(ABA_EXERCICIOS)} />
+      </div>
+
       <TabView className="iv-mt" activeIndex={aba} onTabChange={(e) => setAba(e.index)}>
+        <TabPanel header="Configurar meu ambiente">
+          <LabVarsPanel vars={vars} onChange={salvarVars} />
+        </TabPanel>
         <TabPanel header="Alvos do range">
           <AlvosPanel />
         </TabPanel>
         <TabPanel header="Checklist &amp; documentação">
-          <ChecklistPanel vars={vars} onAbrirLab={() => setAba(2)} />
+          <ChecklistPanel vars={vars} onAbrirLab={() => setAba(ABA_CONFIGURAR)} />
         </TabPanel>
-        <TabPanel header="Meu lab (variáveis)">
-          <LabVarsPanel vars={vars} onChange={salvarVars} />
+        <TabPanel header="Exercícios">
+          <ExerciciosPanel vars={vars} onAbrirLab={() => setAba(ABA_CONFIGURAR)} />
         </TabPanel>
       </TabView>
     </div>
+  );
+}
+
+/** Pílula clicável de progresso agregado, no cabeçalho, para orientar por onde continuar. */
+function ProgressoResumo({ label, pct, hint, onClick }: { label: string; pct: number; hint: string; onClick: () => void }) {
+  const tone = pct === 100 ? 'ok' : pct > 0 ? 'warn' : 'crit';
+  return (
+    <button type="button" onClick={onClick} className="iv-card" style={{ padding: '.6rem .9rem', minWidth: 190, textAlign: 'left', cursor: 'pointer', border: 0 }}>
+      <div className="iv-muted" style={{ fontSize: '.78rem' }}>{label}</div>
+      <div className="iv-row" style={{ gap: '.5rem', alignItems: 'baseline' }}>
+        <strong style={{ fontSize: '1.1rem' }}>{pct}%</strong>
+        <span className="iv-muted" style={{ fontSize: '.78rem' }}>{hint}</span>
+      </div>
+      <Bar pct={pct} tone={tone} />
+    </button>
   );
 }
 
@@ -151,7 +188,7 @@ function AlvoDetalhe({ alvo }: { alvo: RangeAlvo }) {
   );
 }
 
-// ===================== Aba 2: Checklist + documentação =====================
+// ===================== Aba 3: Checklist de preparação =====================
 
 const GRUPOS: RangeChecklistItem['grupo'][] = ['rede', 'firewall', 'vms', 'monitoramento', 'seguranca_operacional'];
 
@@ -185,6 +222,72 @@ function ChecklistPanel({ vars, onAbrirLab }: { vars: LabVars; onAbrirLab: () =>
 
       <div className="iv-col iv-mt" style={{ gap: '.5rem' }}>
         {itens.map((item) => {
+          const p = progresso[item.id] ?? { concluido: false, notas: '' };
+          return (
+            <div key={item.id} className="iv-card" style={{ padding: '.7rem .9rem' }}>
+              <div className="iv-row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div className="iv-row" style={{ gap: '.6rem', alignItems: 'flex-start' }}>
+                  <Checkbox checked={p.concluido} onChange={(e) => salvar(item.id, { ...p, concluido: !!e.checked })} aria-label={`Marcar "${item.titulo}" como concluído`} />
+                  <div>
+                    <div style={{ fontWeight: 600, cursor: 'pointer' }} role="button" tabIndex={0}
+                      onClick={() => setSel(item)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSel(item); }}>
+                      {item.titulo}
+                    </div>
+                    <div className="iv-muted" style={{ fontSize: '.84rem' }}>{item.descricao}</div>
+                    <button type="button" className="p-button p-button-text p-button-sm" style={{ padding: '.15rem 0', marginTop: '.2rem' }} onClick={() => setSel(item)}>
+                      <i className="pi pi-sparkles" style={{ marginRight: '.35rem' }} />
+                      {(item.recursos ?? []).length} recursos a criar · prompt pronto
+                    </button>
+                  </div>
+                </div>
+                <div className="iv-row iv-wrap" style={{ flexShrink: 0 }}>
+                  <DominioPill dominio={item.dominio} />
+                  <Pill label={item.criticidade} color={CRITICIDADE_COLOR[item.criticidade]} />
+                </div>
+              </div>
+              {p.concluidoEm && <p className="iv-muted" style={{ fontSize: '.8rem', margin: '.3rem 0 0' }}>Concluído em {p.concluidoEm}</p>}
+            </div>
+          );
+        })}
+      </div>
+
+      <Sidebar visible={!!sel} position="right" onHide={() => setSel(null)} style={{ width: 'min(760px, 100vw)' }}>
+        {sel && (
+          <ChecklistDetalhe key={sel.id} item={sel} vars={vars}
+            progresso={progresso[sel.id] ?? getProgressoChecklist(sel.id)}
+            onSave={(p) => salvar(sel.id, p)}
+            onAbrirLab={() => { setSel(null); onAbrirLab(); }} />
+        )}
+      </Sidebar>
+    </div>
+  );
+}
+
+// ===================== Aba 4: Exercícios (Lab 9 e Atomic/Caldera) =====================
+
+function ExerciciosPanel({ vars, onAbrirLab }: { vars: LabVars; onAbrirLab: () => void }) {
+  const { data } = useQuery({ queryKey: ['range-exercicios'], queryFn: listRangeExercicios });
+  const [sel, setSel] = useState<RangeChecklistItem | null>(null);
+  const [progresso, setProgresso] = useState<Record<string, RangeProgressoItem>>(() => listProgressoChecklist());
+  const resumo = useMemo(() => resumoExercicios(), [progresso]);
+  const prep = useMemo(() => resumoChecklist(), [progresso]);
+
+  function salvar(id: string, novo: RangeProgressoItem) {
+    saveProgressoChecklist(id, novo);
+    setProgresso((atual) => ({ ...atual, [id]: getProgressoChecklist(id) }));
+  }
+
+  return (
+    <div>
+      <StatusStrip tone="warn" icon="pi-shield">
+        Estes são os exercícios ofensivos/purple do range (infecção simulada, emulação de adversário). Só execute depois
+        de concluir o checklist de preparação (isolamento, snapshots, credenciais) — hoje {prep.concluidos}/{prep.total}
+        {' '}({prep.pct}%). Tudo acontece só dentro da VLAN do range, nunca em produção.
+      </StatusStrip>
+      <div className="iv-mt"><Bar pct={resumo.pct} tone={resumo.pct === 100 ? 'ok' : resumo.pct > 0 ? 'warn' : 'crit'} /></div>
+
+      <div className="iv-col iv-mt" style={{ gap: '.5rem' }}>
+        {(data ?? []).map((item) => {
           const p = progresso[item.id] ?? { concluido: false, notas: '' };
           return (
             <div key={item.id} className="iv-card" style={{ padding: '.7rem .9rem' }}>
