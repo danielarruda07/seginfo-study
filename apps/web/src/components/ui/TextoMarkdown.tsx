@@ -27,6 +27,9 @@ function emLinha(texto: string): ReactNode[] {
 const ITEM = /^\s*(?:[-*•]|\d+[.)])\s+(.*)$/;
 const NUMERADO = /^\s*\d+[.)]\s+/;
 const TITULO = /^(#{1,4})\s+(.*)$/;
+const TABELA = /^\s*\|.*\|\s*$/;
+const SEPARADOR = /^\s*\|(\s*:?-{2,}:?\s*\|)+\s*$/;
+const celulas = (linha: string) => linha.trim().slice(1, -1).split('|').map((c) => c.trim());
 
 export function TextoMarkdown({ texto }: { texto: string }) {
   const linhas = texto.replace(/\r\n/g, '\n').split('\n');
@@ -47,6 +50,29 @@ export function TextoMarkdown({ texto }: { texto: string }) {
         <pre key={blocos.length} style={{ whiteSpace: 'pre-wrap', background: '#0d0c2b', color: '#e6e6f0', padding: '10px 12px', borderRadius: 8, fontSize: 12.5, overflow: 'auto', margin: '.5rem 0' }}>
           {codigo.join('\n')}
         </pre>,
+      );
+      continue;
+    }
+
+    // tabela: linha de cabeçalho, linha separadora (|---|---|) e as linhas de dados
+    if (TABELA.test(linha) && i + 1 < linhas.length && SEPARADOR.test(linhas[i + 1])) {
+      const cabecalho = celulas(linha);
+      const corpo: string[][] = [];
+      i += 2;
+      while (i < linhas.length && TABELA.test(linhas[i])) corpo.push(celulas(linhas[i++]));
+      const borda = '1px solid var(--surface-300, #cbd5e1)';
+      const celula = { border: borda, padding: '.3rem .6rem', textAlign: 'left' } as const;
+      blocos.push(
+        <div key={blocos.length} style={{ overflowX: 'auto', margin: '.5rem 0' }}>
+          <table style={{ borderCollapse: 'collapse', fontSize: '.9rem' }}>
+            <thead>
+              <tr>{cabecalho.map((c, j) => <th key={j} style={{ ...celula, background: 'var(--surface-100, #f1f5f9)' }}>{emLinha(c)}</th>)}</tr>
+            </thead>
+            <tbody>
+              {corpo.map((l, j) => <tr key={j}>{cabecalho.map((_, k) => <td key={k} style={celula}>{emLinha(l[k] ?? '')}</td>)}</tr>)}
+            </tbody>
+          </table>
+        </div>,
       );
       continue;
     }
@@ -73,7 +99,8 @@ export function TextoMarkdown({ texto }: { texto: string }) {
 
     // parágrafo: linhas seguidas até uma linha vazia ou outro tipo de bloco
     const paragrafo: string[] = [];
-    while (i < linhas.length && linhas[i].trim() !== '' && !ITEM.test(linhas[i]) && !TITULO.test(linhas[i]) && !linhas[i].trimStart().startsWith('```')) {
+    while (i < linhas.length && linhas[i].trim() !== '' && !ITEM.test(linhas[i]) && !TITULO.test(linhas[i]) && !linhas[i].trimStart().startsWith('```')
+      && !(TABELA.test(linhas[i]) && i + 1 < linhas.length && SEPARADOR.test(linhas[i + 1]))) {
       paragrafo.push(linhas[i++]);
     }
     blocos.push(
