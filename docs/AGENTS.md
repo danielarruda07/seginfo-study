@@ -92,7 +92,7 @@ formato interno de `AgenteExecucao.passos`. Quando houver SIEM, o destino natura
 mesmos eventos para lá (syslog ou API do Wazuh) em vez de descontinuar este endpoint.
 
 ### Proxmox
-Cliente em `apps/api/src/proxmox.ts`: `proxmoxGet` lê; `proxmoxAlterar` muda o ambiente, espera a tarefa do Proxmox terminar (até 90 s) e só é chamada pelas ferramentas de escrita. Variáveis no serviço `seginfo-api` do Coolify:
+Cliente em `apps/api/src/proxmox.ts`: `proxmoxGet` lê; `proxmoxAlterar` muda o ambiente, espera a tarefa do Proxmox terminar (até 90 s) e só é chamada pelas ferramentas de escrita. Erros do Proxmox passam por `proxmoxErro.ts`, que corta o rastro de pilha, extrai a última mensagem de erro do LINSTOR e acrescenta uma dica para casos conhecidos. Variáveis no serviço `seginfo-api` do Coolify:
 
 | Variável | Valor |
 |---|---|
@@ -155,8 +155,8 @@ essas opções porque o `ssh2` não as liga por padrão.
 
 ## Plano
 1. **Playground com ferramentas de leitura** (feito).
-2. **Ferramentas de leitura do Proxmox** (feito; falta configurar o token e testar contra o Proxmox real).
-3. **Tela de aprovação e escrita no Proxmox** (feito: energia das VMs e snapshots; falta testar contra o Proxmox real. Criar, clonar e apagar VM ficam para depois).
+2. **Ferramentas de leitura do Proxmox** (feito e testado contra o Proxmox real em 13/11/2026).
+3. **Tela de aprovação e escrita no Proxmox** (feito: energia das VMs e snapshots. Primeiro teste real em 13/11/2026: aprovação e envio funcionaram; o snapshot foi recusado pelo armazenamento, ver o registro em `docs/AMBIENTE.md`. Criar, clonar e apagar VM ficam para depois).
 4. **FortiGate (API REST) e Catalyst 2960 (SSH)** (feito: leitura e escrita com aprovação; falta configurar as variáveis e testar contra os equipamentos reais. Backup automático da configuração antes de cada mudança de escrita ainda não existe — hoje a mitigação é: policy nova entra desativada, e "adicionar ao trunk" nunca remove VLANs).
 5. Gatilhos por agenda e por evento, e avaliações automáticas.
 6. Um agente chamando outro, servidor MCP próprio.

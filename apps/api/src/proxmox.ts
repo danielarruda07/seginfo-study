@@ -1,6 +1,7 @@
 import { X509Certificate } from 'node:crypto';
 import https from 'node:https';
 import tls from 'node:tls';
+import { resumirErroProxmox } from './proxmoxErro.js';
 
 /**
  * Cliente mínimo da API do Proxmox VE, usado pelas ferramentas dos agentes.
@@ -37,7 +38,7 @@ export async function proxmoxAlterar(metodo: 'POST' | 'DELETE', no: string, cami
     const t = (await pedir('GET', `/nodes/${no}/tasks/${encodeURIComponent(upid)}/status`)) as { status?: string; exitstatus?: string };
     if (t.status === 'stopped') {
       if (t.exitstatus === 'OK') return 'Tarefa concluída com sucesso.';
-      throw new Error(`A tarefa terminou com erro no Proxmox: ${t.exitstatus ?? 'sem detalhe'}.`);
+      throw new Error(`A tarefa terminou com erro no Proxmox: ${resumirErroProxmox(t.exitstatus ?? 'sem detalhe')}`);
     }
   }
   return 'A tarefa foi iniciada e ainda está em andamento no Proxmox depois de 90 segundos. Consulte o estado antes de concluir que terminou.';
@@ -99,7 +100,7 @@ function pedir(metodo: 'GET' | 'POST' | 'DELETE', caminho: string, corpo = ''): 
           }
           if (status === 403) return reject(new Error(`O token foi aceito, mas não tem permissão para ${caminho} (HTTP 403): dê uma role ao token em Datacenter → Permissions.`));
           // O Proxmox explica o motivo na linha de status (ex.: "VM is locked", "snapshot name already used").
-          if (status >= 400) return reject(new Error(`O Proxmox respondeu HTTP ${status} para ${caminho}${res.statusMessage ? `: ${res.statusMessage}` : ''}.`));
+          if (status >= 400) return reject(new Error(`O Proxmox respondeu HTTP ${status} para ${caminho}${res.statusMessage ? `: ${resumirErroProxmox(res.statusMessage)}` : ''}`));
           try {
             resolve((JSON.parse(Buffer.concat(partes).toString('utf8')) as { data: unknown }).data);
           } catch {
@@ -120,6 +121,15 @@ function pedir(metodo: 'GET' | 'POST' | 'DELETE', caminho: string, corpo = ''): 
 }
 
 // ---------- token ----------
+
+/** Quem o servidor usa para falar com o Proxmox, sem o segredo (ex.: root@pam!agent). Null se não houver token válido. */
+export function proxmoxIdentidade(): string | null {
+  try {
+    return tokenConfigurado().split('=')[0];
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Lê PROXMOX_TOKEN e confere o formato usuario@realm!nome=segredo antes de enviar, para o erro

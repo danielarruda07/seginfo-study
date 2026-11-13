@@ -24,6 +24,22 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-13-mapa-acessos',
+    data: '2026-11-13',
+    titulo: 'Primeira ação real do agente, recusada pelo armazenamento, e um mapa de onde ficam os segredos',
+    descricao:
+      'O primeiro pedido de snapshot passou pela tela de aprovação e chegou ao hipervisor, que recusou: uma das réplicas ' +
+      'do disco não estava sincronizada, e o armazenamento replicado só tira snapshot com todas em dia. O fluxo do agente ' +
+      'funcionou; o que falhou foi a infraestrutura, e de um jeito seguro, desfazendo tudo sozinha. O erro chegava como ' +
+      'um bloco enorme, então a ferramenta passou a extrair a mensagem que importa e a sugerir o próximo passo. Na mesma ' +
+      'rodada, a tela do ambiente ganhou um painel que diz onde fica cada endereço e cada credencial (inventário, cofre ' +
+      'cifrado, variáveis do laboratório e segredos do servidor) e como cada integração se conecta, sem mostrar nenhum ' +
+      'segredo, com teste automatizado garantindo isso. Lições: testar escrita numa máquina descartável, nunca na que ' +
+      'hospeda o próprio sistema; e saber onde mora cada segredo é metade da gestão de acesso.',
+    categoria: 'seguranca',
+    tags: ['agentes', 'armazenamento', 'gestao-de-acesso', 'incidente'],
+  },
+  {
     id: 'proj-2026-11-13-agents-aprovacao',
     data: '2026-11-13',
     titulo: 'O agente ganhou mãos, e cada gesto passa por uma tela de consentimento',

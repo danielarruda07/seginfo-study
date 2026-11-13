@@ -1,0 +1,48 @@
+# Meu Ambiente: endereços, credenciais e integrações
+
+Este documento diz onde fica cada informação sensível do laboratório e como a tela **Meu Ambiente** (`/ambiente`) mostra isso. O repositório é público: endereços reais, tokens e senhas nunca entram aqui nem no código.
+
+## Onde fica cada dado
+
+| Dado | Onde fica | Quem vê | Como entra |
+|---|---|---|---|
+| Ativos (hosts, VMs, VLANs, serviços), endereços IP e funções | Meu Ambiente, salvo no navegador (localStorage) e incluído no backup | Só você, no navegador | Cadastro na tela ou botão "Importar arquivo" |
+| Senhas e credenciais de acesso humano | Cofre (`/cofre`), cifrado no navegador com AES-GCM; a senha-mestra nunca é salva | Só você, com a senha-mestra | Cadastro no Cofre ou importação |
+| Variáveis do laboratório (VLANs, portas do switch, IPs do range) | Range Vulnerável (`/range`), salvo no navegador | Só você, no navegador | Formulário de variáveis ou importação |
+| Tokens e senhas que os agentes usam | Variáveis de ambiente do serviço `seginfo-api` no Coolify | Só o servidor; o navegador e o modelo de IA nunca recebem | Coolify → Environment Variables → Redeploy |
+
+## Painel "Acessos e integrações"
+
+Fica no topo de Meu Ambiente (`apps/web/src/routes/inventario/AcessosIntegracoes.tsx`). Mostra:
+
+1. **Onde fica cada dado:** a tabela acima, com a situação atual (quantos ativos têm endereço, se o Cofre está criado e quantas credenciais tem quando destrancado, quantas variáveis do range estão preenchidas, quantas integrações estão prontas).
+2. **Integrações do servidor:** para Proxmox, FortiGate, Catalyst 2960 e Claude API, mostra endereço, identidade usada, tratamento do certificado, estado e as variáveis envolvidas.
+
+Os dados das integrações vêm de `GET /api/integracoes` (`apps/api/src/integracoes.ts`). A rota nunca devolve segredo:
+
+| Sistema | Identidade mostrada | O que nunca sai do servidor |
+|---|---|---|
+| Proxmox | o identificador do token (`usuario@realm!nome`) | o segredo do token e a CA |
+| FortiGate | "token de API" | o token |
+| Catalyst 2960 | usuário SSH e se usa senha ou chave | a senha e a chave privada |
+| Claude API | "chave de API" e o modelo | a chave |
+
+O teste `apps/api/src/integracoes.test.ts` confere que nenhum valor secreto aparece na resposta.
+
+## Mudar uma integração
+
+1. Coolify → recurso do SegInfo Study → **Environment Variables**.
+2. Edite a variável pela engrenagem. Para segredo: **Literal**, **Runtime** ligado, **Buildtime** desligado.
+3. **Redeploy**. O painel de Meu Ambiente e o indicador de integrações na barra superior refletem a mudança.
+
+Variáveis de cada sistema: ver `docs/AGENTS.md` (seções Proxmox, FortiGate e Catalyst 2960) e `.env.example`.
+
+## Registro de incidentes
+
+### 13/11/2026: snapshot recusado pelo armazenamento replicado
+
+- **O que aconteceu:** no primeiro teste da tela de aprovação, o agente pediu um snapshot, a ação foi aprovada e o servidor enviou o pedido ao Proxmox. O Proxmox recusou com "Cannot take snapshot from non-UpToDate DRBD device".
+- **Causa:** o disco da VM fica num armazenamento replicado entre os dois nós (LINSTOR/DRBD). Uma das réplicas não estava sincronizada, e o LINSTOR só cria snapshot com todas em dia. O próprio Proxmox desfez o snapshot parcial e retomou a escrita do disco; nada ficou pela metade.
+- **O que mostrou sobre o app:** o fluxo de aprovação funcionou de ponta a ponta. A mensagem de erro chegava como um bloco longo com dezenas de eventos e o rastro de pilha. Agora `apps/api/src/proxmoxErro.ts` extrai a última mensagem de erro e acrescenta uma dica para casos conhecidos (réplica DRBD fora de sincronia, VM travada, snapshot com nome repetido, VM desligada, falta de espaço).
+- **Lições:** testar ações de escrita numa VM descartável, nunca na VM que hospeda o próprio app; e uma réplica fora de sincronia é um problema de disponibilidade a resolver mesmo sem agente nenhum.
+- **Pendente:** conferir o estado da réplica no nó (`linstor resource list -r <recurso>` e `drbdadm status <recurso>`) e repetir o teste numa VM de teste.

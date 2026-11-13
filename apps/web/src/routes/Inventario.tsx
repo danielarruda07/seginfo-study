@@ -25,6 +25,7 @@ import { AtivoForm } from './inventario/AtivoForm';
 import { AtivoDrawer } from './inventario/AtivoDrawer';
 import { TipoChart } from './inventario/TipoChart';
 import { AvisoDadosAntigos } from './inventario/AvisoDadosAntigos';
+import { AcessosIntegracoes } from './inventario/AcessosIntegracoes';
 
 const NOVO: Ativo = { id: '', ambiente: 'criecomia', tipo: 'servico', nome: '', endereco: '', funcao: '', estado: 'ativo', detalhes: {}, tags: [], labsRelacionados: [] };
 const opcaoTipo = (o: { label: string; icon: string } | null) =>
@@ -104,7 +105,7 @@ export function Inventario() {
       <ConfirmDialog />
       <Menu model={menuItens} popup ref={menu} />
 
-      <PageHeader title="Meu Ambiente" subtitle="Inventário do homelab: hosts, VMs, rede e serviços. Credenciais ficam no Cofre."
+      <PageHeader title="Meu Ambiente" subtitle="Inventário do homelab: hosts, VMs, rede e serviços, e o mapa de onde ficam endereços e credenciais (as senhas ficam no Cofre)."
         actions={<>
           {seed.disponivel && <Button label={`Importar novidades (${seed.quantidade})`} icon="pi pi-download" outlined onClick={importarSeed} />}
           {documentadosPendentes > 0 && <Button label={`Adicionar dados das notas (${documentadosPendentes})`} icon="pi pi-file-import" severity="warning" outlined onClick={importarDocumentados} tooltip="Inclui referências de docs/DEPLOY.md, docs/PENDENCIAS.md e docs/RADAR.md como itens a conferir" />}
@@ -117,6 +118,8 @@ export function Inventario() {
         </>} />
 
       <AvisoDadosAntigos />
+
+      <AcessosIntegracoes ativosComEndereco={todos.filter((a) => (a.endereco ?? '').trim()).length} />
 
       {todos.some((a) => a.tags.includes('documentação')) && (
         <StatusStrip tone="warn" icon="pi-info-circle">
