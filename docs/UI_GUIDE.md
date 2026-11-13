@@ -39,6 +39,14 @@ A classe `.tone-*` seta `--tone`; quem pinta usa `var(--tone)`. Fundo tingido: `
 4. Card da lista: `.iv-toolbar` (`SearchInput` com debounce de 300 ms, `Dropdown` de categoria com ícone e `showClear`, `SelectButton` de escopo, `.iv-toolbar__count`) → `ActiveFiltersBar` ("Filtrando: … · Limpar tudo") → `DataTable`.
 5. Ficha lateral (`Sidebar` com `.iv-drawer`): Voltar · tipo · "3 de 25" com ↑/↓; pílula de estado, título, ações; seções com `DetailFields` (vazio = "—").
 
+## Cartões clicáveis + ficha lateral (regra para toda tela com cartões)
+Todo cartão de item (tópico, lab, ferramenta, ameaça, nota, agente…) é clicável **inteiro** e abre a ficha lateral com informação útil que **não cabe no cartão** (detalhe, histórico, relacionados, próximos passos, ações). Nada de cartão "morto".
+- `ClickCard` (`components/ui/ClickCard.tsx`): botão invisível cobre o cartão (mouse, Tab+Enter, leitor de tela via `label`). Links/botões internos continuam funcionando por cima. `tone` marca estado na borda; `selected` marca o cartão com a ficha aberta.
+- `DetailDrawer` (`components/ui/DetailDrawer.tsx`): Voltar · tipo · "3 de 25" com ↑/↓ · selo · título · subtítulo · ações · seções (`DetailSection`/`DetailFields` de `components/ui/Detail.tsx`). `wide` para conteúdo denso.
+- `useDrawerSelection(listaFiltrada)` (`hooks/useDrawerSelection.ts`): `open(id)`, `item`, `nav` para espalhar no drawer; ↑/↓ percorre a lista **filtrada**.
+- Linhas de `DataTable` seguem a mesma regra: `onRowClick` abre a ficha, ações no menu ⋮.
+- Segredo nunca aparece aberto na ficha: credencial mascarada, com botão explícito para revelar/copiar.
+
 ## Tabela
 Até 6 colunas; a 1ª é a que decide (estado/prazo). Coluna principal `.iv-maincell` (ícone do tipo 30px + nome semibold + linha secundária) — tipo não ganha coluna própria.
 `rowClassName` → `iv-row-alert tone-*` só para linhas com ação; `iv-row-muted` para inativas. Botão com texto só para a ação urgente; o resto no menu ⋮ (Excluir com `className: 'menu-danger'`).
