@@ -9,6 +9,7 @@ import { registerKevRoutes } from './kev.js';
 import { registerLinkedinRoutes } from './linkedin.js';
 import { registerAgenteRoutes } from './agentes.js';
 import { registerIntegracoesRoutes } from './integracoes.js';
+import { exigirSessaoCofre, registerCofre2faRoutes, registrarEvento } from './cofre2fa.js';
 
 /** Registra todas as rotas de estado do usuário, todas protegidas por requireUser. */
 export async function registerStateRoutes(app: FastifyInstance) {
@@ -179,15 +180,31 @@ export async function registerStateRoutes(app: FastifyInstance) {
   });
 
   // ---------- Cofre (blob cifrado) ----------
-  app.get('/api/cofre', async (req) => {
+  // Só com segundo fator ativo e sessão aberta por um código válido (ver cofre2fa.ts).
+  await registerCofre2faRoutes(app);
+  app.get('/api/cofre', async (req, reply) => {
+    if (!(await exigirSessaoCofre(req, reply))) return reply;
     const blob = await prisma.cofreBlob.findUnique({ where: { usuarioId: uid(req) } });
+    await registrarEvento(req, 'cofre_lido');
     return blob ?? null;
   });
   app.put('/api/cofre', async (req, reply) => {
-    const b = z.object({ versao: z.literal(1), salt: z.string(), iv: z.string(), ciphertext: z.string(), autoLockMin: z.number().int().optional() }).safeParse(req.body);
+    if (!(await exigirSessaoCofre(req, reply))) return reply;
+    const b = z.object({
+      versao: z.literal(1), salt: z.string().max(100), iv: z.string().max(100), ciphertext: z.string().max(5_000_000),
+      autoLockMin: z.number().int().optional(),
+      // data da versão que o navegador carregou: se outra aba/aparelho salvou depois, recusa (409)
+      baseAtualizadoEm: z.string().nullable().optional(),
+    }).safeParse(req.body);
     if (!b.success) return reply.status(400).send({ error: 'payload inválido' });
+    const atual = await prisma.cofreBlob.findUnique({ where: { usuarioId: uid(req) }, select: { atualizadoEm: true } });
+    if (b.data.baseAtualizadoEm !== undefined && atual && atual.atualizadoEm.toISOString() !== b.data.baseAtualizadoEm) {
+      return reply.status(409).send({ error: 'O Cofre foi alterado em outro aparelho ou aba. Recarregue antes de salvar.', codigo: 'CONFLITO' });
+    }
     const data = { versao: b.data.versao, salt: b.data.salt, iv: b.data.iv, ciphertext: b.data.ciphertext, autoLockMin: b.data.autoLockMin ?? 5 };
-    return prisma.cofreBlob.upsert({ where: { usuarioId: uid(req) }, update: data, create: { ...data, usuarioId: uid(req) } });
+    const salvo = await prisma.cofreBlob.upsert({ where: { usuarioId: uid(req) }, update: data, create: { ...data, usuarioId: uid(req) } });
+    await registrarEvento(req, 'cofre_salvo');
+    return { atualizadoEm: salvo.atualizadoEm.toISOString() };
   });
 
   // ---------- Importação do navegador (localStorage -> servidor, uma vez) ----------
@@ -262,15 +279,9 @@ export async function registerStateRoutes(app: FastifyInstance) {
         () => prisma.biblioItem.updateMany({ where: { id: b2.id, usuarioId: u }, data }),
         () => prisma.biblioItem.create({ data: { ...data, id: b2.id, usuarioId: u } }))) counts.biblioteca++;
     }
-    if (d.cofre && d.cofre.ciphertext) {
-      await prisma.cofreBlob.upsert({
-        where: { usuarioId: u },
-        update: { versao: 1, salt: d.cofre.salt, iv: d.cofre.iv, ciphertext: d.cofre.ciphertext },
-        create: { usuarioId: u, versao: 1, salt: d.cofre.salt, iv: d.cofre.iv, ciphertext: d.cofre.ciphertext },
-      });
-      counts.cofre = 1;
-    }
-    return { ok: true, imported: counts };
+    // O Cofre NÃO entra por aqui: no servidor ele só é gravado pela tela do Cofre, com o segundo
+    // fator ativo e sessão aberta (PUT /api/cofre). Assim esta rota não vira um atalho sem 2FA.
+    return { ok: true, imported: counts, cofreIgnorado: !!d.cofre };
   });
 
   // ---------- Radar de Ataques (análise; herda o hook de identidade acima) ----------

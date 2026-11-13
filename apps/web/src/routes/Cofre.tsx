@@ -1,4 +1,4 @@
-import { useCallback, useState, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import { Password } from 'primereact/password';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
@@ -6,6 +6,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
+import { isAxiosError } from 'axios';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatusStrip } from '@/components/InfraKit';
 import type { VaultEntry } from '@seginfo/shared';
@@ -18,6 +19,8 @@ import { detectMode } from '@/services/mode';
 import { listAtivos } from '@/services/inventario';
 import { idadeConfirmacao } from '@/lib/confirmacao';
 import { todayISO } from '@/services/store';
+import { cofre2fa, codigoErro, mensagemErro, temSessao, type Status2fa } from '@/services/cofre2fa';
+import { AbrirComCodigo, Painel2fa } from './cofre/Painel2fa';
 
 /** Campo de senha padrão do Cofre (sem medidor de força, com botão de mostrar). */
 function SecretInput({ value, onChange, placeholder, onKeyDown }: {
@@ -50,38 +53,108 @@ export function Cofre() {
   const [initialized, setInitialized] = useState(vault.isInitialized());
   const [unlocked, setUnlocked] = useState(vault.isUnlocked());
   const [erro, setErro] = useState('');
+  const [aviso, setAviso] = useState('');
   const [master, setMaster] = useState('');
   const [master2, setMaster2] = useState('');
+  // null = ainda consultando; false = API fora do ar (Cofre só local)
+  const [online, setOnline] = useState<boolean | null>(null);
+  const [status, setStatus] = useState<Status2fa | null>(null);
+  const [comSessao, setComSessao] = useState(temSessao());
+  const [ocupado, setOcupado] = useState(false);
+
+  const atualizarStatus = useCallback(async () => {
+    if ((await detectMode()) !== 'servidor') { setOnline(false); return; }
+    try {
+      const s = await cofre2fa.status();
+      // o servidor manda: 2FA ativo = Cofre no servidor; desligado em outro aparelho = volta ao local
+      vault.definirModoServidor(s.ativo);
+      setStatus(s);
+      setOnline(true);
+      setComSessao(temSessao());
+      setInitialized(vault.isInitialized());
+    } catch {
+      setOnline(false);
+    }
+  }, []);
+  useEffect(() => { void atualizarStatus(); }, [atualizarStatus]);
+
+  const servidor = !!status?.ativo;
 
   // Auto-lock: quando o cofre travar sozinho (inatividade ou aba oculta),
   // atualiza a UI de volta para a tela de destravar.
   const handleAutoLock = useCallback(() => {
     setUnlocked(false);
+    setComSessao(temSessao());
     setErro('Cofre travado automaticamente por inatividade.');
   }, []);
   useVaultActivity(unlocked, handleAutoLock);
+
+  /** A sessão do código venceu no meio do uso: trava e volta para a etapa do código. */
+  const sessaoExpirou = useCallback(() => {
+    vault.lock();
+    setUnlocked(false);
+    setComSessao(false);
+    setErro('A sessão do segundo fator expirou. Digite um código novo para continuar.');
+  }, []);
 
   async function criar() {
     setErro('');
     if (master.length < 12) return setErro('Use uma senha-mestra com pelo menos 12 caracteres.');
     if (master !== master2) return setErro('As senhas não conferem.');
-    await vault.initVault(master);
+    setOcupado(true);
+    try {
+      if (servidor) await vault.initVaultServidor(master); else await vault.initVault(master);
+    } catch (e) {
+      vault.lock();
+      if (codigoErro(e) === '2FA_NECESSARIO') return sessaoExpirou();
+      return setErro(mensagemErro(e));
+    } finally {
+      setOcupado(false);
+    }
     setMaster(''); setMaster2('');
+    if (servidor && status) setStatus({ ...status, temCofre: true });
     setInitialized(true); setUnlocked(true);
   }
 
   async function destravar() {
     setErro('');
-    const ok = await vault.unlock(master);
-    if (!ok) { const seconds = vault.unlockWaitSeconds(); return setErro(`Senha-mestra incorreta.${seconds ? ` Aguarde ${seconds} s antes da próxima tentativa.` : ''}`); }
-    setMaster('');
-    setUnlocked(true);
+    setOcupado(true);
+    try {
+      let ok: boolean;
+      if (servidor) {
+        const blob = await cofre2fa.lerBlob();
+        if (!blob) { if (status) setStatus({ ...status, temCofre: false }); return; }
+        ok = await vault.unlockServidor(master, blob);
+      } else {
+        ok = await vault.unlock(master);
+      }
+      if (!ok) { const seconds = vault.unlockWaitSeconds(); return setErro(`Senha-mestra incorreta.${seconds ? ` Aguarde ${seconds} s antes da próxima tentativa.` : ''}`); }
+      setMaster('');
+      setAviso('');
+      setUnlocked(true);
+    } catch (e) {
+      if (codigoErro(e) === '2FA_NECESSARIO') return sessaoExpirou();
+      setErro(mensagemErro(e));
+    } finally {
+      setOcupado(false);
+    }
   }
 
   function travar() {
     vault.lock();
     setUnlocked(false);
+    // travar na mão também encerra a sessão do código (a trava automática não)
+    if (servidor) void cofre2fa.sair().then(() => setComSessao(false));
   }
+
+  const precisaCodigo = servidor && !comSessao;
+  const mostrarCriar = servidor ? !!status && !status.temCofre : !initialized;
+  const semServidorProtegido = online === false && vault.modoServidor();
+  const textoStatus = unlocked ? `Cofre destravado nesta sessão${servidor ? ' (guardado no servidor, protegido pelo segundo fator)' : ''}.`
+    : online === null ? 'Verificando o servidor...'
+    : precisaCodigo ? 'Cofre protegido pelo segundo fator. Informe o código do celular.'
+    : mostrarCriar ? 'Nenhum cofre ainda. Crie uma senha-mestra.'
+    : 'Cofre travado. Informe a senha-mestra.';
 
   return (
     <div>
@@ -90,14 +163,22 @@ export function Cofre() {
         subtitle="Suas senhas cifradas com AES-GCM. A senha-mestra nunca é salva — sem ela, o cofre é ilegível."
       />
 
-      <StatusStrip tone={unlocked ? 'ok' : 'warn'} icon={unlocked ? 'pi-unlock' : 'pi-lock'}>
-        {unlocked ? 'Cofre destravado nesta sessão.' : initialized ? 'Cofre travado. Informe a senha-mestra.' : 'Nenhum cofre ainda. Crie uma senha-mestra.'}
+      <StatusStrip tone={unlocked ? 'ok' : 'warn'} icon={unlocked ? 'pi-unlock' : servidor ? 'pi-shield' : 'pi-lock'}>
+        {textoStatus}
       </StatusStrip>
 
-      {!unlocked && (
+      {semServidorProtegido && (
+        <Message severity="error" className="iv-mt" style={{ width: '100%' }}
+          text="Não consegui falar com o servidor. Com o segundo fator ativo, o Cofre só abre com a API no ar." />
+      )}
+
+      {!unlocked && online !== null && !semServidorProtegido && (
         <div className="iv-card iv-mt" style={{ maxWidth: 460 }}>
           {erro && <Message severity="error" text={erro} className="iv-mt" style={{ width: '100%', marginBottom: '1rem' }} />}
-          {!initialized ? (
+          {aviso && <Message severity="warn" text={aviso} style={{ width: '100%', marginBottom: '1rem' }} />}
+          {precisaCodigo && status ? (
+            <AbrirComCodigo status={status} onAberto={(a) => { setErro(''); setAviso(a ?? ''); setComSessao(true); }} />
+          ) : mostrarCriar ? (
             <div className="iv-col iv-gap">
               <h3 style={{ margin: 0 }}>Criar cofre</h3>
               <p className="iv-muted" style={{ margin: 0, fontSize: '.85rem' }}>
@@ -112,53 +193,80 @@ export function Cofre() {
                 <span className="iv-muted">{!master ? 'Mínimo 12 caracteres; uma frase longa é mais fácil de lembrar.' : senhaMestraScore(master) >= 5 ? 'Boa frase-senha' : 'Adicione comprimento e variedade.'}</span>
               </div>
               <SecretInput value={master2} onChange={setMaster2} placeholder="Confirmar senha-mestra" />
-              <Button label="Criar cofre" icon="pi pi-lock" onClick={criar} />
+              <Button label="Criar cofre" icon={ocupado ? 'pi pi-spinner pi-spin' : 'pi pi-lock'} onClick={criar} disabled={ocupado} />
             </div>
           ) : (
             <div className="iv-col iv-gap">
               <h3 style={{ margin: 0 }}>Destravar</h3>
+              {servidor && <p className="iv-muted" style={{ margin: 0, fontSize: '.85rem' }}><i className="pi pi-check" /> Código aceito. Agora a senha-mestra (ela nunca sai deste navegador).</p>}
               <SecretInput value={master} onChange={setMaster} placeholder="Senha-mestra" onKeyDown={(e) => e.key === 'Enter' && destravar()} />
-              <Button label="Destravar cofre" icon="pi pi-unlock" onClick={destravar} />
+              <Button label="Destravar cofre" icon={ocupado ? 'pi pi-spinner pi-spin' : 'pi pi-unlock'} onClick={destravar} disabled={ocupado} />
             </div>
           )}
         </div>
       )}
 
-      {unlocked && <VaultManager onLock={travar} />}
+      {unlocked && <VaultManager onLock={travar} onSessaoExpirou={sessaoExpirou} />}
+
+      {unlocked && online !== null && (
+        <Painel2fa online={online} status={status} onMudou={() => { void atualizarStatus(); }} />
+      )}
 
       <BackupCard />
     </div>
   );
 }
 
-function VaultManager({ onLock }: { onLock: () => void }) {
+function VaultManager({ onLock, onSessaoExpirou }: { onLock: () => void; onSessaoExpirou: () => void }) {
   const [entries, setEntries] = useState<VaultEntry[]>(vault.listEntries());
   const [editing, setEditing] = useState<(Partial<VaultEntry> & { secret?: string }) | null>(null);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
 
   const [autoLock, setAutoLock] = useState<number>(vault.getAutoLockMinutes());
   const [importMsg, setImportMsg] = useState('');
+  const [erroGravar, setErroGravar] = useState('');
 
   function refresh() { setEntries(vault.listEntries()); }
 
+  /** Gravação falhou (só acontece no modo servidor): explica e, se a sessão venceu, volta ao código. */
+  function falhaAoGravar(e: unknown): boolean {
+    const codigo = codigoErro(e);
+    if (codigo === '2FA_NECESSARIO') { onSessaoExpirou(); return true; }
+    setErroGravar(codigo === 'CONFLITO'
+      ? 'Não salvei: o Cofre foi alterado em outro aparelho ou aba. Trave e abra de novo para carregar a versão mais nova.'
+      : `Não salvei: ${mensagemErro(e)}`);
+    return false;
+  }
+
   async function salvar() {
     if (!editing?.titulo?.trim()) return;
-    await vault.saveEntry({
-      id: editing.id,
-      titulo: editing.titulo!,
-      usuario: editing.usuario ?? '',
-      url: editing.url ?? '',
-      ambiente: editing.ambiente,
-      ativoId: editing.ativoId,
-      notas: editing.notas ?? '',
-      confirmadoEm: editing.confirmadoEm || undefined,
-      secret: editing.secret ?? '',
-    });
+    try {
+      await vault.saveEntry({
+        id: editing.id,
+        titulo: editing.titulo!,
+        usuario: editing.usuario ?? '',
+        url: editing.url ?? '',
+        ambiente: editing.ambiente,
+        ativoId: editing.ativoId,
+        notas: editing.notas ?? '',
+        confirmadoEm: editing.confirmadoEm || undefined,
+        secret: editing.secret ?? '',
+      });
+    } catch (e) {
+      if (!falhaAoGravar(e)) refresh();
+      return;
+    }
+    setErroGravar('');
     setEditing(null);
     refresh();
   }
   async function excluir(id: string) {
-    await vault.removeEntry(id);
+    try {
+      await vault.removeEntry(id);
+      setErroGravar('');
+    } catch (e) {
+      if (falhaAoGravar(e)) return;
+    }
     refresh();
   }
 
@@ -166,11 +274,14 @@ function VaultManager({ onLock }: { onLock: () => void }) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    const texto = await file.text();
     try {
-      const r = await vault.importEntries(await file.text());
+      const r = await vault.importEntries(texto);
+      setErroGravar('');
       setImportMsg(`${r.novas} credencial(is) nova(s), ${r.atualizadas} atualizada(s). Apague o arquivo de origem: ele tem os segredos em texto puro.`);
-    } catch {
-      setImportMsg('Arquivo inválido: esperado um JSON com a lista de credenciais.');
+    } catch (e) {
+      if (isAxiosError(e)) { if (falhaAoGravar(e)) return; }
+      else setImportMsg('Arquivo inválido: esperado um JSON com a lista de credenciais.');
     }
     refresh();
   }
@@ -202,6 +313,7 @@ function VaultManager({ onLock }: { onLock: () => void }) {
       </p>
 
       {importMsg && <Message severity="info" style={{ width: '100%' }} text={importMsg} />}
+      {erroGravar && <Message severity="error" style={{ width: '100%', marginTop: '.5rem' }} text={erroGravar} />}
 
       {editing && (
         <div className="iv-card iv-mt" style={{ maxWidth: 520 }}>

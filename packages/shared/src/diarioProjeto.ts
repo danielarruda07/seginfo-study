@@ -24,6 +24,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-13-cofre-2fa',
+    data: '2026-11-13',
+    titulo: 'Segundo fator no Cofre, conferido pelo servidor',
+    descricao:
+      'O Cofre vivia só no navegador, protegido pela senha-mestra. Para abrir em qualquer aparelho sem enfraquecer nada, ' +
+      'ganhou um segundo fator TOTP (Google Authenticator). A lição: 2FA só no front é teatro, porque o segredo do código ' +
+      'ficaria no mesmo lugar que o cofre. Quem confere o código é o servidor, que só então entrega o blob, ainda cifrado; ' +
+      'a senha-mestra nunca sai do navegador. São três camadas independentes: identidade no proxy, código no celular e ' +
+      'senha-mestra. Ativar e enviar o cofre acontecem numa única operação atômica, o mesmo código não vale duas vezes, ' +
+      'cinco erros bloqueiam com espera crescente, os códigos de recuperação ficam só como hash e todo acesso vira evento ' +
+      'de auditoria. O TOTP foi implementado com a biblioteca de criptografia nativa e validado contra os vetores da RFC 6238.',
+    categoria: 'seguranca',
+    tags: ['2fa', 'totp', 'cofre', 'zero-knowledge'],
+  },
+  {
     id: 'proj-2026-11-13-acessos-ficha',
     data: '2026-11-13',
     titulo: 'Acessos e integrações saem do caminho do inventário',

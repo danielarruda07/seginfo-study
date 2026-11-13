@@ -1,6 +1,7 @@
 import { VaultBlobSchema, type VaultEntry, type VaultBlob } from '@seginfo/shared';
 import { deriveKey, encryptJSON, decryptJSON, randomBytes, fromB64, type Bytes } from './crypto';
 import { read, write, removeKey, uid, registerSchema } from './store';
+import { cofre2fa } from './cofre2fa';
 import { z } from 'zod';
 
 /**
@@ -61,12 +62,75 @@ export function resetIdleTimer(): void {
   idleTimer = setTimeout(() => lock(), min * 60_000);
 }
 
-export function isInitialized(): boolean {
+// ---- Modo servidor (segundo fator ativo) ----
+// Com o 2FA ligado, o blob mora SÓ no servidor e só é entregue depois de um código válido.
+// Este marcador (não secreto) só lembra o modo; nenhuma cópia do blob fica no navegador.
+const SERVIDOR_KEY = 'vault:servidor';
+registerSchema(SERVIDOR_KEY, { safeParse: (v) => z.boolean().safeParse(v) });
+/** Data da versão do servidor que está carregada; vai junto no PUT para detectar conflito. */
+let servidorBase: string | null = null;
+
+export function modoServidor(): boolean {
+  return read<boolean>(SERVIDOR_KEY, false);
+}
+export function definirModoServidor(on: boolean): void {
+  if (on) write(SERVIDOR_KEY, true); else removeKey(SERVIDOR_KEY);
+}
+/** Há cópia do blob neste navegador (modo local, ou resto antigo de antes do 2FA)? */
+export function temCopiaLocal(): boolean {
   return read<VaultBlob | null>(BLOB_KEY, null) !== null;
+}
+export function apagarCopiaLocal(): void {
+  removeKey(BLOB_KEY);
+}
+
+export function isInitialized(): boolean {
+  return modoServidor() || temCopiaLocal();
 }
 
 export function isUnlocked(): boolean {
   return sessionKey !== null;
+}
+
+/**
+ * Destrava com o blob baixado do servidor (depois do código do autenticador).
+ * `blob` null = servidor sem cofre ainda. Retorna false se a senha estiver errada.
+ */
+export async function unlockServidor(masterPassword: string, blob: (VaultBlob & { atualizadoEm?: string }) | null): Promise<boolean> {
+  if (!blob) return false;
+  const ok = await unlock(masterPassword, blob);
+  if (ok) servidorBase = blob.atualizadoEm ?? null;
+  return ok;
+}
+
+/** Cria o primeiro cofre direto no servidor (aparelho novo, 2FA ativo e servidor vazio). */
+export async function initVaultServidor(masterPassword: string): Promise<void> {
+  servidorBase = null;
+  await initVault(masterPassword);
+}
+
+/** Blob cifrado do cofre destravado, para ir junto na ativação do 2FA. */
+export async function blobAtual(): Promise<VaultBlob> {
+  assertUnlocked();
+  return { versao: 1, ...(await encryptJSON(cache, sessionKey!, sessionSalt!)) };
+}
+
+/**
+ * Depois que o servidor confirmou a ativação (e guardou o blob na mesma operação):
+ * liga o modo servidor e apaga a cópia deste navegador.
+ */
+export function concluirMigracao(atualizadoEm: string): void {
+  servidorBase = atualizadoEm;
+  definirModoServidor(true);
+  apagarCopiaLocal();
+}
+
+/** Antes de desligar o 2FA: grava a cópia local e sai do modo servidor. */
+export async function voltarParaLocal(): Promise<void> {
+  assertUnlocked();
+  const blob = await encryptJSON(cache, sessionKey!, sessionSalt!);
+  write<VaultBlob>(BLOB_KEY, { versao: 1, ...blob });
+  definirModoServidor(false);
 }
 
 /** Cria um cofre novo com a senha-mestra escolhida. */
@@ -80,11 +144,11 @@ export async function initVault(masterPassword: string): Promise<void> {
   resetIdleTimer();
 }
 
-/** Destrava um cofre existente. Retorna false se a senha estiver errada. */
-export async function unlock(masterPassword: string): Promise<boolean> {
+/** Destrava um cofre existente (o local, ou o `externo` vindo do servidor). Retorna false se a senha estiver errada. */
+export async function unlock(masterPassword: string, externo?: VaultBlob): Promise<boolean> {
   const waitMs = unlockWaitSeconds() * 1000;
   if (waitMs > 0) { await new Promise((resolve) => setTimeout(resolve, waitMs)); }
-  const blob = read<VaultBlob | null>(BLOB_KEY, null);
+  const blob = externo ?? read<VaultBlob | null>(BLOB_KEY, null);
   if (!blob) return false;
   const salt = fromB64(blob.salt);
   const key = await deriveKey(masterPassword, salt);
@@ -121,6 +185,11 @@ function assertUnlocked(): void {
 async function persist(): Promise<void> {
   assertUnlocked();
   const blob = await encryptJSON(cache, sessionKey!, sessionSalt!);
+  if (modoServidor()) {
+    // falha (sessão expirada, conflito, rede) sobe para a tela, que pede o código ou recarrega
+    servidorBase = await cofre2fa.gravarBlob({ versao: 1, ...blob }, servidorBase);
+    return;
+  }
   write<VaultBlob>(BLOB_KEY, { versao: 1, ...blob });
 }
 
@@ -135,9 +204,22 @@ export async function saveEntry(entry: Omit<VaultEntry, 'id' | 'atualizadoEm'> &
   const { secret, id, ...meta } = entry;
   const now = new Date().toISOString();
   const full = { ...meta, id: id || uid(), atualizadoEm: now, secret } as VaultEntry & { secret: string };
-  const idx = cache.findIndex((e) => e.id === full.id);
-  if (idx >= 0) cache[idx] = full; else cache.push(full);
-  await persist();
+  await mudar(() => {
+    const idx = cache.findIndex((e) => e.id === full.id);
+    if (idx >= 0) cache[idx] = full; else cache.push(full);
+  });
+}
+
+/** Aplica a mudança e grava; se a gravação falhar (ex.: servidor), desfaz para a tela não mentir. */
+async function mudar(fn: () => void): Promise<void> {
+  const antes = cache.map((e) => ({ ...e }));
+  fn();
+  try {
+    await persist();
+  } catch (e) {
+    cache = antes;
+    throw e;
+  }
 }
 
 const ImportSchema = z.array(z.object({
@@ -159,11 +241,16 @@ export async function importEntries(texto: string): Promise<{ novas: number; atu
   const lista = ImportSchema.parse(JSON.parse(texto));
   let novas = 0;
   let atualizadas = 0;
-  for (const item of lista) {
-    const existente = cache.find((e) => e.titulo === item.titulo);
-    if (existente) atualizadas++; else novas++;
-    await saveEntry({ ...item, id: existente?.id, ambiente: 'criecomia' });
-  }
+  const agora = new Date().toISOString();
+  // uma gravação só (no modo servidor, um PUT em vez de um por credencial)
+  await mudar(() => {
+    for (const item of lista) {
+      const existente = cache.find((e) => e.titulo === item.titulo);
+      if (existente) atualizadas++; else novas++;
+      const full = { ...item, ambiente: 'criecomia', id: existente?.id ?? uid(), atualizadoEm: agora } as VaultEntry & { secret: string };
+      if (existente) cache[cache.indexOf(existente)] = full; else cache.push(full);
+    }
+  });
   return { novas, atualizadas };
 }
 
@@ -176,8 +263,7 @@ export function getSecret(id: string): string {
 
 export async function removeEntry(id: string): Promise<void> {
   assertUnlocked();
-  cache = cache.filter((e) => e.id !== id);
-  await persist();
+  await mudar(() => { cache = cache.filter((e) => e.id !== id); });
 }
 
 /** Exporta o blob cifrado para backup (continua inútil sem a senha-mestra). */
