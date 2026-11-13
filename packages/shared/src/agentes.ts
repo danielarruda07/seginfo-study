@@ -83,8 +83,21 @@ export type AvaliacaoIn = z.infer<typeof AvaliacaoInSchema>;
 
 // ---------- execução (playground) ----------
 
-/** rodando: laço em andamento; limite: parou no teto de passos ou de tokens. */
-export type ExecucaoStatus = 'rodando' | 'concluida' | 'limite' | 'recusada' | 'erro';
+/**
+ * rodando: laço em andamento; aguardando_aprovacao: o laço pausou numa ação de escrita e só
+ * continua depois da sua decisão; limite: parou no teto de passos ou de tokens.
+ */
+export type ExecucaoStatus = 'rodando' | 'aguardando_aprovacao' | 'concluida' | 'limite' | 'recusada' | 'erro';
+
+/** Ação de escrita que o modelo pediu e que espera a sua decisão. */
+export interface PedidoPendente {
+  /** id do pedido (tool_use) na conversa */
+  id: string;
+  nome: string;
+  entrada: unknown;
+  /** o que vai acontecer, em uma frase, montado pelo servidor a partir dos parâmetros validados */
+  resumo: string;
+}
 
 /** Cada volta do laço deixa um passo: o que o modelo disse ou o que uma ferramenta devolveu. */
 export type PassoExecucao =
@@ -106,6 +119,9 @@ export type PassoExecucao =
       saida: string;
       erro: boolean;
       ms: number;
+      /** só em ações de escrita: o que você decidiu na tela de aprovação, e quando */
+      decisao?: 'aprovada' | 'negada';
+      decididoEm?: string;
     };
 
 export const ExecutarInSchema = z.object({
@@ -114,6 +130,12 @@ export const ExecutarInSchema = z.object({
   continuarDe: z.string().min(1).max(60).optional(),
 });
 export type ExecutarIn = z.infer<typeof ExecutarInSchema>;
+
+/** Decisão sobre TODAS as ações pendentes de uma execução; o servidor confere contra o que ele guardou. */
+export const DecidirInSchema = z.object({
+  decisoes: z.array(z.object({ id: z.string().min(1).max(200), aprovar: z.boolean() })).min(1).max(20),
+});
+export type DecidirIn = z.infer<typeof DecidirInSchema>;
 
 export function agenteConfigVazio(): AgenteConfig {
   return {

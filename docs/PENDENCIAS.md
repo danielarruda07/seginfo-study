@@ -122,9 +122,14 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
 - [x] Playground/execução de agentes (`agenteRuntime.ts`, só ferramentas de leitura; limites de 8 chamadas e 40 mil tokens de saída)
 - [ ] Migration `20261113000000_agente_execucao` roda no próximo deploy (aditiva)
 - [x] Testar o playground no ambiente publicado (funcionou em 13/11/2026)
-- [x] Fase 2: ferramentas de leitura do Proxmox (cliente testado só contra servidor simulado)
+- [x] Fase 2: ferramentas de leitura do Proxmox (funcionou contra o Proxmox real em 13/11/2026)
 - [ ] Definir `PROXMOX_URL`, `PROXMOX_TOKEN` e `PROXMOX_CA_B64` no Coolify e testar o agente "Operador do Proxmox" contra o Proxmox real
-- [ ] Fase 3: tela de aprovação e escrita no Proxmox (plano em docs/AGENTS.md)
+- [x] Fase 3: tela de aprovação e escrita no Proxmox (energia e snapshots; fluxo testado com simulações)
+- [ ] Testar a fase 3 contra o Proxmox real com o agente "Operador do Proxmox (com ações)", começando por criar e apagar um snapshot numa VM de teste
+- [ ] Migration `20261113010000_agente_execucao_pendencia` roda no próximo deploy (aditiva)
+- [ ] Trocar `PROXMOX_TLS_INSEGURO=true` por verificação do certificado (CA ou impressão digital), agora que o token faz escrita
+- [ ] Ferramentas de criar, clonar e apagar VM
+- [ ] Fase 4: FortiGate (API REST) e Catalyst 2960 (SSH)
 - [ ] Incluir `AgenteExecucao` no backup
 - [ ] Restaurar `agentes` e `agenteAvaliacoes` no `restore-backup.ts` (hoje só exporta)
 - [ ] Migration `20261112000000_agentes` roda no próximo deploy (aditiva)

@@ -7,7 +7,8 @@ import tls from 'node:tls';
  *
  * - Autentica com token de API (PROXMOX_TOKEN = usuario@realm!nome=segredo). O token fica só
  *   no servidor: o modelo nunca o vê, só recebe o resultado das consultas.
- * - Este arquivo só faz GET. Escrita entra junto com a tela de aprovação.
+ * - proxmoxGet lê; proxmoxAlterar muda o ambiente e só é usada por ferramentas de escrita,
+ *   que o runtime nunca executa sem aprovação na tela.
  * - TLS: o certificado padrão do Proxmox é assinado pela CA do próprio cluster. O caminho certo
  *   é confiar nessa CA (PROXMOX_CA_B64 = pve-root-ca.pem em base64). PROXMOX_TLS_INSEGURO=true
  *   desliga a verificação e só deve ser usado em laboratório.
@@ -19,7 +20,30 @@ const ERROS_DE_CERTIFICADO = ['DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_I
 /** Nomes (não valores) das variáveis que faltam para falar com o Proxmox. */
 export const proxmoxFaltando = (): string[] => VARIAVEIS.filter((k) => !process.env[k]);
 
-export function proxmoxGet(caminho: string): Promise<unknown> {
+export const proxmoxGet = (caminho: string): Promise<unknown> => pedir('GET', caminho);
+
+/**
+ * Altera algo no Proxmox e espera a tarefa terminar. Só é chamada pelas ferramentas de escrita,
+ * e essas só rodam depois da aprovação na tela (ver agenteRuntime.ts).
+ * A maioria das alterações devolve o id de uma tarefa (UPID) que roda em segundo plano no nó.
+ */
+export async function proxmoxAlterar(metodo: 'POST' | 'DELETE', no: string, caminho: string, parametros: Record<string, string | number> = {}): Promise<string> {
+  const corpo = new URLSearchParams(Object.entries(parametros).map(([k, v]): [string, string] => [k, String(v)])).toString();
+  const upid = await pedir(metodo, caminho, corpo);
+  if (typeof upid !== 'string' || !upid.startsWith('UPID:')) return 'Concluído.';
+  // acompanha a tarefa por até 90 segundos
+  for (let i = 0; i < 45; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const t = (await pedir('GET', `/nodes/${no}/tasks/${encodeURIComponent(upid)}/status`)) as { status?: string; exitstatus?: string };
+    if (t.status === 'stopped') {
+      if (t.exitstatus === 'OK') return 'Tarefa concluída com sucesso.';
+      throw new Error(`A tarefa terminou com erro no Proxmox: ${t.exitstatus ?? 'sem detalhe'}.`);
+    }
+  }
+  return 'A tarefa foi iniciada e ainda está em andamento no Proxmox depois de 90 segundos. Consulte o estado antes de concluir que terminou.';
+}
+
+function pedir(metodo: 'GET' | 'POST' | 'DELETE', caminho: string, corpo = ''): Promise<unknown> {
   const faltando = proxmoxFaltando();
   if (faltando.length > 0) {
     return Promise.reject(new Error(`Proxmox não configurado no servidor: falta definir ${faltando.join(' e ')}.`));
@@ -51,8 +75,12 @@ export function proxmoxGet(caminho: string): Promise<unknown> {
         host: base.hostname,
         port: base.port || 8006,
         path: `/api2/json${caminho}`,
-        method: 'GET',
-        headers: { Authorization: `PVEAPIToken=${token}`, Accept: 'application/json' },
+        method: metodo,
+        headers: {
+          Authorization: `PVEAPIToken=${token}`,
+          Accept: 'application/json',
+          ...(metodo === 'POST' ? { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(corpo) } : {}),
+        },
         timeout: 10_000,
         ca,
         rejectUnauthorized: !inseguro,
@@ -70,7 +98,8 @@ export function proxmoxGet(caminho: string): Promise<unknown> {
             ));
           }
           if (status === 403) return reject(new Error(`O token foi aceito, mas não tem permissão para ${caminho} (HTTP 403): dê uma role ao token em Datacenter → Permissions.`));
-          if (status >= 400) return reject(new Error(`O Proxmox respondeu HTTP ${status} para ${caminho}.`));
+          // O Proxmox explica o motivo na linha de status (ex.: "VM is locked", "snapshot name already used").
+          if (status >= 400) return reject(new Error(`O Proxmox respondeu HTTP ${status} para ${caminho}${res.statusMessage ? `: ${res.statusMessage}` : ''}.`));
           try {
             resolve((JSON.parse(Buffer.concat(partes).toString('utf8')) as { data: unknown }).data);
           } catch {
@@ -86,7 +115,7 @@ export function proxmoxGet(caminho: string): Promise<unknown> {
       }
       reject(new Error(e.message));
     });
-    req.end();
+    req.end(metodo === 'POST' ? corpo : undefined);
   });
 }
 

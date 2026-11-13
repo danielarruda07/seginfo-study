@@ -9,11 +9,12 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { TextoMarkdown } from '@/components/ui/TextoMarkdown';
 import { Pill, StatusStrip } from '@/components/InfraKit';
 import {
-  getAgente, getRuntime, executarAgente, listExecucoes, getExecucao, erroApi, type Execucao,
+  getAgente, getRuntime, executarAgente, listExecucoes, getExecucao, decidirExecucao, erroApi, type Execucao,
 } from '@/services/agentes';
 
 const STATUS_EXEC: Record<ExecucaoStatus, { rotulo: string; cor: string }> = {
   rodando: { rotulo: 'rodando', cor: '#3b82f6' },
+  aguardando_aprovacao: { rotulo: 'aguardando aprovação', cor: '#d97706' },
   concluida: { rotulo: 'concluída', cor: '#16a34a' },
   limite: { rotulo: 'parou no limite', cor: '#f59e0b' },
   recusada: { rotulo: 'recusada', cor: '#f59e0b' },
@@ -39,8 +40,14 @@ function Passo({ p, n }: { p: PassoExecucao; n: number }) {
     return (
       <div className="iv-card" style={{ padding: '.7rem .9rem', borderLeft: `3px solid ${p.erro ? '#ef4444' : '#8b5cf6'}` }}>
         <div className="iv-row iv-wrap" style={{ justifyContent: 'space-between' }}>
-          <strong><i className="pi pi-wrench" aria-hidden="true" /> {n}. Servidor executou {p.nome}</strong>
-          <span className="iv-muted" style={{ fontSize: '.78rem' }}>{p.erro ? 'falhou · ' : ''}{segundos(p.ms)}</span>
+          <strong>
+            <i className="pi pi-wrench" aria-hidden="true" /> {n}.{' '}
+            {p.decisao === 'negada' ? `Você negou ${p.nome}: nada foi executado` : p.decisao === 'aprovada' ? `Você aprovou e o servidor executou ${p.nome}` : `Servidor executou ${p.nome}`}
+          </strong>
+          <span className="iv-muted" style={{ fontSize: '.78rem' }}>
+            {p.decididoEm ? `decidido em ${new Date(p.decididoEm).toLocaleString('pt-BR')} · ` : ''}
+            {p.erro && p.decisao !== 'negada' ? 'falhou · ' : ''}{segundos(p.ms)}
+          </span>
         </div>
         <details style={{ marginTop: '.4rem' }}>
           <summary style={{ cursor: 'pointer', fontSize: '.84rem' }}>Parâmetros que o modelo enviou e o que voltou</summary>
@@ -69,6 +76,64 @@ function Passo({ p, n }: { p: PassoExecucao; n: number }) {
   );
 }
 
+/** Tela de consentimento: mostra o que o servidor vai fazer e só segue com a sua decisão para cada ação. */
+function Aprovacao({ agenteId, e }: { agenteId: string; e: Execucao }) {
+  const qc = useQueryClient();
+  const [escolhas, setEscolhas] = useState<Record<string, boolean>>({});
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState('');
+  const completo = e.pendentes.every((p) => p.id in escolhas);
+  const aprovadas = e.pendentes.filter((p) => escolhas[p.id]).length;
+
+  async function enviar() {
+    if (!completo || enviando) return;
+    setEnviando(true); setErro('');
+    try {
+      await decidirExecucao(agenteId, e.id, e.pendentes.map((p) => ({ id: p.id, aprovar: escolhas[p.id] })));
+    } catch (err) {
+      setErro(erroApi(err, 'Falha ao enviar a decisão.'));
+    } finally {
+      // com sucesso ou com erro, a tela volta a refletir o que o servidor tem
+      await qc.invalidateQueries({ queryKey: ['agente-execucao', agenteId, e.id] });
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="iv-card" role="group" aria-label="Aprovação necessária" style={{ padding: '1rem', border: '2px solid #d97706' }}>
+      <strong style={{ fontSize: '1.02rem' }}><i className="pi pi-shield" aria-hidden="true" /> Aprovação necessária</strong>
+      <p className="iv-muted" style={{ fontSize: '.86rem', margin: '.3rem 0 .8rem' }}>
+        O agente pediu {e.pendentes.length === 1 ? 'uma ação que altera' : `${e.pendentes.length} ações que alteram`} o ambiente. Nada foi executado ainda.
+        O servidor só executa o que você aprovar aqui, com exatamente os parâmetros abaixo.
+      </p>
+      <div className="iv-col" style={{ gap: '.7rem' }}>
+        {e.pendentes.map((p) => (
+          <div key={p.id} className="iv-card" style={{ padding: '.7rem .9rem' }}>
+            <div style={{ fontWeight: 600 }}>{p.resumo}</div>
+            <details style={{ marginTop: '.3rem' }}>
+              <summary style={{ cursor: 'pointer', fontSize: '.82rem' }}>Ferramenta {p.nome} e parâmetros</summary>
+              <pre style={bloco}>{JSON.stringify(p.entrada, null, 2)}</pre>
+            </details>
+            <div className="iv-row iv-wrap iv-mt">
+              <Button label="Aprovar" icon="pi pi-check" size="small" severity="success" outlined={escolhas[p.id] !== true}
+                aria-pressed={escolhas[p.id] === true} onClick={() => setEscolhas((x) => ({ ...x, [p.id]: true }))} disabled={enviando} />
+              <Button label="Negar" icon="pi pi-times" size="small" severity="danger" outlined={escolhas[p.id] !== false}
+                aria-pressed={escolhas[p.id] === false} onClick={() => setEscolhas((x) => ({ ...x, [p.id]: false }))} disabled={enviando} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="iv-row iv-wrap iv-mt" style={{ justifyContent: 'space-between' }}>
+        <small className="iv-muted">
+          {completo ? `${aprovadas} para executar, ${e.pendentes.length - aprovadas} para negar.` : 'Escolha Aprovar ou Negar em cada ação.'}
+        </small>
+        <Button label="Confirmar decisão" icon="pi pi-send" onClick={enviar} loading={enviando} disabled={!completo || enviando} />
+      </div>
+      {erro && <Message severity="error" text={erro} style={{ width: '100%', marginTop: '.75rem' }} />}
+    </div>
+  );
+}
+
 function Turno({ agenteId, execId }: { agenteId: string; execId: string }) {
   const qc = useQueryClient();
   const q = useQuery({
@@ -79,7 +144,7 @@ function Turno({ agenteId, execId }: { agenteId: string; execId: string }) {
   });
   const e = q.data;
   // quando a execução termina, a lista de execuções anteriores deixa de mostrar "rodando"
-  const terminou = !!e && e.status !== 'rodando';
+  const terminou = !!e && e.status !== 'rodando' && e.status !== 'aguardando_aprovacao';
   useEffect(() => {
     if (terminou) qc.invalidateQueries({ queryKey: ['agente-execucoes', agenteId] });
   }, [terminou, agenteId, qc]);
@@ -102,7 +167,14 @@ function Turno({ agenteId, execId }: { agenteId: string; execId: string }) {
         </div>
       )}
 
-      {e.status !== 'rodando' && (
+      {e.status === 'aguardando_aprovacao' && (
+        <>
+          {e.resposta && <div className="iv-card" style={{ padding: '.7rem .9rem' }}><TextoMarkdown texto={e.resposta} /></div>}
+          <Aprovacao agenteId={agenteId} e={e} />
+        </>
+      )}
+
+      {terminou && (
         <div className="iv-card" style={{ padding: '.8rem 1rem' }}>
           <div className="iv-row iv-wrap" style={{ justifyContent: 'space-between' }}>
             <small className="iv-muted">Resposta do agente</small>
@@ -141,7 +213,8 @@ export function AgentPlayground() {
     queryFn: () => getExecucao(agenteId, ultimoId as string),
     enabled: !!ultimoId,
   });
-  const rodando = enviando || (!!ultimoId && (!ultimo.data || ultimo.data.status === 'rodando'));
+  const aguardando = ultimo.data?.status === 'aguardando_aprovacao';
+  const rodando = enviando || aguardando || (!!ultimoId && (!ultimo.data || ultimo.data.status === 'rodando'));
 
   async function enviar() {
     const mensagem = texto.trim();
@@ -171,7 +244,7 @@ export function AgentPlayground() {
   const ligadas = agente.data?.config.ferramentas ?? [];
   // Um item do projeto (id do catálogo) pode virar várias ferramentas reais no servidor.
   const reais = runtime.data?.ferramentas ?? [];
-  const ativas = reais.filter((r) => r.permissao === 'leitura' && ligadas.some((f) => f.id === r.id));
+  const ativas = reais.filter((r) => ligadas.some((f) => f.id === r.id && (r.permissao === 'leitura' || f.permissao === 'escrita')));
   const semExecucao = ligadas.filter((f) => !ativas.some((r) => r.id === f.id));
   const faltando = [...new Set(ativas.flatMap((r) => r.faltando))];
 
@@ -205,8 +278,13 @@ export function AgentPlayground() {
           <Pill label={runtime.data?.modelo ?? '…'} color="#64748b" />
           <span className="iv-muted" style={{ fontSize: '.84rem' }}>Ferramentas ativas:</span>
           {ativas.length === 0 && <span className="iv-muted" style={{ fontSize: '.84rem' }}>nenhuma (o agente só conversa)</span>}
-          {ativas.map((r) => <Pill key={r.nome} label={r.nome} color={r.faltando.length > 0 ? '#94a3b8' : '#8b5cf6'} />)}
+          {ativas.map((r) => <Pill key={r.nome} label={r.nome} color={r.faltando.length > 0 ? '#94a3b8' : r.permissao === 'escrita' ? '#d97706' : '#8b5cf6'} />)}
         </div>
+        {ativas.some((r) => r.permissao === 'escrita') && (
+          <p className="iv-muted" style={{ fontSize: '.82rem', margin: '.5rem 0 0' }}>
+            As ferramentas em laranja alteram o ambiente: cada chamada para aqui e espera a sua aprovação.
+          </p>
+        )}
         {faltando.length > 0 && (
           <p style={{ color: 'var(--iv-crit)', fontSize: '.82rem', margin: '.5rem 0 0' }}>
             As ferramentas em cinza vão falhar: falta definir {faltando.join(' e ')} no serviço da API (Coolify) e fazer redeploy.
@@ -225,12 +303,13 @@ export function AgentPlayground() {
 
       <div className="iv-card iv-mt">
         <InputTextarea rows={3} style={{ width: '100%' }} value={texto} maxLength={8000} aria-label="Mensagem para o agente"
-          placeholder={turnos.length === 0 ? 'Escreva o pedido para o agente' : 'Continue a conversa'}
+          placeholder={aguardando ? 'Decida a aprovação acima para continuar' : turnos.length === 0 ? 'Escreva o pedido para o agente' : 'Continue a conversa'}
+          disabled={aguardando}
           onChange={(e) => setTexto(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) enviar(); }} />
         <div className="iv-row iv-wrap iv-mt" style={{ justifyContent: 'space-between' }}>
           <small className="iv-muted">Ctrl+Enter envia. O texto e os resultados das ferramentas são enviados à Anthropic.</small>
-          <Button label="Executar" icon="pi pi-play" onClick={enviar} loading={rodando} disabled={!texto.trim() || rodando || runtime.data?.configurada === false} />
+          <Button label="Executar" icon="pi pi-play" onClick={enviar} loading={rodando && !aguardando} disabled={!texto.trim() || rodando || runtime.data?.configurada === false} />
         </div>
         {erro && <Message severity="error" text={erro} style={{ width: '100%', marginTop: '.75rem' }} />}
       </div>

@@ -300,13 +300,15 @@ model AgenteExecucao {
   usuarioId     String
   agenteId      String
   agente        Agente   @relation(fields: [agenteId], references: [id], onDelete: Cascade)
-  status        String   @default("rodando") // rodando | concluida | limite | recusada | erro
+  status        String   @default("rodando") // rodando | aguardando_aprovacao | concluida | limite | recusada | erro
   entrada       String
   resposta      String   @default("")
   erro          String   @default("")
   modelo        String
   passos        Json     @default("[]")
   mensagens     Json     @default("[]")
+  // Preenchido só enquanto a execução espera aprovação: as ações pedidas e os resultados já prontos do mesmo turno.
+  pendencia     Json?
   tokensEntrada Int      @default(0)
   tokensSaida   Int      @default(0)
   duracaoMs     Int      @default(0)

@@ -1,4 +1,4 @@
-import type { AgenteConfig, AgenteStatus, AvaliacaoIn, AvaliacaoResultado, ExecucaoStatus, PassoExecucao } from '@seginfo/shared';
+import type { AgenteConfig, AgenteStatus, AvaliacaoIn, AvaliacaoResultado, ExecucaoStatus, PassoExecucao, PedidoPendente } from '@seginfo/shared';
 import { http } from './http';
 
 export interface AgenteResumo {
@@ -98,6 +98,8 @@ export interface ExecucaoResumo {
 
 export interface Execucao extends ExecucaoResumo {
   passos: PassoExecucao[];
+  /** ações de escrita esperando a sua decisão (só quando o status é aguardando_aprovacao) */
+  pendentes: PedidoPendente[];
 }
 
 export const getRuntime = () => http.get<RuntimeInfo>('/agentes/runtime').then((r) => r.data);
@@ -112,7 +114,11 @@ export const getExecucao = (agenteId: string, execId: string) =>
  * Mensagem de erro da API. Quando a resposta não é o JSON da API (proxy, borda, queda no meio
  * do pedido), acrescenta o que aconteceu, para dar para diagnosticar pela tela.
  */
-export const erroApi = (e: unknown, padrao: string) => {
+/** Envia a decisão da tela de aprovação; precisa cobrir todas as ações pendentes da execução. */
+export const decidirExecucao = (agenteId: string, execId: string, decisoes: { id: string; aprovar: boolean }[]) =>
+  http.post(`/agentes/${agenteId}/execucoes/${execId}/decidir`, { decisoes }).then((r) => r.data);
+
+export const erroApi =(e: unknown, padrao: string) => {
   const r = (e as { response?: { status?: number; data?: { error?: unknown } } }).response;
   if (typeof r?.data?.error === 'string') return r.data.error;
   if (r?.status) return `${padrao} (HTTP ${r.status}, resposta fora do formato da API)`;

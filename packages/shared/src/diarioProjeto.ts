@@ -24,6 +24,22 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-13-agents-aprovacao',
+    data: '2026-11-13',
+    titulo: 'O agente ganhou mãos, e cada gesto passa por uma tela de consentimento',
+    descricao:
+      'O agente do hipervisor leu o laboratório de verdade pela primeira vez, e em seguida ganhou ações: ligar, desligar ' +
+      'e reiniciar máquinas, criar, reverter e apagar snapshots. Nenhuma roda direto. Quando o modelo pede uma ação de ' +
+      'escrita, o servidor valida os parâmetros, monta um resumo em uma frase a partir deles, grava o pedido e para. A ' +
+      'tela mostra o resumo e os parâmetros; só a minha decisão retoma a execução, e o que roda é o que o servidor ' +
+      'guardou, não o que o navegador mandou de volta. Dois cliques não executam duas vezes, ação negada volta ao modelo ' +
+      'como recusa, e cada passo registra quem decidiu e quando. O fluxo ganhou testes automatizados com banco, modelo ' +
+      'e hipervisor simulados. Lição: aprovação humana só vale se for o servidor que a impõe; um botão na tela, sozinho, ' +
+      'não protege nada.',
+    categoria: 'seguranca',
+    tags: ['agentes', 'aprovacao-humana', 'virtualizacao', 'testes'],
+  },
+  {
     id: 'proj-2026-11-13-agents-proxmox-leitura',
     data: '2026-11-13',
     titulo: 'O agente aprendeu a ler o hipervisor',

@@ -110,6 +110,12 @@ export const FERRAMENTAS_CATALOGO: FerramentaCatalogo[] = [
     cuidados: 'O token de API fica só no servidor. Nomes de VM, endereços e configuração vão para o modelo de IA: use apenas com o laboratório.',
   },
   {
+    id: 'proxmox-escrita', nome: 'Proxmox: ligar, desligar, reiniciar e gerenciar snapshots', categoria: 'infra',
+    descricao: 'Altera o hipervisor pela API do Proxmox: liga, desliga e reinicia VMs, cria, reverte e apaga snapshots.', risco: 'alto',
+    permissaoSugerida: 'escrita', aprovacaoSugerida: true,
+    cuidados: 'Cada ação para na tela de aprovação e só roda depois da sua decisão. Reverter e apagar snapshot não têm volta: leia o resumo antes de aprovar.',
+  },
+  {
     id: 'infra-escrita', nome: 'Alterar infraestrutura (firewall, hipervisor, rede)', categoria: 'infra',
     descricao: 'Aplica mudanças em equipamentos ou VMs.', risco: 'alto',
     permissaoSugerida: 'escrita', aprovacaoSugerida: true,
