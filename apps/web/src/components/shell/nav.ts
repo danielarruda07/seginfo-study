@@ -122,14 +122,3 @@ export function filterNav(term: string): NavSection[] {
     norm(s.title).includes(q) ? s : { ...s, items: s.items.filter((i) => norm(i.label).includes(q)) },
   ).filter((s) => s.items.length > 0);
 }
-
-/**
- * Seções abertas no menu: as que a pessoa abriu antes + sempre a da tela atual.
- * `salvo` vem do localStorage (pode ser lixo); títulos que não existem mais são descartados.
- */
-export function secoesAbertas(salvo: unknown, pathname: string): string[] {
-  const validos = new Set(NAV_SECTIONS.map((s) => s.title));
-  const lista = Array.isArray(salvo) ? salvo.filter((t): t is string => typeof t === 'string' && validos.has(t)) : [];
-  const ativa = findActive(pathname)?.section.title;
-  return ativa && !lista.includes(ativa) ? [...lista, ativa] : lista;
-}

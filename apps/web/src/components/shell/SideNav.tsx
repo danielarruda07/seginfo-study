@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { filterNav, findActive, secoesAbertas } from './nav';
+import { filterNav, findActive } from './nav';
 import { RodapeVersao } from './RodapeVersao';
 
-const OPEN_KEY = 'seginfo.menu.secoes';
-
-function lerSalvo(): unknown {
-  try { return JSON.parse(localStorage.getItem(OPEN_KEY) ?? 'null'); } catch { return null; }
-}
+/** chave antiga: o menu lembrava as seções abertas; agora sempre começa recolhido */
+const OPEN_KEY_ANTIGA = 'seginfo.menu.secoes';
 
 interface SideNavProps {
   pathname: string;
@@ -16,25 +13,21 @@ interface SideNavProps {
 }
 
 /**
- * Menu lateral navy. Seções recolhíveis (só a da tela atual abre sozinha).
+ * Menu lateral navy. Seções sempre começam recolhidas e só abrem por clique (pedido do dono);
+ * a seção da tela atual mostra um ponto. Buscar no menu abre tudo enquanto houver termo.
  * Recolhido (só ícones), o hover/foco mostra o menu inteiro por cima do conteúdo.
  */
 export function SideNav({ pathname, collapsed, onNavigate }: SideNavProps) {
   const [term, setTerm] = useState('');
-  const [abertas, setAbertas] = useState<string[]>(() => secoesAbertas(lerSalvo(), pathname));
+  const [abertas, setAbertas] = useState<string[]>([]);
   const sections = filterNav(term);
   const active = findActive(pathname);
   const buscando = term.trim() !== '';
 
-  // Ao navegar para outra seção, ela abre (sem fechar as demais).
-  useEffect(() => { setAbertas((a) => secoesAbertas(a, pathname)); }, [pathname]);
+  useEffect(() => { try { localStorage.removeItem(OPEN_KEY_ANTIGA); } catch { /* sem storage */ } }, []);
 
   function alternar(titulo: string) {
-    setAbertas((a) => {
-      const prox = a.includes(titulo) ? a.filter((t) => t !== titulo) : [...a, titulo];
-      try { localStorage.setItem(OPEN_KEY, JSON.stringify(prox)); } catch { /* sem storage: só não lembra */ }
-      return prox;
-    });
+    setAbertas((a) => (a.includes(titulo) ? a.filter((t) => t !== titulo) : [...a, titulo]));
   }
 
   return (
