@@ -29,6 +29,7 @@ model Usuario {
   cofreSessoes CofreSessao[]
   cofreEventos CofreEvento[]
   ataques      AtaqueEvento[]
+  pericias     Pericia[]
   armazenamento ArmazenamentoConta?
   backups      BackupRegistro[]
   memorias     Memoria[]
@@ -190,6 +191,26 @@ model CofreEvento {
   criadoEm  DateTime @default(now())
 
   @@index([usuarioId, criadoEm])
+}
+
+// Laudo de um alvo real do honeypot, gerado na VM do Wazuh antes de cada reset (POST /api/ingest/pericia).
+// `dados` guarda o laudo validado (PericiaInSchema); `resumo` traz as contagens para a lista.
+model Pericia {
+  id           String   @id @default(cuid())
+  usuarioId    String
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  alvo         String
+  vmid         Int
+  sistema      String   // linux | windows
+  sensor       String?
+  janelaInicio DateTime
+  janelaFim    DateTime
+  resumo       Json     @default("{}")
+  dados        Json     @default("{}")
+  criadoEm     DateTime @default(now())
+
+  @@unique([usuarioId, alvo, janelaFim])
+  @@index([usuarioId, janelaFim])
 }
 
 // Radar de Ataques: eventos de tentativa de invasão (FortiGate, Windows 4625/4740, honeypot).

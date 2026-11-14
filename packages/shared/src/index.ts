@@ -424,6 +424,48 @@ export const IngestBatchSchema = z.object({
 });
 export type IngestBatch = z.infer<typeof IngestBatchSchema>;
 
+// ===================== LAUDO DOS ALVOS REAIS =====================
+/**
+ * Laudo de um alvo real do honeypot, montado na VM do Wazuh ANTES de cada reset: o que mudou no
+ * disco desde o último reset, persistência, processos e conexões do invasor e as tentativas de
+ * saída que o firewall bloqueou. Enviado por POST /api/ingest/pericia (mesma autenticação do ingest).
+ */
+const txt = (n: number) => z.string().max(n);
+export const PericiaArquivoSchema = z.object({
+  caminho: txt(500),
+  tamanho: z.number().int().min(0),
+  modificadoEm: z.string().datetime({ offset: true }).optional(),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  tipo: z.enum(['elf', 'pe', 'script', 'outro']),
+  executavel: z.boolean(),
+});
+export const PericiaSaidaSchema = z.object({
+  destino: txt(64),
+  porta: z.number().int().min(0).max(65535).optional(),
+  protocolo: txt(16).optional(),
+  tentativas: z.number().int().min(1),
+  primeira: z.string().datetime({ offset: true }),
+  ultima: z.string().datetime({ offset: true }),
+});
+export const PericiaInSchema = z.object({
+  alvo: txt(128).min(1),
+  vmid: z.number().int().min(1),
+  sistema: z.enum(['linux', 'windows']),
+  /** Nome do sensor no Radar (alvo dos eventos) para cruzar com quem entrou na janela. */
+  sensor: txt(128).optional(),
+  janelaInicio: z.string().datetime({ offset: true }),
+  janelaFim: z.string().datetime({ offset: true }),
+  arquivos: z.array(PericiaArquivoSchema).max(500).default([]),
+  persistencia: z.array(z.object({ tipo: txt(40), onde: txt(300), conteudo: txt(2000) })).max(200).default([]),
+  processos: z.array(z.object({ pid: z.number().int(), usuario: txt(64).optional(), inicio: txt(40).optional(), comando: txt(1000) })).max(200).default([]),
+  conexoes: z.array(z.object({ local: txt(80).optional(), remoto: txt(80), estado: txt(20).optional(), processo: txt(200).optional() })).max(200).default([]),
+  saidas: z.array(PericiaSaidaSchema).max(500).default([]),
+  amostras: z.array(z.object({ sha256: z.string().regex(/^[a-f0-9]{64}$/), caminho: txt(500), tamanho: z.number().int().min(0), guardada: z.boolean() })).max(50).default([]),
+  observacoes: z.array(txt(500)).max(50).default([]),
+  erros: z.array(txt(500)).max(20).default([]),
+});
+export type PericiaIn = z.infer<typeof PericiaInSchema>;
+
 // ===================== DIÁRIO DO PROJETO =====================
 export * from './diarioProjeto';
 export * from './linkedin';

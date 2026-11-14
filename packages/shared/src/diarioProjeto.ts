@@ -24,6 +24,23 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-14-laudo-alvos-reais',
+    data: '2026-11-14',
+    titulo: 'Laudo antes do reset: o que o malware deixou e para onde quis ligar',
+    descricao:
+      'Os alvos reais do honeypot voltam ao estado limpo a cada 6 horas, e com isso a evidência sumia. Agora, logo antes ' +
+      'do reset, a VM do Wazuh examina cada alvo pelo agente do hipervisor (nada é instalado dentro, para o invasor não ' +
+      'perceber) e monta um laudo: arquivos criados ou alterados desde o snapshot limpo, com hash; cron, chaves SSH, ' +
+      'serviços e outros pontos de persistência; processos e conexões ainda vivos; e as conexões de saída que o firewall ' +
+      'barrou. Para essa última parte, uma regra nova no Wazuh transforma cada bloqueio de saída dos alvos em alerta, ' +
+      'já que a regra padrão só registrava um resumo de vez em quando. O primeiro dado foi eloquente: o Linux real, ' +
+      'infectado, tentava falar com dois servidores HTTP e com um DNS público cerca de uma vez por segundo, o batimento ' +
+      'típico de um malware procurando o próximo estágio ou o servidor de comando. Lição: sem saída, o malware não causa ' +
+      'dano, mas denuncia para onde iria.',
+    categoria: 'funcionalidade',
+    tags: ['honeypot', 'wazuh', 'forense', 'malware', 'fortigate'],
+  },
+  {
     id: 'proj-2026-11-14-radar-escala',
     data: '2026-11-14',
     titulo: 'Radar aguenta o honeypot exposto e separa internet de laboratório',
