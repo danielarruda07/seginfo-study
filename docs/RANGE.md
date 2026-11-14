@@ -72,6 +72,24 @@ O Ubuntu real não tem agente de monitoração (para não denunciar) e não guar
 - **Instalação sem console:** Linux por ISO de seed do cloud-init e Windows por `autounattend.xml` + script
   de primeiro logon (rede, RDP/NLA, SMB, auditoria, agente QEMU), ambos gerados e enviados por API.
 
+## Laudo antes do reset
+Logo antes de cada reset, `seginfo-pericia` (na VM do Wazuh, [`infra/range/pericia/`](../infra/range/pericia/)) examina
+cada alvo real **pelo agente QEMU via API do Proxmox**, sem instalar nada no alvo:
+- arquivos criados ou alterados desde o snapshot `limpo` (tipo ELF/PE/script, SHA-256);
+- persistência: cron, systemd, chaves SSH, perfis de shell, `ld.so.preload`, contas; no Windows, tarefas,
+  serviços (7045), contas e grupos (4720/4732), chaves Run e assinaturas WMI;
+- processos iniciados depois do boot e conexões abertas;
+- amostras dos executáveis copiadas em pedaços para `/var/lib/seginfo-pericia/amostras/<sha256>.bin` (0400,
+  nunca executadas, nunca enviadas ao app; o app guarda só o hash);
+- saídas bloqueadas pelo firewall na janela (regra 100260, uma por tentativa).
+
+O token do reset ganhou um papel extra só nas VMs dos alvos reais: `VM.GuestAgent.Audit`, `VM.GuestAgent.FileRead`
+e `VM.GuestAgent.Unrestricted` (executar comandos pelo agente). O laudo roda como o usuário do coletor (grupo `wazuh`),
+não como root; se falhar, o reset acontece mesmo assim. No app: Inteligência → **Laudos dos alvos**.
+
+Limite conhecido: um rootkit de espaço de usuário (`/etc/ld.so.preload`) pode esconder arquivos e processos da própria
+coleta; o laudo avisa quando encontra um.
+
 ## Como operar
 | Ação | Como |
 |---|---|
@@ -79,4 +97,5 @@ O Ubuntu real não tem agente de monitoração (para não denunciar) e não guar
 | Prorrogar | mudar o fim do agendamento da exposição |
 | Limpar um alvo real agora | rodar o serviço de reset no Wazuh (ou rollback do snapshot `limpo`) |
 | Ver ataques | app → Radar (tabela, ficha do evento) e Matriz ATT&CK (camada "Vistas no Radar") |
+| Laudo agora (sem esperar o reset) | `systemctl start seginfo-pericia` na VM do Wazuh; `DRY_RUN=true` no env gera só o arquivo local |
 | Investigar a fundo | Wazuh (alertas), `cowrie.json`/`dionaea.json` no honeypot, logs do FortiGate |
