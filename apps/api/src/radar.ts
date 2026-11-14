@@ -84,13 +84,17 @@ export function iniciarRetencao(app: FastifyInstance) {
 export async function registerRadarRoutes(app: FastifyInstance) {
   const uid = (req: unknown) => (req as AuthedRequest).usuarioId;
 
-  const ResumoQuery = z.object({ dias: z.coerce.number().int().min(1).max(90).default(7) });
+  // tz = Date.getTimezoneOffset() do navegador (minutos; 180 em UTC-3): a linha do tempo agrupa no horário local
+  const ResumoQuery = z.object({
+    dias: z.coerce.number().int().min(1).max(90).default(7),
+    tz: z.coerce.number().int().min(-840).max(840).default(0),
+  });
 
   app.get('/api/radar/resumo', async (req, reply) => {
     const q = ResumoQuery.safeParse(req.query);
     if (!q.success) return reply.status(400).send({ error: 'parâmetros inválidos' });
 
-    const dias = q.data.dias;
+    const { dias, tz } = q.data;
     const desde = new Date(Date.now() - dias * 86_400_000);
     const senhas = guardarSenhas();
 
@@ -134,7 +138,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
       if (r.acao === 'login_falha') falhasLogin++;
       if (r.acao === 'lockout') lockouts++;
 
-      const iso = r.ocorridoEm.toISOString();
+      const iso = new Date(r.ocorridoEm.getTime() - tz * 60_000).toISOString();
       inc(timeline, porHora ? iso.slice(0, 13) : iso.slice(0, 10));
 
       for (const m of tecnicasDoEvento(r.acao, r.detalhes)) {

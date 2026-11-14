@@ -24,6 +24,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-13-bot-testa-honeypot',
+    data: '2026-11-13',
+    titulo: 'O bot que testou se o honeypot era de verdade',
+    descricao:
+      'Um "login aceito" no Radar assusta, mas no honeypot ele é a isca funcionando: a senha é aceita de propósito e o ' +
+      'atacante cai num shell simulado. O interessante foi o que veio depois. Um dos bots não rodou nenhum malware: ' +
+      'disparou dezenas de comandos de verificação (contas aritméticas no shell, PID do processo, funções, subshells, ' +
+      'leitura de /proc/self/stat) e conferiu as respostas. É uma checagem anti-honeypot: se o shell não se comporta como ' +
+      'um Linux real, o bot vai embora sem entregar o payload. Lição para o blue team: o comportamento pós-login diz mais ' +
+      'do que o login em si, e um honeypot de baixa interação mostra o reconhecimento, mas nem sempre o ataque completo. ' +
+      'No app, o Radar passou a mostrar o horário local, o comando de cada evento e a marcação de isca.',
+    categoria: 'aprendizado',
+    tags: ['honeypot', 'cowrie', 'anti-honeypot', 'blue-team'],
+  },
+  {
     id: 'proj-2026-11-13-radar-wazuh',
     data: '2026-11-13',
     titulo: 'Honeypot exposto de propósito, e o Radar aprendendo com o Wazuh',

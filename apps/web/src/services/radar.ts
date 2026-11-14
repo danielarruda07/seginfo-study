@@ -50,7 +50,7 @@ export interface RadarEventosFiltro {
 }
 
 export const getRadarResumo = (dias: number) =>
-  http.get<RadarResumo>('/radar/resumo', { params: { dias } }).then((r) => r.data);
+  http.get<RadarResumo>('/radar/resumo', { params: { dias, tz: new Date().getTimezoneOffset() } }).then((r) => r.data);
 
 export const getRadarEventos = (f: RadarEventosFiltro) =>
   http.get<{ total: number; items: RadarEvento[] }>('/radar/eventos', { params: f }).then((r) => r.data);

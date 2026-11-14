@@ -59,6 +59,19 @@ function TopList({ titulo, itens, onPick }: {
   );
 }
 
+/** Data/hora no fuso do navegador (ex.: Fortaleza, UTC-3). */
+const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+/** Honeypots são iscas: login "aceito" ali não dá acesso a nada real. */
+const ISCAS = new Set(['cowrie', 'dionaea', 'opencanary']);
+const rotuloAcao = (e: RadarEvento) => (e.acao === 'login_ok' && ISCAS.has(e.fonte) ? 'login aceito (isca)' : e.acao.replace('_', ' '));
+/** Resumo curto do que o atacante fez (comando, arquivo ou credencial). */
+function resumoDetalhe(e: RadarEvento): string {
+  const d = e.detalhes ?? {};
+  const s = (k: string) => (typeof d[k] === 'string' ? (d[k] as string) : '');
+  const txt = s('comando') || s('url') || s('ips');
+  return txt.length > 70 ? `${txt.slice(0, 70)}…` : txt;
+}
+
 export function Radar() {
   const [dias, setDias] = useState(7);
   const [ip, setIp] = useState<string | undefined>();
@@ -146,7 +159,7 @@ export function Radar() {
       </div>
 
       <div className="iv-card iv-mt">
-        <h4 style={{ margin: '0 0 .6rem' }}>Linha do tempo ({r?.granularidade === 'hora' ? 'por hora, UTC' : 'por dia, UTC'})</h4>
+        <h4 style={{ margin: '0 0 .6rem' }}>Linha do tempo ({r?.granularidade === 'hora' ? 'por hora' : 'por dia'}, horário local)</h4>
         {(r?.timeline.length ?? 0) === 0
           ? <p className="iv-muted" style={{ margin: 0, fontSize: '.85rem' }}>Sem eventos no período.</p>
           : (
@@ -203,23 +216,29 @@ export function Radar() {
           onSelectionChange={(e) => setSelected(e.value as RadarEvento)}
           rowHover
         >
-          <Column header="Quando (UTC)" style={{ width: 170 }}
-            body={(e: RadarEvento) => e.ocorridoEm.replace('T', ' ').slice(0, 19)} />
+          <Column header="Quando" style={{ width: 170 }} body={(e: RadarEvento) => quando(e.ocorridoEm)} />
           <Column header="IP" body={(e: RadarEvento) => (
             <span style={{ fontFamily: 'monospace' }}>{e.ipOrigem ?? '—'}{e.paisOrigem ? ` · ${e.paisOrigem}` : ''}</span>
           )} />
           <Column header="Serviço" body={(e: RadarEvento) => e.servico ? `${e.servico}${e.portaDestino ? `:${e.portaDestino}` : ''}` : (e.portaDestino ?? '—')} />
           <Column header="Protocolo" field="protocolo" />
-          <Column header="Ação" body={(e: RadarEvento) => <Pill label={e.acao} color={ACAO_COLOR[e.acao]} />} />
+          <Column header="Ação" body={(e: RadarEvento) => <Pill label={rotuloAcao(e)} color={ACAO_COLOR[e.acao]} />} />
           <Column header="Usuário tentado" field="usuarioTentado" />
+          <Column header="Detalhe" body={(e: RadarEvento) => <span style={{ fontFamily: 'monospace', fontSize: '.8rem' }}>{resumoDetalhe(e)}</span>} />
           <Column header="Fonte" field="fonte" style={{ width: 110 }} />
         </DataTable>
       </div>
 
       <Sidebar visible={!!selected} position="right" onHide={() => setSelected(null)} style={{ width: 480 }}>
         {selected && <DetailLayout>
-          <DetailHeader title="Detalhes do evento"><Pill label={selected.acao} color={ACAO_COLOR[selected.acao]} /><Pill label={FONTE_LABEL[selected.fonte] ?? selected.fonte} /></DetailHeader>
-          <DetailSection title="Quando"><p>{selected.ocorridoEm.replace('T', ' ').slice(0, 19)} UTC</p></DetailSection>
+          <DetailHeader title="Detalhes do evento"><Pill label={rotuloAcao(selected)} color={ACAO_COLOR[selected.acao]} /><Pill label={FONTE_LABEL[selected.fonte] ?? selected.fonte} /></DetailHeader>
+          <DetailSection title="Quando"><p>{quando(selected.ocorridoEm)} <span className="iv-muted">({selected.ocorridoEm.replace('T', ' ').slice(0, 19)} UTC)</span></p></DetailSection>
+          {ISCAS.has(selected.fonte) && selected.acao === 'login_ok' && (
+            <StatusStrip icon="pi-info-circle">
+              Isca: o honeypot aceita a senha de propósito e entrega um shell <strong>simulado</strong>. Nada real foi acessado;
+              o que vale aqui é ver o que o atacante tenta fazer depois do login.
+            </StatusStrip>
+          )}
           <DetailSection title="Origem"><p style={{ fontFamily: 'monospace' }}>{selected.ipOrigem ?? 'IP não informado'}{selected.paisOrigem ? ` · ${selected.paisOrigem}` : ''}</p></DetailSection>
           <DetailSection title="Alvo"><p>{selected.alvo ?? '—'}</p></DetailSection>
           <DetailSection title="Serviço"><p>{selected.servico ?? '—'}{selected.portaDestino ? `:${selected.portaDestino}` : ''}{selected.protocolo ? ` · ${selected.protocolo}` : ''}</p></DetailSection>
