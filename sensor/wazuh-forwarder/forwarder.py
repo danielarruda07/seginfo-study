@@ -29,6 +29,7 @@ import datetime as dt
 import ipaddress
 import json
 import os
+import re
 import signal
 import sys
 import time
@@ -252,6 +253,75 @@ def de_windows(a, regra, d):
     return ev
 
 
+def tentativas_heralding(v):
+    """auth_attempts chega como lista ou como texto no formato repr do Python."""
+    if isinstance(v, list):
+        return [(x.get('username'), x.get('password')) for x in v if isinstance(x, dict)]
+    if isinstance(v, str):
+        us = re.findall(r"'username': '((?:[^'\\]|\\.)*)'", v)
+        ps = re.findall(r"'password': '((?:[^'\\]|\\.)*)'", v)
+        return list(zip(us, ps))
+    return []
+
+
+def de_heralding(a, regra, d):
+    ip = ip_ok(d.get('source_ip'))
+    if not ip:
+        return None
+    tent = tentativas_heralding(d.get('auth_attempts'))
+    det = detalhes_base(a, regra)
+    det['tentativas'] = porta(d.get('num_auth_attempts')) or len(tent)
+    usuario, senha = tent[0] if tent else (None, None)
+    return {'fonte': 'heralding', 'ocorridoEm': quando(a), 'ipOrigem': ip, 'portaDestino': porta(d.get('destination_port')),
+            'protocolo': 'tcp', 'servico': clip(d.get('protocol'), 32), 'acao': 'login_falha' if tent else 'conexao',
+            'usuarioTentado': clip(usuario, 128), 'senhaTentada': clip(senha, 128),
+            'alvo': clip((a.get('agent') or {}).get('name'), 128), 'detalhes': det}
+
+
+ISCA_ACAO = {'credencial': 'login_falha', 'container_create': 'comando', 'container_exec': 'comando',
+             'image_pull': 'download', 'comando': 'comando'}
+
+
+def de_isca(a, regra, d):
+    ip = ip_ok(d.get('src_ip'))
+    if not ip:
+        return None
+    acao = ISCA_ACAO.get(d.get('acao'), 'conexao')
+    det = detalhes_base(a, regra)
+    if d.get('caminho'):
+        det['url'] = clip(f"{d.get('metodo', '')} {d.get('caminho')}".strip(), 300)
+    if d.get('corpo'):
+        det['comando'] = clip(d.get('corpo'), 500)
+    elif d.get('comandos'):
+        cmds = d.get('comandos')
+        det['comando'] = clip(cmds if isinstance(cmds, str) else json.dumps(cmds, ensure_ascii=False), 500)
+    if d.get('user_agent'):
+        det['userAgent'] = clip(d.get('user_agent'), 200)
+    login = acao == 'login_falha'
+    return {'fonte': 'isca', 'ocorridoEm': quando(a), 'ipOrigem': ip, 'portaDestino': porta(d.get('dst_port')),
+            'protocolo': 'tcp', 'servico': clip(d.get('isca_servico'), 32), 'acao': acao,
+            'usuarioTentado': clip(d.get('usuario'), 128) if login else None,
+            'senhaTentada': clip(d.get('senha'), 128) if login else None,
+            'alvo': clip((a.get('agent') or {}).get('name'), 128), 'detalhes': det}
+
+
+SERVICO_UDP = {53: 'dns', 123: 'ntp', 1900: 'ssdp', 11211: 'memcached'}
+
+
+def de_reflexao(a, regra, d):
+    """Pacote UDP que o firewall registrou e descartou. A origem e falsificada: e a VITIMA do ataque."""
+    ip = ip_ok(d.get('srcip'))
+    if not ip:
+        return None
+    p = porta(d.get('dstport'))
+    det = detalhes_base(a, regra)
+    det['vitimaFalsificada'] = True
+    det['bytes'] = porta(d.get('rcvdbyte'))
+    det['paisVitima'] = clip(d.get('srccountry'), 40)
+    return {'fonte': 'fortigate', 'ocorridoEm': quando(a), 'ipOrigem': ip, 'portaDestino': p, 'protocolo': 'udp',
+            'servico': SERVICO_UDP.get(p), 'acao': 'reflexao', 'alvo': clip(d.get('devname'), 128), 'detalhes': det}
+
+
 def converter(alerta):
     regra = alerta.get('rule') or {}
     grupos = set(regra.get('groups') or [])
@@ -260,6 +330,12 @@ def converter(alerta):
         ev = de_cowrie(alerta, regra, d)
     elif 'dionaea' in grupos:
         ev = de_dionaea(alerta, regra, d)
+    elif 'heralding' in grupos:
+        ev = de_heralding(alerta, regra, d)
+    elif 'isca' in grupos:
+        ev = de_isca(alerta, regra, d)
+    elif 'reflexao' in grupos:
+        ev = de_reflexao(alerta, regra, d)
     elif 'fortigate' in grupos:
         ev = de_fortigate(alerta, regra, d)
     elif 'windows' in grupos or 'sysmon' in grupos:

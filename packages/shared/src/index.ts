@@ -366,12 +366,12 @@ export type BiblioItem = z.infer<typeof BiblioItemSchema>;
 // ===================== RADAR DE ATAQUES (auto-vulnerabilidade / honeypot) =====================
 
 /** Origem do evento: de onde o coletor leu. */
-export const AtaqueFonte = z.enum(['fortigate', 'windows', 'cowrie', 'opencanary', 'dionaea', 'outro']);
+export const AtaqueFonte = z.enum(['fortigate', 'windows', 'cowrie', 'opencanary', 'dionaea', 'heralding', 'isca', 'outro']);
 export type AtaqueFonte = z.infer<typeof AtaqueFonte>;
 
 /** O que o atacante fez. */
 export const AtaqueAcao = z.enum([
-  'login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'download', 'tunel', 'outro',
+  'login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'download', 'tunel', 'reflexao', 'outro',
 ]);
 export type AtaqueAcao = z.infer<typeof AtaqueAcao>;
 
@@ -403,7 +403,7 @@ export const AtaqueEventoInSchema = z.object({
   acao: AtaqueAcao,
   usuarioTentado: z.string().max(128).optional(),
   /**
-   * Senha tentada. SÓ de honeypots (cowrie/opencanary/dionaea) e SÓ se o servidor tiver
+   * Senha tentada. SÓ de honeypots (cowrie/opencanary/dionaea/heralding/isca) e SÓ se o servidor tiver
    * RADAR_GUARDAR_SENHAS=true; caso contrário a API descarta o campo sem armazenar.
    */
   senhaTentada: z.string().max(128).optional(),

@@ -28,6 +28,7 @@ const MITRE: Record<string, { id: string; nome: string }> = {
   comando: { id: 'T1059', nome: 'Command and Scripting Interpreter' },
   download: { id: 'T1105', nome: 'Ingress Tool Transfer' },
   tunel: { id: 'T1090', nome: 'Proxy' },
+  reflexao: { id: 'T1498.002', nome: 'Reflection Amplification' },
 };
 
 /**

@@ -198,14 +198,14 @@ model AtaqueEvento {
   id             String   @id @default(cuid())
   usuarioId      String
   usuario        Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  fonte          String   // fortigate | windows | cowrie | opencanary | dionaea | outro
+  fonte          String   // fortigate | windows | cowrie | opencanary | dionaea | heralding | isca | outro
   ocorridoEm     DateTime
   ipOrigem       String?  // nulo só em lockout (evento 4740 não traz IP)
   paisOrigem     String?
   portaDestino   Int?
   protocolo      String?
   servico        String?
-  acao           String   // login_falha | login_ok | lockout | scan | bloqueio | conexao | comando | download | outro
+  acao           String   // login_falha | login_ok | lockout | scan | bloqueio | conexao | comando | download | reflexao | outro
   usuarioTentado String?
   senhaTentada   String?  // opcional e sensível: só honeypot e só com RADAR_GUARDAR_SENHAS=true
   alvo           String?

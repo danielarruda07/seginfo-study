@@ -22,7 +22,7 @@ import { guardarSenhas } from './radar.js';
 const sha256 = (s: string) => createHash('sha256').update(s).digest();
 
 /** Só estas fontes podem trazer senha tentada (e só com RADAR_GUARDAR_SENHAS=true). */
-const FONTES_COM_SENHA = new Set(['cowrie', 'opencanary', 'dionaea']);
+const FONTES_COM_SENHA = new Set(['cowrie', 'opencanary', 'dionaea', 'heralding', 'isca']);
 
 function tokenValido(recebido: string | undefined): boolean {
   const esperado = process.env.INGEST_TOKEN;

@@ -24,14 +24,24 @@ do range; as permissões são pontuais e ficam acima delas.
 ## Fluxo da exposição
 ```
 Internet ─► ONT da operadora (IP público, port mapping) ─► FortiGate (VIPs, regra agendada)
-   SSH/Telnet ─► Cowrie ── valida a senha (só senhas fracas plausíveis) ──► Ubuntu REAL (proxy)
-   FTP/HTTP/HTTPS/MSSQL/MySQL ─► Dionaea
-   RDP/SMB ─► Windows Server REAL (NLA, compartilhamento isca)
+   SSH/Telnet (+ portas alternativas) ─► Cowrie ── valida a senha ──► Ubuntu REAL (proxy)
+   FTP, web (+ portas alternativas), MSSQL, MySQL, SIP, PPTP, MQTT, impressora, MongoDB, memcached ─► Dionaea
+   VNC, PostgreSQL, SMTP, POP3, IMAP ─► Heralding (captura de credenciais)
+   Redis, Elasticsearch, API do Docker ─► iscas próprias (registram e respondem o mínimo; nada executa)
+   RDP, SMB, RPC, NetBIOS ─► Windows Server REAL (NLA, compartilhamento isca)
+   UDP de reflexão (DNS, NTP, SSDP, memcached) ─► o FIREWALL registra e DESCARTA (nada responde)
 ```
 - A regra de entrada usa **agendamento com data de fim**: a exposição fecha sozinha (72 h por rodada).
 - Os alvos reais voltam ao snapshot `limpo` **a cada 6 horas** (timer no Wazuh com token Proxmox mínimo:
   só auditoria, energia e rollback dessas VMs).
 - Nenhum segmento exposto tem saída para a internet: malware que tente baixar a segunda etapa falha.
+
+## Reflexão UDP: estudar sem virar arma
+Expor serviços UDP que respondem (DNS, NTP, SSDP, memcached) transformaria o IP em refletor de DDoS contra
+terceiros. Aqui as portas são encaminhadas até o firewall e caem numa **regra de bloqueio com registro**:
+o pacote é logado e descartado, nenhum serviço recebe e nada é respondido. Como a origem desse tráfego é
+falsificada, o "IP de origem" registrado é a **vítima** pretendida. O Wazuh classifica como T1498.002 e o
+Radar mostra a ação `reflexao` com esse aviso.
 
 ## Por que Cowrie em modo proxy + Linux real
 Um bot real fez checagem anti-honeypot logo após o login (aritmética no shell, `$$`, funções, subshell,

@@ -1,6 +1,6 @@
 # Versões
 
-A versão aparece no rodapé do menu lateral (`v0.11.2 · build dd/mm hh:mm`) e em `/api/health`. Ela fica em `packages/shared/src/versao.ts`, lida pelo front e pela API.
+A versão aparece no rodapé do menu lateral (`v0.13.0 · build dd/mm hh:mm`) e em `/api/health`. Ela fica em `packages/shared/src/versao.ts`, lida pelo front e pela API.
 
 **Como conferir se você está na versão certa:** compare o número do rodapé com o da publicação mais recente abaixo. Se o rodapé mostrar um aviso "API em vX", o front e a API estão em versões diferentes: espere o deploy terminar ou recarregue com Ctrl+F5.
 
@@ -8,6 +8,7 @@ A versão aparece no rodapé do menu lateral (`v0.11.2 · build dd/mm hh:mm`) e 
 
 | Versão | Data | O que entrou |
 |---|---|---|
+| 0.13.0 | 14/11/2026 | Radar com mais fontes do range: Heralding (credenciais em VNC, PostgreSQL, SMTP, POP3, IMAP), iscas de Redis/Elasticsearch/API do Docker e a ação "reflexão" (T1498.002) para tentativas de usar o IP como refletor de DDoS, com aviso de que a origem é a vítima falsificada; coletor do Wazuh atualizado |
 | 0.12.0 | 14/11/2026 | Radar mostra a sessão do atacante: na ficha do evento, a linha do tempo da sessão do honeypot (do primeiro contato ao último comando), cada comando classificado pela intenção (reconhecimento, privilégio, download, execução, persistência, limpeza, mineração, teste anti-honeypot), os arquivos enviados com SHA-256 e link do VirusTotal, e a nova ação "túnel" (SSH usado como proxy, T1090) trazida pelo coletor do Wazuh |
 | 0.11.2 | 14/11/2026 | Documentação para análise por IAs: `AGENTS.md`/`CLAUDE.md` na raiz (mapa, comandos, regras), `docs/RANGE.md` (arquitetura do range e do honeypot, sem dados reais) e `infra/range/` (scripts e regras do Wazuh reutilizáveis); IP público retirado do `docs/RADAR.md` |
 | 0.11.1 | 13/11/2026 | Radar no horário local (tabela, ficha e linha do tempo; a ficha mostra também o UTC); coluna "Detalhe" com o comando ou arquivo; login aceito por honeypot aparece como "login aceito (isca)" com explicação na ficha |

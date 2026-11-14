@@ -20,14 +20,15 @@ const ROWS = 15;
 const DIAS_OPTS = [1, 7, 30];
 const FONTE_OPTS = [
   { label: 'FortiGate', value: 'fortigate' }, { label: 'Windows', value: 'windows' },
-  { label: 'Cowrie', value: 'cowrie' }, { label: 'Dionaea', value: 'dionaea' }, { label: 'OpenCanary', value: 'opencanary' },
+  { label: 'Cowrie', value: 'cowrie' }, { label: 'Dionaea', value: 'dionaea' }, { label: 'Heralding', value: 'heralding' },
+  { label: 'Iscas (Redis/ES/Docker)', value: 'isca' }, { label: 'OpenCanary', value: 'opencanary' },
   { label: 'Outro', value: 'outro' },
 ];
-const ACAO_OPTS = ['login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'download', 'tunel', 'outro'].map((value) => ({ label: value.replace('_', ' '), value }));
-const FONTE_LABEL: Record<string, string> = { fortigate: 'FortiGate', windows: 'Windows', cowrie: 'Cowrie', dionaea: 'Dionaea', opencanary: 'OpenCanary', outro: 'Outro' };
+const ACAO_OPTS = ['login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'download', 'tunel', 'reflexao', 'outro'].map((value) => ({ label: value.replace('_', ' '), value }));
+const FONTE_LABEL: Record<string, string> = { fortigate: 'FortiGate', windows: 'Windows', cowrie: 'Cowrie', dionaea: 'Dionaea', heralding: 'Heralding', isca: 'Iscas', opencanary: 'OpenCanary', outro: 'Outro' };
 const ACAO_COLOR: Record<string, string> = {
   login_falha: '#f59e0b', lockout: '#ef4444', login_ok: '#dc2626', scan: '#0ea5e9',
-  bloqueio: '#64748b', conexao: '#64748b', comando: '#7c3aed', download: '#b91c1c', tunel: '#0f766e', outro: '#64748b',
+  bloqueio: '#64748b', conexao: '#64748b', comando: '#7c3aed', download: '#b91c1c', tunel: '#0f766e', reflexao: '#ea580c', outro: '#64748b',
 };
 
 /** Lista de "top N" com barras proporcionais ao maior valor. */
@@ -63,7 +64,7 @@ function TopList({ titulo, itens, onPick }: {
 /** Data/hora no fuso do navegador (ex.: Fortaleza, UTC-3). */
 const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 /** Honeypots são iscas: login "aceito" ali não dá acesso a nada real. */
-const ISCAS = new Set(['cowrie', 'dionaea', 'opencanary']);
+const ISCAS = new Set(['cowrie', 'dionaea', 'opencanary', 'heralding', 'isca']);
 const rotuloAcao = (e: RadarEvento) => (e.acao === 'login_ok' && ISCAS.has(e.fonte) ? 'login aceito (isca)' : e.acao.replace('_', ' '));
 /** Resumo curto do que o atacante fez (comando, arquivo ou credencial). */
 function resumoDetalhe(e: RadarEvento): string {
@@ -234,6 +235,12 @@ export function Radar() {
         {selected && <DetailLayout>
           <DetailHeader title="Detalhes do evento"><Pill label={rotuloAcao(selected)} color={ACAO_COLOR[selected.acao]} /><Pill label={FONTE_LABEL[selected.fonte] ?? selected.fonte} /></DetailHeader>
           <DetailSection title="Quando"><p>{quando(selected.ocorridoEm)} <span className="iv-muted">({selected.ocorridoEm.replace('T', ' ').slice(0, 19)} UTC)</span></p></DetailSection>
+          {selected.acao === 'reflexao' && (
+            <StatusStrip tone="warn" icon="pi-exclamation-triangle">
+              Tentativa de usar o seu IP como <strong>refletor</strong> de DDoS. O endereço de origem é falsificado:
+              é a <strong>vítima</strong> que o atacante queria atingir. O firewall registrou e descartou; nada respondeu.
+            </StatusStrip>
+          )}
           {ISCAS.has(selected.fonte) && selected.acao === 'login_ok' && (
             <StatusStrip icon="pi-info-circle">
               Isca: o honeypot aceita a senha de propósito. No SSH, a sessão é repassada a um <strong>Linux real descartável</strong>,

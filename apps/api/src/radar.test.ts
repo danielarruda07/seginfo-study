@@ -10,6 +10,7 @@ describe('tecnicasDoEvento', () => {
   it('cai no mapeamento fixo por ação quando não há mitre em detalhes', () => {
     expect(tecnicasDoEvento('login_falha', {})).toEqual([{ id: 'T1110', nome: 'Brute Force' }]);
     expect(tecnicasDoEvento('download', null)).toEqual([{ id: 'T1105', nome: 'Ingress Tool Transfer' }]);
+    expect(tecnicasDoEvento('reflexao', {})[0].id).toBe('T1498.002');
     expect(tecnicasDoEvento('conexao', {})).toEqual([]);
   });
 

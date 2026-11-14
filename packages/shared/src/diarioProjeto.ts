@@ -24,6 +24,22 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-14-honeypot-amplo',
+    data: '2026-11-14',
+    titulo: 'Mais portas abertas, com uma linha que não se cruza',
+    descricao:
+      'O honeypot passou a responder em dezenas de serviços: SSH e Telnet em portas alternativas, painéis web, VoIP, ' +
+      'MQTT, impressora, bancos de dados, e-mail e VNC, além de iscas próprias de Redis, Elasticsearch e da API do ' +
+      'Docker, que registram exatamente o que o atacante tenta rodar (o container do minerador, o CONFIG SET do Redis ' +
+      'para plantar chave SSH). Um Windows Server real e um Ubuntu real atrás do SSH falso dão alta interação, isolados ' +
+      'e restaurados a cada seis horas. A linha que não se cruza: serviços UDP de reflexão. Responder a eles faria do ' +
+      'homelab uma arma de DDoS contra terceiros. Em vez disso, o firewall registra e descarta esses pacotes, e o app ' +
+      'mostra a tentativa, lembrando que a origem é falsificada e aponta para a vítima. Estudar o ataque não exige ' +
+      'participar dele.',
+    categoria: 'seguranca',
+    tags: ['honeypot', 'ddos', 'reflexao', 'heralding', 'blue-team'],
+  },
+  {
     id: 'proj-2026-11-14-sessao-atacante',
     data: '2026-11-14',
     titulo: 'Ver o ataque inteiro, não só o login',
