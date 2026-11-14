@@ -70,7 +70,7 @@ async function statusWazuh() {
     const [root, status, agents] = await Promise.all([
       consultar('/', token, ca, insecure),
       consultar('/manager/status', token, ca, insecure),
-      consultar('/agents?limit=500&select=id,name,ip,status,version,lastKeepAlive,os', token, ca, insecure),
+      consultar('/agents?limit=500&select=id,name,ip,status,version,lastKeepAlive,os.name,os.version', token, ca, insecure),
     ]);
     const r = obj(obj(root).data);
     const active = items(agents);
