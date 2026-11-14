@@ -36,6 +36,21 @@ export const DIARIO_PROJETO: EntradaDiario[] = [
     tags: ['wazuh', 'radar', 'monitoramento', 'segurança'],
   },
   {
+    id: 'proj-2026-11-14-honeypots-extras',
+    data: '2026-11-14',
+    titulo: 'Ampliando a Matriz ATT&CK com honeypots extras',
+    descricao:
+      'A Matriz ATT&CK do app mostrava cobertura concentrada em reconhecimento e acesso inicial, com táticas como ' +
+      'persistência, escalação e exfiltração zeradas. Em vez de simular esses ataques, trouxe para o repositório ' +
+      'público o código de honeypots extras que já roda na infraestrutura real: Heralding (expõe VNC, PostgreSQL, ' +
+      'SMTP, POP3 e IMAP, capturando credenciais sem aceitar nenhuma) e três iscas próprias que respondem como Redis, ' +
+      'Elasticsearch e a API do Docker, sempre registrando o comando tentado sem executar nada de verdade. Isso abre ' +
+      'a técnica de implantação de container (T1610) na matriz. Lição: ampliar a superfície observável de um jeito ' +
+      'seguro significa responder o suficiente para o atacante se revelar, nunca o bastante para ele conseguir algo real.',
+    categoria: 'funcionalidade',
+    tags: ['honeypot', 'mitre-attack', 'range'],
+  },
+  {
     id: 'proj-2026-11-14-laudo-alvos-reais',
     data: '2026-11-14',
     titulo: 'Laudo antes do reset: o que o malware deixou e para onde quis ligar',
