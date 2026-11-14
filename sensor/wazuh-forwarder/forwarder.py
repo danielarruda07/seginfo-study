@@ -21,11 +21,15 @@ Configuracao por variaveis de ambiente (arquivo EnvironmentFile do systemd, modo
   FLUSH_S                    intervalo de envio em segundos (padrao 10)
   DRY_RUN                    true: so imprime os eventos convertidos, nao envia
   DESDE_INICIO               true: na primeira execucao le o alerts.json do dia desde o inicio
+  GEOIP_CSV                  base pais por IP (DB-IP "IP to Country Lite", CSV ou CSV.gz); padrao
+                             /var/lib/seginfo-forwarder/dbip-country-lite.csv.gz. Sem o arquivo, segue sem pais.
 
 Senha tentada: enviada so para fontes de honeypot; o servidor so guarda com
 RADAR_GUARDAR_SENHAS=true (do contrario descarta).
 """
+import bisect
 import datetime as dt
+import gzip
 import ipaddress
 import json
 import os
@@ -35,6 +39,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from array import array
 
 env = os.environ.get
 CFG = {
@@ -49,6 +54,7 @@ CFG = {
     'win_min': int(env('WINDOWS_NIVEL_MIN', '6')),
     'dry': env('DRY_RUN', 'false') == 'true',
     'desde_inicio': env('DESDE_INICIO', 'false') == 'true',
+    'geoip': env('GEOIP_CSV', '/var/lib/seginfo-forwarder/dbip-country-lite.csv.gz'),
 }
 IGNORAR = [ipaddress.ip_network(x.strip(), strict=False) for x in env('IGNORAR_IPS', '').split(',') if x.strip()]
 LOTE = 500
@@ -82,6 +88,70 @@ def publico(ip):
         return not (a.is_private or a.is_loopback or a.is_link_local or a.is_reserved or a.is_multicast)
     except ValueError:
         return False
+
+
+class GeoIP:
+    """Pais por IP a partir do CSV do DB-IP (inicio,fim,pais), em memoria e com busca binaria.
+
+    IPv4 fica em array compacto (poucos MB); IPv6 em lista. Recarrega sozinho quando o arquivo muda
+    (a base Lite sai todo mes). Sem arquivo, pais() devolve None e o evento segue sem pais.
+    """
+
+    def __init__(self, caminho):
+        self.caminho, self.mtime, self.proxima = caminho, None, 0.0
+        self.v4 = (array('L'), array('L'), [])
+        self.v6 = ([], [], [])
+        self.recarregar()
+
+    def recarregar(self):
+        self.proxima = time.time() + 3600
+        try:
+            mtime = os.stat(self.caminho).st_mtime
+        except OSError:
+            if self.mtime is None:
+                log('geoip: base nao encontrada em', self.caminho, '- eventos seguem sem pais')
+                self.mtime = 0
+            return
+        if mtime == self.mtime:
+            return
+        linhas = {4: [], 6: []}
+        abrir = gzip.open if self.caminho.endswith('.gz') else open
+        try:
+            with abrir(self.caminho, 'rt', encoding='utf-8', newline='') as f:
+                for linha in f:
+                    partes = [p.strip().strip('"') for p in linha.split(',')]
+                    if len(partes) < 3 or len(partes[2]) != 2 or partes[2] == 'ZZ':
+                        continue
+                    try:
+                        ini, fim = ipaddress.ip_address(partes[0]), ipaddress.ip_address(partes[1])
+                    except ValueError:
+                        continue
+                    linhas[ini.version].append((int(ini), int(fim), sys.intern(partes[2].upper())))
+        except (OSError, EOFError, UnicodeDecodeError) as e:
+            log(f'geoip: falha ao ler a base ({type(e).__name__}); mantendo a anterior')
+            return
+        for v in linhas.values():
+            v.sort()
+        l4, l6 = linhas[4], linhas[6]
+        self.v4 = (array('L', (x[0] for x in l4)), array('L', (x[1] for x in l4)), [x[2] for x in l4])
+        self.v6 = ([x[0] for x in l6], [x[1] for x in l6], [x[2] for x in l6])
+        self.mtime = mtime
+        log(f'geoip: {len(l4)} faixas IPv4 e {len(l6)} IPv6 carregadas')
+
+    def pais(self, ip):
+        if time.time() >= self.proxima:
+            self.recarregar()
+        try:
+            a = ipaddress.ip_address(ip)
+        except ValueError:
+            return None
+        ini, fim, cc = self.v4 if a.version == 4 else self.v6
+        n = int(a)
+        i = bisect.bisect_right(ini, n) - 1
+        return cc[i] if i >= 0 and n <= fim[i] else None
+
+
+GEO = None  # criado em main()
 
 
 def quando(alerta):
@@ -342,6 +412,8 @@ def converter(alerta):
         ev = de_windows(alerta, regra, d)
     else:
         ev = None
+    if ev and GEO and ev.get('ipOrigem') and publico(ev['ipOrigem']):
+        ev['paisOrigem'] = GEO.pais(ev['ipOrigem'])
     return limpar(ev) if ev else None
 
 
@@ -361,10 +433,29 @@ def gravar_estado(st):
 
 
 def enviar(eventos):
+    """Envia o lote; se a API recusar o formato (400), divide ao meio ate isolar o evento ruim.
+
+    So o evento invalido e descartado (com fonte, acao e horario no log); os validos entram.
+    Devolve False em erro de rede/servidor, para o lote inteiro ser reenviado depois (a API
+    deduplica o que ja tinha entrado).
+    """
     if CFG['dry']:
         for e in eventos:
             print(json.dumps(e, ensure_ascii=False))
         return True
+    r = postar(eventos)
+    if r != 'invalido':
+        return r == 'ok'
+    if len(eventos) == 1:
+        e = eventos[0]
+        log(f"evento descartado (formato recusado): fonte={e.get('fonte')} acao={e.get('acao')} em={e.get('ocorridoEm')}")
+        return True
+    meio = len(eventos) // 2
+    return enviar(eventos[:meio]) and enviar(eventos[meio:])
+
+
+def postar(eventos):
+    """Envia um lote. Devolve 'ok', 'invalido' (HTTP 400) ou 'erro' (rede, 401, 5xx: tentar de novo)."""
     corpo = json.dumps({'eventos': eventos}).encode()
     req = urllib.request.Request(CFG['url'], data=corpo, method='POST', headers={
         'Content-Type': 'application/json', 'CF-Access-Client-Id': CFG['cid'],
@@ -374,17 +465,14 @@ def enviar(eventos):
         with urllib.request.urlopen(req, timeout=30) as r:
             resp = json.load(r)
             log(f"enviados {len(eventos)}, inseridos {resp.get('inseridos')}")
-            return True
+            return 'ok'
     except urllib.error.HTTPError as e:
         corpo = e.read()[:300].decode('utf-8', 'replace')
         log(f'erro http {e.code}: {corpo}')
-        if e.code == 400:  # lote invalido: descarta para nao travar a fila
-            log('lote descartado (payload invalido)')
-            return True
-        return False
+        return 'invalido' if e.code == 400 else 'erro'
     except (urllib.error.URLError, TimeoutError, OSError) as e:
         log(f'erro de rede: {e}')
-        return False
+        return 'erro'
 
 
 def main():
@@ -397,40 +485,62 @@ def main():
         if not CFG['url'].startswith('https://'):
             log('erro: INGEST_URL precisa ser https://')
             sys.exit(1)
+    global GEO
+    GEO = GeoIP(CFG['geoip']) if CFG['geoip'] else None
     parar = []
     signal.signal(signal.SIGTERM, lambda *_: parar.append(1))
-    st = ler_estado()  # posicao CONFIRMADA (tudo antes dela foi aceito pela API)
-    lido = st.get('pos', 0)  # posicao ja lida para a fila (pode estar a frente de st)
+    salvo = ler_estado()  # posicao CONFIRMADA (tudo antes dela foi aceito pela API)
+    fh, ino, lido = None, None, 0  # arquivo aberto, seu inode e a posicao ja lida para a fila
     fila, espera, ultimo_envio = [], 5, time.time()
     log('iniciado; arquivo', CFG['alerts'])
     while not parar:
-        try:
-            info = os.stat(CFG['alerts'])
-        except OSError:
-            time.sleep(5)
-            continue
-        if st.get('inode') != info.st_ino or lido > info.st_size:
-            # arquivo novo/rotacionado: na primeira execucao comeca do fim (nao reenvia historico)
-            st = {'inode': info.st_ino, 'pos': 0 if (st.get('inode') or CFG['desde_inicio']) else info.st_size}
-            lido = st['pos']
-        pos = lido
-        if len(fila) < FILA_MAX and info.st_size > pos:
-            with open(CFG['alerts'], 'rb') as f:
-                f.seek(pos)
-                for linha in f:
-                    if not linha.endswith(b'\n'):
-                        break
-                    pos += len(linha)
-                    try:
-                        ev = converter(json.loads(linha.decode('utf-8', 'replace')))
-                    except (ValueError, TypeError, AttributeError) as e:
-                        log(f'alerta ignorado ({type(e).__name__})')
-                        ev = None
-                    if ev:
-                        fila.append(ev)
-                    if len(fila) >= FILA_MAX:
-                        break
-        lido = pos
+        if fh is None:
+            try:
+                fh = open(CFG['alerts'], 'rb')
+            except OSError:
+                time.sleep(5)
+                continue
+            info = os.fstat(fh.fileno())
+            ino = info.st_ino
+            if salvo.get('inode') == ino and salvo.get('pos', 0) <= info.st_size:
+                lido = salvo.get('pos', 0)
+            else:
+                # arquivo novo/rotacionado comeca do inicio; na primeira execucao comeca do fim
+                # (a nao ser com DESDE_INICIO), para nao reenviar o historico
+                lido = 0 if (salvo.get('inode') or CFG['desde_inicio']) else info.st_size
+            fh.seek(lido)
+        if os.fstat(fh.fileno()).st_size < lido:  # truncado no lugar
+            lido = 0
+            fh.seek(0)
+        no_fim = True
+        while len(fila) < FILA_MAX:
+            linha = fh.readline()
+            if not linha:
+                break
+            if not linha.endswith(b'\n'):
+                fh.seek(lido)  # linha ainda sendo escrita: le na proxima volta
+                break
+            lido += len(linha)
+            try:
+                ev = converter(json.loads(linha.decode('utf-8', 'replace')))
+            except (ValueError, TypeError, AttributeError) as e:
+                log(f'alerta ignorado ({type(e).__name__})')
+                ev = None
+            if ev:
+                fila.append(ev)
+        else:
+            no_fim = False  # fila cheia: ainda pode haver linhas
+        if no_fim:
+            # O Wazuh rotaciona o alerts.json a meia-noite. So troca de arquivo depois de ler o
+            # antigo ate o fim: o handle aberto continua valido depois do rename.
+            try:
+                trocou = os.stat(CFG['alerts']).st_ino != ino
+            except OSError:
+                trocou = False
+            if trocou:
+                log('arquivo rotacionado; abrindo o novo')
+                fh.close()
+                fh = None
         if fila and (len(fila) >= LOTE or time.time() - ultimo_envio >= CFG['flush']):
             ok = True
             while fila and ok:
@@ -443,10 +553,12 @@ def main():
                 espera = min(espera * 2, 300)
                 continue
             espera = 5
-        if not fila and st.get('pos') != lido:
-            st = {'inode': st['inode'], 'pos': lido}
-            gravar_estado(st)
+        if not fila and fh is not None and (salvo.get('inode'), salvo.get('pos')) != (ino, lido):
+            salvo = {'inode': ino, 'pos': lido}
+            gravar_estado(salvo)
         time.sleep(1 if not fila else 0.2)
+    if fh:
+        fh.close()
     log('encerrado')
 
 

@@ -11,13 +11,22 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
 import { DetailHeader, DetailLayout, DetailSection } from '@/components/ui/Detail';
 import { Kpi, StatusStrip, Chip, Pill, Bar } from '@/components/InfraKit';
-import { getRadarResumo, getRadarEventos, type RadarEvento } from '@/services/radar';
+import { getRadarResumo, getRadarEventos, type RadarEscopo, type RadarEvento } from '@/services/radar';
 import type { AtaqueFonte } from '@seginfo/shared';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SessaoAtacante } from './radar/SessaoAtacante';
 
 const ROWS = 15;
 const DIAS_OPTS = [1, 7, 30];
+/** Atualização automática (só com a aba visível: o React Query pausa em segundo plano). */
+const ATUALIZAR_MS = 60_000;
+const ESCOPO_OPTS: { value: RadarEscopo; label: string; dica: string }[] = [
+  { value: 'internet', label: 'Internet', dica: 'Origem em IP público: o que chega de fora' },
+  { value: 'interno', label: 'Range (interno)', dica: 'Origem em rede privada: exercícios da Kali, testes e eventos sem IP' },
+  { value: 'todos', label: 'Tudo', dica: 'Internet e range juntos' },
+];
+const ESCOPO_LABEL: Record<RadarEscopo, string> = { internet: 'da internet', interno: 'do range (interno)', todos: 'no total' };
+const hora = (ms: number) => (ms ? new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—');
 const FONTE_OPTS = [
   { label: 'FortiGate', value: 'fortigate' }, { label: 'Windows', value: 'windows' },
   { label: 'Cowrie', value: 'cowrie' }, { label: 'Dionaea', value: 'dionaea' }, { label: 'Heralding', value: 'heralding' },
@@ -76,6 +85,7 @@ function resumoDetalhe(e: RadarEvento): string {
 
 export function Radar() {
   const [dias, setDias] = useState(7);
+  const [escopo, setEscopo] = useState<RadarEscopo>('internet');
   const [ip, setIp] = useState<string | undefined>();
   const [servico, setServico] = useState<string | undefined>();
   const [acao, setAcao] = useState<string | undefined>();
@@ -86,10 +96,10 @@ export function Radar() {
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<RadarEvento | null>(null);
 
-  const resumo = useQuery({ queryKey: ['radar-resumo', dias], queryFn: () => getRadarResumo(dias) });
+  const resumo = useQuery({ queryKey: ['radar-resumo', dias, escopo], queryFn: () => getRadarResumo(dias, escopo), refetchInterval: ATUALIZAR_MS });
 
-  const filtros = useMemo(() => ({ ip, servico, acao, fonte, pais, q: q || undefined, page, limit: ROWS }), [ip, servico, acao, fonte, pais, q, page]);
-  const eventos = useQuery({ queryKey: ['radar-eventos', filtros], queryFn: () => getRadarEventos(filtros) });
+  const filtros = useMemo(() => ({ ip, servico, acao, fonte, pais, escopo, q: q || undefined, page, limit: ROWS }), [ip, servico, acao, fonte, pais, escopo, q, page]);
+  const eventos = useQuery({ queryKey: ['radar-eventos', filtros], queryFn: () => getRadarEventos(filtros), refetchInterval: ATUALIZAR_MS, placeholderData: (anterior) => anterior });
 
   // qualquer mudança de filtro volta para a página 1
   const setF = <T,>(set: (v: T | undefined) => void) => (v: T | undefined) => { set(v); setPage(0); };
@@ -99,6 +109,7 @@ export function Radar() {
   const pickFonte = setF(setFonte);
   const pickPais = setF(setPais);
   const pickBusca = (value: string) => { setQRaw(value); setPage(0); };
+  const pickEscopo = (v: RadarEscopo) => { setEscopo(v); setPage(0); };
 
   const r = resumo.data;
   const tone = !r ? 'ok' : r.lockouts > 0 ? 'crit' : r.total > 0 ? 'warn' : 'ok';
@@ -128,19 +139,26 @@ export function Radar() {
 
       <StatusStrip tone={tone} icon="pi-eye">
         {r
-          ? <>Últimos {r.dias} dia(s): <strong>{r.total}</strong> eventos de <strong>{r.ipsUnicos}</strong> IPs, {r.falhasLogin} falhas de login e <strong>{r.lockouts}</strong> bloqueios de conta.</>
+          ? <>Últimos {r.dias} dia(s), {ESCOPO_LABEL[escopo]}: <strong>{r.total.toLocaleString('pt-BR')}</strong> eventos de <strong>{r.ipsUnicos.toLocaleString('pt-BR')}</strong> IPs, {r.falhasLogin.toLocaleString('pt-BR')} falhas de login e <strong>{r.lockouts}</strong> bloqueios de conta.</>
           : 'Carregando…'}
-        {r?.truncado && ' A janela tem mais eventos que o limite de análise; o resumo cobre os mais recentes.'}
+        <span className="iv-muted" style={{ display: 'block', fontSize: '.78rem' }}>
+          {resumo.isFetching ? 'atualizando…' : `atualizado às ${hora(resumo.dataUpdatedAt)} · a cada 1 min`}
+        </span>
       </StatusStrip>
 
       <StatusStrip tone="ok" icon="pi-shield">
         Este painel resume eventos reais recebidos pelos coletores. Simulações de laboratório ficam em <Link to="/labs">Labs</Link> e sua cobertura em <Link to="/attack">ATT&amp;CK</Link>.
+        {' '}<span className="iv-muted" style={{ fontSize: '.78rem' }}>Países: <a href="https://db-ip.com" target="_blank" rel="noopener noreferrer">IP Geolocation by DB-IP</a>.</span>
       </StatusStrip>
 
       <div className="iv-row iv-wrap iv-mt">
         <span className="iv-muted" style={{ fontSize: '.8rem' }}>Período:</span>
         {DIAS_OPTS.map((d) => (
           <Chip key={d} label={d === 1 ? '24 h' : `${d} dias`} active={dias === d} onClick={() => { setDias(d); }} />
+        ))}
+        <span className="iv-muted" style={{ fontSize: '.8rem', marginLeft: '1rem' }}>Origem:</span>
+        {ESCOPO_OPTS.map((o) => (
+          <span key={o.value} title={o.dica}><Chip label={o.label} active={escopo === o.value} onClick={() => pickEscopo(o.value)} /></span>
         ))}
       </div>
 
@@ -181,8 +199,10 @@ export function Radar() {
           itens={(r?.topServicos ?? []).map((i) => ({ rotulo: i.nome, total: i.total }))} onPick={(v) => pickServico(v)} />
         <TopList titulo="Usuários tentados"
           itens={(r?.topUsuarios ?? []).map((i) => ({ rotulo: i.nome, total: i.total }))} />
-        <TopList titulo="Países de origem (clique para filtrar)"
-          itens={(r?.topPaises ?? []).map((i) => ({ rotulo: i.nome, total: i.total }))} onPick={(v) => pickPais(v)} />
+        {escopo !== 'interno' && (
+          <TopList titulo="Países de origem (clique para filtrar)"
+            itens={(r?.topPaises ?? []).map((i) => ({ rotulo: i.nome, total: i.total }))} onPick={(v) => pickPais(v)} />
+        )}
         {r?.senhasHabilitadas && (
           <TopList titulo="Senhas mais tentadas (dado sensível, não publique)"
             itens={(r.topSenhas).map((i) => ({ rotulo: i.nome, total: i.total }))} />
@@ -247,7 +267,7 @@ export function Radar() {
               sem saída para a internet e restaurado periodicamente. O que vale aqui é ver o que o atacante faz depois de entrar.
             </StatusStrip>
           )}
-          <DetailSection title="Origem"><p style={{ fontFamily: 'monospace' }}>{selected.ipOrigem ?? 'IP não informado'}{selected.paisOrigem ? ` · ${selected.paisOrigem}` : ''}</p></DetailSection>
+          <DetailSection title="Origem"><p style={{ fontFamily: 'monospace' }}>{selected.ipOrigem ?? 'IP não informado'}{selected.paisOrigem ? ` · ${selected.paisOrigem}` : ''}{selected.escopo === 'interno' ? ' · rede interna (range)' : ''}</p></DetailSection>
           <DetailSection title="Alvo"><p>{selected.alvo ?? '—'}</p></DetailSection>
           <DetailSection title="Serviço"><p>{selected.servico ?? '—'}{selected.portaDestino ? `:${selected.portaDestino}` : ''}{selected.protocolo ? ` · ${selected.protocolo}` : ''}</p></DetailSection>
           <DetailSection title="Usuário tentado"><p>{selected.usuarioTentado ?? '—'}</p></DetailSection>

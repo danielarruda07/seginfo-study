@@ -24,6 +24,20 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-14-radar-escala',
+    data: '2026-11-14',
+    titulo: 'Radar aguenta o honeypot exposto e separa internet de laboratório',
+    descricao:
+      'Com o honeypot na internet o volume virou centenas de milhares de eventos por dia, e o resumo, que carregava ' +
+      'as linhas na memória com teto de 100 mil, passaria a cobrir só as últimas horas. A agregação foi para o ' +
+      'PostgreSQL (GROUP BY com índice). Cada evento agora sabe se veio da internet ou da rede interna, para os ' +
+      'exercícios da Kali não inflarem os números de ataque real. O coletor ganhou país por IP com base local ' +
+      '(DB-IP), passou a isolar só o evento inválido de um lote recusado e não perde mais o fim do arquivo na ' +
+      'rotação da meia-noite. Lição: dado de segurança cresce rápido; agregue onde o dado mora.',
+    categoria: 'funcionalidade',
+    tags: ['radar', 'postgresql', 'wazuh', 'geoip'],
+  },
+  {
     id: 'proj-2026-11-14-honeypot-amplo',
     data: '2026-11-14',
     titulo: 'Mais portas abertas, com uma linha que não se cruza',

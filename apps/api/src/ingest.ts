@@ -5,6 +5,7 @@ import { IngestBatchSchema } from '@seginfo/shared';
 import { prisma, resolveUsuario } from './db.js';
 import { verifyAccessJwt } from './auth.js';
 import { guardarSenhas } from './radar.js';
+import { escopoDoIp } from './radarEscopo.js';
 
 /**
  * Ingestão de eventos de ataque, vinda de COLETORES (sensor honeypot, script Windows).
@@ -116,6 +117,7 @@ export async function registerIngestRoutes(app: FastifyInstance) {
         alvo: e.alvo,
         detalhes: (e.detalhes ?? {}) as Prisma.InputJsonObject,
         dedupKey,
+        escopo: escopoDoIp(e.ipOrigem),
       };
     });
 

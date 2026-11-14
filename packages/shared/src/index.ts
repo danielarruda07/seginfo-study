@@ -388,8 +388,8 @@ export type AtaqueMitre = z.infer<typeof AtaqueMitreSchema>;
 const IpSchema = z.union([z.ipv4(), z.ipv6()]);
 
 /**
- * Evento enviado pelo coletor. NÃO existe campo de senha: por desenho, a plataforma
- * nunca armazena senhas tentadas (em honeypot elas podem ser credenciais reais vazadas).
+ * Evento enviado pelo coletor. A senha tentada (`senhaTentada`) é opcional e só é guardada
+ * de honeypots com RADAR_GUARDAR_SENHAS=true; em honeypot ela pode ser credencial real vazada.
  */
 export const AtaqueEventoInSchema = z.object({
   fonte: AtaqueFonte,
