@@ -24,6 +24,18 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-14-painel-wazuh',
+    data: '2026-11-14',
+    titulo: 'Wazuh: saúde do manager e alertas no mesmo lugar',
+    descricao:
+      'A aplicação já recebia alertas selecionados do Wazuh pelo forwarder, mas não mostrava se o manager e os agentes ' +
+      'estavam saudáveis. O novo painel consulta a API REST com uma identidade somente leitura e reúne estado dos serviços, ' +
+      'agentes e os alertas encaminhados. A investigação continua ligada ao Radar, enquanto a tela explica que esse recorte ' +
+      'não substitui a busca completa no Indexer. Credenciais ficam no servidor e campos sensíveis dos detalhes são redigidos.',
+    categoria: 'funcionalidade',
+    tags: ['wazuh', 'radar', 'monitoramento', 'segurança'],
+  },
+  {
     id: 'proj-2026-11-14-laudo-alvos-reais',
     data: '2026-11-14',
     titulo: 'Laudo antes do reset: o que o malware deixou e para onde quis ligar',

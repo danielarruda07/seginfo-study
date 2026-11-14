@@ -257,6 +257,53 @@ export async function registerRadarRoutes(app: FastifyInstance) {
     return { total, items };
   });
 
+  // Alertas encaminhados pelo Wazuh. São o recorte normalizado do forwarder,
+  // não o arquivo bruto alerts.json nem todos os eventos do manager.
+  const WazuhAlertQuery = z.object({
+    dias: z.coerce.number().int().min(1).max(30).default(7),
+    q: z.string().trim().max(100).optional(),
+    page: z.coerce.number().int().min(0).default(0),
+    limit: z.coerce.number().int().min(1).max(100).default(25),
+  });
+  app.get('/api/wazuh/alertas', async (req, reply) => {
+    const parsed = WazuhAlertQuery.safeParse(req.query);
+    if (!parsed.success) return reply.status(400).send({ error: 'parâmetros inválidos' });
+    const { dias, q: texto, page, limit } = parsed.data;
+    const desde = new Date(Date.now() - dias * 86_400_000);
+    const where = Prisma.sql`"usuarioId" = ${uid(req)} AND "ocorridoEm" >= ${desde}
+      AND "detalhes" ? 'sensor' AND "detalhes" ? 'regra'
+      ${texto ? Prisma.sql`AND ("detalhes"->>'sensor' ILIKE ${`%${texto}%`} OR "detalhes"->>'regra' ILIKE ${`%${texto}%`} OR "detalhes"->>'descricao' ILIKE ${`%${texto}%`} OR "alvo" ILIKE ${`%${texto}%`})` : Prisma.empty}`;
+    const [totais, rows] = await Promise.all([
+      prisma.$queryRaw<{ total: bigint }[]>`SELECT count(*) AS total FROM "AtaqueEvento" WHERE ${where}`,
+      prisma.$queryRaw<{
+        id: string; fonte: string; ocorridoEm: Date; ipOrigem: string | null; paisOrigem: string | null;
+        servico: string | null; acao: string; alvo: string | null; detalhes: Prisma.JsonValue;
+      }[]>`
+        SELECT "id", "fonte", "ocorridoEm", "ipOrigem", "paisOrigem", "servico", "acao", "alvo", "detalhes"
+        FROM "AtaqueEvento" WHERE ${where}
+        ORDER BY "ocorridoEm" DESC LIMIT ${limit} OFFSET ${page * limit}`,
+    ]);
+    const redigirTexto = (v: string): string => v
+      .replace(/(\b(?:password|passwd|senha|token|secret|api[_-]?key|authorization)\b\s*[:=]\s*)([^\s,;]+)/gi, '$1[redigido]')
+      .replace(/(https?:\/\/)[^\s/@:]+:[^\s/@]+@/gi, '$1[credenciais]@')
+      .replace(/([?&](?:token|key|secret|password|auth)=)[^&\s]+/gi, '$1[redigido]');
+    const redigir = (v: unknown): unknown => {
+      if (Array.isArray(v)) return v.map(redigir);
+      if (typeof v === 'string') return redigirTexto(v);
+      if (!v || typeof v !== 'object') return v;
+      return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, value]) =>
+        [k, /(senha|password|passwd|secret|token|authorization|credential|cookie)/i.test(k) ? '[redigido]' : redigir(value)]));
+    };
+    return {
+      total: n(totais[0]?.total), page, limit, dias,
+      items: rows.map((r) => ({
+        id: r.id, fonte: r.fonte, ocorridoEm: r.ocorridoEm.toISOString(), ipOrigem: r.ipOrigem,
+        paisOrigem: r.paisOrigem, servico: r.servico, acao: r.acao, alvo: r.alvo,
+        detalhes: redigir(r.detalhes),
+      })),
+    };
+  });
+
   // Sessão do atacante: todos os eventos com o mesmo detalhes.sessao (Cowrie), em ordem.
   // O IP é obrigatório para a busca usar o índice (usuarioId, ipOrigem) em vez de varrer a tabela.
   const SessaoQuery = z.object({

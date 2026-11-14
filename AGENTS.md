@@ -16,6 +16,7 @@ ligada a um homelab real (Proxmox, FortiGate, Catalyst, Coolify) e a um **cyber 
 | Onde cada dado fica, backup | [docs/ARMAZENAMENTO.md](docs/ARMAZENAMENTO.md) |
 | Cyber range, honeypot, Wazuh (arquitetura sem dados reais) | [docs/RANGE.md](docs/RANGE.md) e [infra/range/](infra/range/) |
 | Radar de ataques e ingestão (`/api/ingest`) | [docs/RADAR.md](docs/RADAR.md), [sensor/](sensor/) |
+| Painel Wazuh (saúde do manager/agentes, alertas encaminhados) | [docs/WAZUH.md](docs/WAZUH.md) |
 | Agents (agentes de IA com aprovação de escrita) | [docs/AGENTS.md](docs/AGENTS.md) |
 | Inventário e ambiente | [docs/AMBIENTE.md](docs/AMBIENTE.md) |
 | Ideias de labs, sugestões e pendências | [docs/IDEIAS_LAB.md](docs/IDEIAS_LAB.md), [docs/SUGESTOES.md](docs/SUGESTOES.md), [docs/PENDENCIAS.md](docs/PENDENCIAS.md) |
