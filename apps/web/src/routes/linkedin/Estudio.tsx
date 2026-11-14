@@ -162,6 +162,7 @@ export function Estudio({ pedido, onPedidoConsumido, onPublicado }: {
         </div>
         {ia && !iaPronta && (
           <p className="iv-muted ca-small">Defina o Secret <code>ANTHROPIC_API_KEY</code> na API no Coolify (veja a aba Estratégia & IA).</p>
+
         )}
         <div className="iv-col iv-gap iv-mt">
           <InputTextarea value={briefing} onChange={(e) => setBriefing(e.target.value)} rows={3} autoResize

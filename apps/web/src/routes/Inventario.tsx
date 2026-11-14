@@ -11,9 +11,9 @@ import type { Ativo } from '@seginfo/shared';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
 import { SearchInput } from '@/components/ui/SearchInput';
-import { EmptyState, Kpi, Pill, StatusStrip } from '@/components/InfraKit';
+import { EmptyState, Kpi, Pill } from '@/components/InfraKit';
 import { useInvalidate } from '@/hooks/useInvalidate';
-import { importarAtivos, incorporarInventarioDocumentado, incorporarNovidadesSeed, inventarioDocumentadoPendente, inventarioSeedUpdate, listAtivos, removeAtivo, resumoInventario, saveAtivo } from '@/services/inventario';
+import { importarAtivos, listAtivos, removeAtivo, resumoInventario, saveAtivo } from '@/services/inventario';
 import { idadeConfirmacao } from '@/lib/confirmacao';
 import { todayISO } from '@/services/store';
 import * as vault from '@/services/vault';
@@ -23,7 +23,6 @@ import { useInventarioFiltros } from './inventario/useInventarioFiltros';
 import { AtivoForm } from './inventario/AtivoForm';
 import { AtivoDrawer } from './inventario/AtivoDrawer';
 import { TipoFiltro } from './inventario/TipoFiltro';
-import { AvisoDadosAntigos } from './inventario/AvisoDadosAntigos';
 import { AcessosIntegracoes } from './inventario/AcessosIntegracoes';
 
 const NOVO: Ativo = { id: '', ambiente: 'criecomia', tipo: 'servico', nome: '', endereco: '', funcao: '', estado: 'ativo', detalhes: {}, tags: [], labsRelacionados: [] };
@@ -42,8 +41,6 @@ export function Inventario() {
   const todos = useQuery({ queryKey: ['ativos', 'todos'], queryFn: () => listAtivos({ rows: 10_000 }).items }).data ?? [];
   const lista = useMemo(() => ordenarAtivos((query.data?.items ?? []).filter((a) => noEscopo(a, f.escopo))), [query.data, f.escopo]);
   const porTipo = useMemo(() => contarPorTipo(todos.filter((a) => noEscopo(a, f.escopo))), [todos, f.escopo]);
-  const seed = inventarioSeedUpdate();
-  const documentadosPendentes = inventarioDocumentadoPendente();
   const selIndex = lista.findIndex((a) => a.id === selId);
 
   const atualizar = () => invalidate('ativos', 'resumo-inv');
@@ -62,18 +59,6 @@ export function Inventario() {
       accept: () => { removeAtivo(a.id); setSelId(null); atualizar(); toast.current?.show({ severity: 'success', summary: 'Ativo removido', detail: a.nome, life: 2500 }); },
     });
   }
-  function importarSeed() {
-    const n = incorporarNovidadesSeed();
-    atualizar();
-    toast.current?.show({ severity: 'success', summary: 'Catálogo incorporado', detail: `${n} ativo(s) adicionados`, life: 3000 });
-  }
-
-  function importarDocumentados() {
-    const n = incorporarInventarioDocumentado();
-    atualizar();
-    toast.current?.show({ severity: 'success', summary: 'Referências adicionadas', detail: `${n} ativo(s) documentados. Confirme endereços e estado no equipamento.`, life: 5000 });
-  }
-
   function importarArquivo(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -104,8 +89,6 @@ export function Inventario() {
 
       <PageHeader title="Meu Ambiente" subtitle="Inventário do homelab: hosts, VMs, rede e serviços, e o mapa de onde ficam endereços e credenciais (as senhas ficam no Cofre)."
         actions={<>
-          {seed.disponivel && <Button label={`Importar novidades (${seed.quantidade})`} icon="pi pi-download" outlined onClick={importarSeed} />}
-          {documentadosPendentes > 0 && <Button label={`Adicionar dados das notas (${documentadosPendentes})`} icon="pi pi-file-import" severity="warning" outlined onClick={importarDocumentados} tooltip="Inclui referências de docs/DEPLOY.md, docs/PENDENCIAS.md e docs/RADAR.md como itens a conferir" />}
           <label className="p-button p-component p-button-outlined" style={{ cursor: 'pointer' }}>
             <span className="p-button-icon p-button-icon-left pi pi-upload" />
             <span className="p-button-label">Importar arquivo</span>
@@ -114,15 +97,7 @@ export function Inventario() {
           <Button label="Novo ativo" icon="pi pi-plus" onClick={() => setForm(NOVO)} />
         </>} />
 
-      <AvisoDadosAntigos />
-
       <AcessosIntegracoes ativosComEndereco={todos.filter((a) => (a.endereco ?? '').trim()).length} />
-
-      {todos.some((a) => a.tags.includes('documentação')) && (
-        <StatusStrip tone="warn" icon="pi-info-circle">
-          Itens com a tag “documentação” vieram de notas do projeto, não de consulta ao equipamento. Confira os endereços e o estado atual antes de executar mudanças; os campos sem fonte verificável ficaram vazios.
-        </StatusStrip>
-      )}
 
       <div className="iv-summary">
         <div className="iv-kpis">

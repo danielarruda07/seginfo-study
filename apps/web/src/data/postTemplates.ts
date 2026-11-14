@@ -1,52 +1,10 @@
-/** Modelos de post para LinkedIn, conectando a vivência de infra do Daniel à segurança. */
-export interface PostTemplate {
-  id: string;
-  titulo: string;
-  gancho: string;
-  corpo: string;
-}
+/** Modelos de post: estruturas editáveis, sem afirmar fatos de carreira não confirmados. */
+export interface PostTemplate { id: string; titulo: string; gancho: string; corpo: string }
 
 export const POST_TEMPLATES: PostTemplate[] = [
-  {
-    id: 'tpl-ponte',
-    titulo: 'Infra → Segurança: a ponte',
-    gancho: '15 anos de infraestrutura não são o começo da minha jornada em segurança. São a base dela.',
-    corpo:
-      'Quem administra Active Directory, firewall e backup já faz segurança todos os dias — só não chamava assim.\n\n' +
-      'Gerir antivírus corporativo (Kaspersky) no TJ-CE era endpoint protection. Configurar SonicWall na Energy Telecom era segurança de perímetro. GPOs eram hardening. Certificados digitais de advogados e juízes eram PKI.\n\n' +
-      'Agora estou formalizando esse conhecimento com método: MITRE ATT&CK, CIS Controls, NIST CSF.\n\n' +
-      'Sua experiência de infra é um ativo. Reposicione.\n\n#segurancadainformacao #infraestrutura #cybersecurity',
-  },
-  {
-    id: 'tpl-fortigate',
-    titulo: 'FortiGate na prática',
-    gancho: 'Firewall não é só "abrir e fechar porta". É política, inspeção e visibilidade.',
-    corpo:
-      'Estudando NGFW a fundo (Fortinet, líder do Gartner Magic Quadrant), três coisas que mudaram minha visão:\n\n' +
-      '1. Application control > regra de porta. Bloquear porta 443 não bloqueia o que trafega nela.\n' +
-      '2. SSL inspection é onde mora o risco real hoje.\n' +
-      '3. IPS integrado transforma o firewall em sensor de detecção.\n\n' +
-      'O que mais te surpreendeu quando saiu do "firewall tradicional"?\n\n#fortigate #ngfw #networksecurity',
-  },
-  {
-    id: 'tpl-aprendizado',
-    titulo: 'Aprendizado público (build in public)',
-    gancho: 'Decidi documentar minha migração de carreira de Infra para Segurança. Em público.',
-    corpo:
-      'Comecei uma trilha estruturada: Fundamentos → Blue Team → Red Team → SIEM → Vulnerabilidades.\n\n' +
-      'Essa semana foquei em [TÓPICO]. Principais aprendizados:\n' +
-      '- [ponto 1]\n- [ponto 2]\n- [ponto 3]\n\n' +
-      'Ferramenta estudada: [FERRAMENTA] (referência de mercado).\n\n' +
-      'Compartilhar o processo me mantém consistente. Se você está na mesma jornada, bora trocar.\n\n#estudos #cybersecurity #carreira',
-  },
-  {
-    id: 'tpl-ferramenta',
-    titulo: 'Deep dive em ferramenta',
-    gancho: 'Testei [FERRAMENTA] essa semana. Aqui está o que aprendi.',
-    corpo:
-      'Contexto: [por que essa ferramenta importa]\n\n' +
-      'O que ela resolve: [problema]\n\n' +
-      '3 aprendizados práticos:\n1. [...]\n2. [...]\n3. [...]\n\n' +
-      'É referência de mercado na categoria [categoria].\n\nJá usou? Qual sua experiência?\n\n#cybersecurity #blueteam',
-  },
+  { id: "tpl-ponte", titulo: "Da infraestrutura à segurança: a ponte", gancho: "Infraestrutura me ensinou a pensar em disponibilidade. Segurança está me ensinando a perguntar: o que pode dar errado?", corpo: "Na infraestrutura, aprendi a olhar para dependências, mudanças e impacto operacional.\n\nAgora estou conectando essa visão à Segurança da Informação por meio de [estudo ou prática concreta].\n\nUm exemplo recente: [situação, decisão e resultado que você pode comprovar].\n\nEssa ponte entre operar e proteger é o que quero aprofundar.\n\nQuem veio de infraestrutura: qual conceito de segurança passou a enxergar diferente?" },
+  { id: "tpl-lab", titulo: "Lab com evidência", gancho: "Montei um lab para responder uma pergunta específica: [pergunta].", corpo: "Cenário: [ambiente de teste, sem dados sensíveis].\n\nO que fiz: [passos que você executou].\n\nO que observei: [evidência, log, métrica ou comportamento].\n\nO que faria diferente: [limitação ou próximo experimento].\n\nFoi um exercício de laboratório, não uma mudança em ambiente de produção.\n\nQue teste você acrescentaria?" },
+  { id: "tpl-aprendizado", titulo: "Aprendizado da semana", gancho: "Esta semana eu precisei rever uma ideia sobre [tema].", corpo: "Eu esperava [expectativa inicial].\n\nAo estudar ou praticar [atividade], encontrei [fato ou evidência].\n\nAjustei meu entendimento para [aprendizado]. Ainda preciso validar [dúvida].\n\nMeu próximo passo é [ação concreta].\n\nQual fonte ou exercício ajudou você a entender esse tema?" },
+  { id: "tpl-certificacao", titulo: "Certificação: plano depois da prova", gancho: "Fiquei a uma questão do AZ-104. Agora estou transformando o resultado em um plano de estudo melhor.", corpo: "A tentativa mostrou que conhecer os conceitos não basta: preciso praticar os cenários e reforçar os domínios em que tive dificuldade.\n\nMeu plano para a próxima etapa: [tópicos a revisar], [labs que vai executar] e [como vai medir a prontidão].\n\nNaquela tentativa, não passei. Antes de atualizar este relato, confirme [situação atual da certificação]. Vou compartilhar o que mudar na preparação e o que aprender no processo.\n\nQuem já refez uma certificação: o que mudou na sua preparação?" },
+  { id: "tpl-decisao", titulo: "Decisão técnica e trade-off", gancho: "A escolha mais segura nem sempre é a que parece mais simples no primeiro dia.", corpo: "Contexto: [problema técnico sem identificar ambiente ou organização].\n\nOpções consideradas: [A] e [B].\n\nEscolhi [decisão] porque [critérios]. O custo ou limitação foi [trade-off].\n\nO que aprendi e como validaria a decisão: [lição e evidência].\n\nQue critério você colocaria nessa decisão?" },
 ];

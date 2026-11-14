@@ -1,14 +1,10 @@
 import { AtivoSchema, type Ativo, type Lab, type TipoAtivo, type EstadoAtivo } from '@seginfo/shared';
 import { z } from 'zod';
-import { INVENTARIO_SEED } from '@/data/inventario';
-import { INVENTARIO_DOCUMENTADO } from '@/data/inventarioDocumentado';
 import { LABS } from '@/data/labs';
 import { read, write, uid, paginate, matchesSearch, todayISO, registerSchema, type Page } from './store';
 
 const KEY = 'inventario';
 const LAB_PROGRESS_KEY = 'labs:progresso';
-const SEED_VERSION_KEY = 'inventario:seed-version';
-const SEED_VERSION = 4;
 registerSchema(KEY, { safeParse: (v) => AtivoSchema.array().safeParse(v) });
 registerSchema(LAB_PROGRESS_KEY, { safeParse: (v) => z.record(z.string(), z.object({ status: z.enum(['nao_iniciado', 'em_andamento', 'concluido']), concluidoEm: z.string().optional(), aprendizado: z.string(), evidencia: z.string().default(''), mitre: z.array(z.string()) })).safeParse(v) });
 
@@ -41,44 +37,14 @@ function base(): Ativo[] {
   if (stored) {
     // o inventário guarda só o homelab: remove ativos de outros ambientes
     // que tenham ficado salvos de versões anteriores (ou vindos de um backup)
-    const homelab = stored.filter((a) => a.ambiente === 'criecomia');
-    if (homelab.length !== stored.length) write(KEY, homelab);
-    return homelab;
+    const reais = stored.filter((a) => a.ambiente === 'criecomia' &&
+      !a.tags.some((tag) => ['exemplo', 'ficticio', 'documentação'].includes(tag)) &&
+      !a.id.startsWith('doc-') && !a.nome.startsWith('Ativo demonstrativo '));
+    if (reais.length !== stored.length) write(KEY, reais);
+    return reais;
   }
-  write(KEY, INVENTARIO_SEED);
-  write(SEED_VERSION_KEY, SEED_VERSION);
-  return INVENTARIO_SEED;
-}
-
-export function inventarioSeedUpdate() {
-  const currentVersion = read<number>(SEED_VERSION_KEY, 1);
-  const ativos = read<Ativo[]>(KEY, []);
-  const known = new Set(ativos.map((a) => a.id));
-  const novidades = INVENTARIO_SEED.filter((a) => !known.has(a.id));
-  return { disponivel: currentVersion < SEED_VERSION && novidades.length > 0, quantidade: novidades.length };
-}
-
-export function incorporarNovidadesSeed(): number {
-  const ativos = read<Ativo[]>(KEY, []);
-  const known = new Set(ativos.map((a) => a.id));
-  const novidades = INVENTARIO_SEED.filter((a) => !known.has(a.id));
-  write(KEY, [...ativos, ...novidades]);
-  write(SEED_VERSION_KEY, SEED_VERSION);
-  return novidades.length;
-}
-
-/** Adiciona uma única vez os ativos recolhidos da documentação, sem sobrescrever dados já editados. */
-export function incorporarInventarioDocumentado(): number {
-  const ativos = base();
-  const known = new Set(ativos.map((a) => a.id));
-  const novos = INVENTARIO_DOCUMENTADO.filter((a) => !known.has(a.id));
-  if (novos.length) write(KEY, [...ativos, ...novos]);
-  return novos.length;
-}
-
-export function inventarioDocumentadoPendente(): number {
-  const known = new Set(base().map((a) => a.id));
-  return INVENTARIO_DOCUMENTADO.filter((a) => !known.has(a.id)).length;
+  write(KEY, []);
+  return [];
 }
 
 export interface AtivoFiltro {
@@ -116,8 +82,7 @@ export function removeAtivo(id: string): void {
 }
 
 export function resetInventario(): void {
-  write(KEY, INVENTARIO_SEED);
-  write(SEED_VERSION_KEY, SEED_VERSION);
+  write(KEY, []);
 }
 
 export function resumoInventario() {

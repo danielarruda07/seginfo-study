@@ -17,11 +17,37 @@ import { MarcoDrawer } from './MarcoDrawer';
 
 const PILAR_PROJETO = 'Construindo a SegInfo Study em público';
 
-const IDEIAS_DE_POST: { label: string; briefing: string }[] = [
-  { label: 'A história completa', briefing: 'Post contando a construção da SegInfo Study do zero até hoje: por que comecei, as principais decisões de segurança e o que aprendi.' },
-  { label: 'Decisões de segurança', briefing: 'Post sobre as decisões de segurança que tomei construindo minha própria plataforma de estudos (cofre cifrado, backup que o servidor não lê, dados corporativos fora).' },
-  { label: 'Erros e lições', briefing: 'Post honesto sobre os erros e lições ao construir a SegInfo Study — o que eu faria diferente.' },
-  { label: 'Próximo capítulo: pentest', briefing: 'Post anunciando que minha plataforma de estudos vai virar alvo autorizado de pentest no meu homelab, e o que pretendo aprender com isso.' },
+const IDEIAS_DE_POST: { label: string; briefing: string; pilar: string }[] = [
+  {
+    "label": "A ponte infra e segurança",
+    "briefing": "Conte como infraestrutura, DevOps e virtualização ajudam a pensar em segurança operacional. Use um exemplo profissional que eu confirmar; se faltar, deixe [CONFIRMAR: exemplo]. Diferencie experiência profissional de estudo e laboratório.",
+    "pilar": "Infraestrutura, DevOps e virtualização aplicados à segurança"
+  },
+  {
+    "label": "Depois da tentativa do AZ-104",
+    "briefing": "Continue a conversa do meu post público sobre ter ficado a uma questão do AZ-104. Escreva um briefing para relatar apenas o que eu realmente revisei, pratiquei e aprendi depois da prova. Não suponha o resultado atual; use [CONFIRMAR: situação da certificação] e só informe aprovação se eu confirmar. Deixe campos para os tópicos e resultados.",
+    "pilar": "Transição de carreira com evidências e próximos passos"
+  },
+  {
+    "label": "Virtualização com olhar de segurança",
+    "briefing": "Prepare um post de aprendizado sobre uma decisão concreta de virtualização e seu impacto em isolamento, atualização, recuperação ou controle de acesso. Pergunte qual decisão e evidência eu posso compartilhar; não invente topologia nem resultado.",
+    "pilar": "Infraestrutura, DevOps e virtualização aplicados à segurança"
+  },
+  {
+    "label": "Um lab, uma evidência",
+    "briefing": "Estruture um post de Blue Team baseado em um lab que eu realmente executei: cenário autorizado, telemetria observada, detecção testada, evidência e limitação. Se os dados não estiverem no contexto, use [CONFIRMAR: dado]; não invente alerta nem resultado.",
+    "pilar": "Labs e prática de Segurança da Informação"
+  },
+  {
+    "label": "Uma decisão técnica",
+    "briefing": "Conte uma decisão técnica real de infraestrutura ou segurança por meio de contexto, opções, trade-off e como validei a escolha. Remova nomes, endereços, segredos e detalhes que identifiquem organização ou ambiente.",
+    "pilar": "Aprendizados de Blue Team e operações seguras"
+  },
+  {
+    "label": "Construindo a SegInfo Study",
+    "briefing": "Escolha uma decisão ou aprendizado documentado na construção da SegInfo Study. Explique problema, alternativas, decisão, limite e o que faria diferente. Evite autopromoção vazia: mostre evidência e uma lição reutilizável.",
+    "pilar": "Construção da SegInfo Study e decisões técnicas"
+  }
 ];
 
 export function Diario({ onGerarPost }: { onGerarPost: (p: PedidoEstudio) => void }) {
@@ -60,7 +86,9 @@ export function Diario({ onGerarPost }: { onGerarPost: (p: PedidoEstudio) => voi
         </div>
         <div className="iv-row iv-wrap iv-mt">
           {IDEIAS_DE_POST.map((i) => (
-            <Chip key={i.label} label={i.label} icon="pi-sparkles" onClick={() => onGerarPost({ briefing: i.briefing, pilar: PILAR_PROJETO, incluirDiario: true })} />
+            <Chip key={i.label} label={i.label} icon="pi-sparkles"
+              onClick={() => onGerarPost({ briefing: i.briefing, pilar: i.pilar, incluirDiario: true })} />
+
           ))}
         </div>
         <p className="iv-muted ca-small ca-mb0">Abre o Estúdio com o briefing pronto e o diário como contexto. Para um post sobre um marco só, abra o marco.</p>
@@ -84,6 +112,7 @@ export function Diario({ onGerarPost }: { onGerarPost: (p: PedidoEstudio) => voi
               <span className="iv-muted">{e.data}</span>
               <Pill label={CATEGORIA_DIARIO_LABEL[e.categoria]} color={CATEGORIA_COR[e.categoria]} />
               {e.origem === 'voce' && <Pill label="seu registro" icon="pi-user" />}
+
             </div>
             <strong className="ca-marco__titulo">{e.titulo}</strong>
             <p className="iv-muted ca-clamp-2 ca-marco__desc">{e.descricao}</p>
