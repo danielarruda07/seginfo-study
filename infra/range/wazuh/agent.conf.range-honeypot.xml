@@ -9,4 +9,17 @@
     <log_format>json</log_format>
     <label key="honeypot">dionaea</label>
   </localfile>
+  <!-- Heralding (VNC/PostgreSQL/SMTP/POP3/IMAP) e iscas (Redis/Elasticsearch/Docker), ver
+       infra/range/honeypot/subir_extras.sh. O log do Heralding é escrito só quando a sessão
+       termina (jsonlines); o da isca é uma linha por conexão. -->
+  <localfile>
+    <location>/opt/honeypot/extras/heralding-logs/log_session.json</location>
+    <log_format>json</log_format>
+    <label key="honeypot">heralding</label>
+  </localfile>
+  <localfile>
+    <location>/opt/honeypot/extras/isca-logs/isca.json</location>
+    <log_format>json</log_format>
+    <label key="honeypot">isca</label>
+  </localfile>
 </agent_config>

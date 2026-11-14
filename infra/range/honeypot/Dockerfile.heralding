@@ -1,0 +1,8 @@
+# heralding 1.0.7 usa APIs de asyncio removidas no Python 3.9/3.10: fica no 3.8
+FROM python:3.8-slim
+RUN pip install --no-cache-dir psycopg2-binary pycryptodome nose aiosmtpd "asyncssh>=2.0.0" pyOpenSSL pyaml pyzmq pyyaml requests hpfeeds3 rsa \
+ && pip install --no-cache-dir --no-deps heralding \
+ && python -c "import pkgutil, heralding; [__import__(m.name) for m in pkgutil.walk_packages(heralding.__path__, 'heralding.') if 'test' not in m.name]; print('heralding ok')"
+COPY heralding_prepara.py /prepara.py
+WORKDIR /data
+CMD ["sh", "-c", "python /prepara.py && exec heralding -c /data/heralding.yml"]

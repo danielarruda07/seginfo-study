@@ -59,6 +59,7 @@ export const TECNICAS: Tecnica[] = [
   { id: 'T1070', nome: 'Indicator Removal', tatica: 'TA0005' },
   { id: 'T1562', nome: 'Impair Defenses', tatica: 'TA0005' },
   { id: 'T1027', nome: 'Obfuscated Files or Information', tatica: 'TA0005' },
+  { id: 'T1610', nome: 'Deploy Container', tatica: 'TA0005' },
   // Acesso a credenciais
   { id: 'T1110', nome: 'Brute Force', tatica: 'TA0006' },
   { id: 'T1003', nome: 'OS Credential Dumping', tatica: 'TA0006' },

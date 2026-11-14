@@ -59,6 +59,51 @@
   </rule>
 </group>
 
+<!-- Heralding: VNC, PostgreSQL, SMTP, POP3, IMAP (sensor/wazuh-forwarder/forwarder.py de_heralding). -->
+<group name="honeypot,heralding,">
+  <rule id="100223" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="source_ip">\.+</field>
+    <field name="protocol">\.+</field>
+    <description>Heralding: sessao $(protocol) porta $(destination_port) de $(source_ip)</description>
+  </rule>
+  <rule id="100224" level="6">
+    <if_sid>100223</if_sid>
+    <field name="num_auth_attempts">[1-9]</field>
+    <description>Heralding: credenciais tentadas em $(protocol) por $(source_ip) ($(num_auth_attempts) tentativas)</description>
+    <mitre><id>T1110</id></mitre>
+  </rule>
+</group>
+
+<!-- Iscas próprias: Redis, Elasticsearch, API do Docker (sensor/wazuh-forwarder/forwarder.py
+     de_isca). Elas só registram e respondem o mínimo plausível; nada é executado de verdade. -->
+<group name="honeypot,isca,">
+  <rule id="100225" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="isca_servico">\.+</field>
+    <field name="src_ip">\.+</field>
+    <description>Isca $(isca_servico): conexao de $(src_ip)</description>
+  </rule>
+  <rule id="100226" level="6">
+    <if_sid>100225</if_sid>
+    <field name="senha">\.+</field>
+    <description>Isca $(isca_servico): credenciais tentadas por $(src_ip): $(usuario) / $(senha)</description>
+    <mitre><id>T1110</id></mitre>
+  </rule>
+  <rule id="100227" level="10">
+    <if_sid>100225</if_sid>
+    <field name="acao">^container_create$|^container_exec$</field>
+    <description>Isca Docker: $(acao) tentado por $(src_ip) (nada foi executado de verdade)</description>
+    <mitre><id>T1610</id></mitre>
+  </rule>
+  <rule id="100228" level="8">
+    <if_sid>100225</if_sid>
+    <field name="acao">^image_pull$</field>
+    <description>Isca Docker: tentativa de baixar imagem por $(src_ip) (nada foi baixado de verdade)</description>
+    <mitre><id>T1204</id></mitre>
+  </rule>
+</group>
+
 <!-- Windows exposto (VM 822) e vitima do range: logon falho vira forca bruta; RDP aceito vira alerta alto -->
 <group name="windows,honeypot,">
   <rule id="100240" level="6">

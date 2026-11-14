@@ -110,3 +110,10 @@ sleep 15
 docker ps --format '{{.Names}} {{.Status}}'
 ls $E/services-enabled $E/ihandlers-enabled | tr '\n' ' '; echo
 ss -lntu | awk 'NR>1{print $1, $5}' | sort -u | tr '\n' ';'; echo
+
+# --- Extras (Heralding + iscas Redis/Elasticsearch/Docker): script separado, chamado aqui
+#     para o setup ficar num comando só. Pule com SEM_EXTRAS=true se quiser só Cowrie+Dionaea.
+if [ "${SEM_EXTRAS:-}" != "true" ]; then
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  bash "$SCRIPT_DIR/subir_extras.sh"
+fi
