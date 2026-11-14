@@ -8,6 +8,7 @@ A versão aparece no rodapé do menu lateral (`v0.13.0 · build dd/mm hh:mm`) e 
 
 | Versão | Data | O que entrou |
 |---|---|---|
+| 0.16.0 | 14/11/2026 | Painel Wazuh: estado do manager e agentes via API somente leitura, alertas encaminhados com busca e detalhe, integração documentada e campos sensíveis redigidos |
 | 0.15.1 | 14/11/2026 | Coletor do laudo pré-reset em `infra/range/pericia/` (script, service, drop-in antes do reset, modelo de env), regra 100260 do Wazuh para saídas bloqueadas dos alvos reais e seção "Laudo antes do reset" no `docs/RANGE.md` |
 | 0.15.0 | 14/11/2026 | Laudos dos alvos reais: antes de cada reset, a VM do Wazuh inspeciona os alvos reais do honeypot pelo agente QEMU (arquivos criados ou alterados com SHA-256, persistência, processos e conexões do invasor) e soma as saídas que o firewall bloqueou; o laudo chega por `POST /api/ingest/pericia` e aparece na tela nova "Laudos dos alvos", cruzado com quem entrou no alvo naquela janela |
 | 0.14.0 | 14/11/2026 | Radar: resumo agregado no banco (sem limite de linhas), origem Internet × Range, atualização a cada minuto, retenção menor para conexões simples; coletor com país (GeoIP DB-IP), lote recusado dividido ao meio e leitura completa na rotação do arquivo; IP público retirado do inventário documentado |

@@ -143,6 +143,14 @@ entra em modo privilegiado) e `line vty ... login local` com SSH habilitado. IOS
 troca de chave e cifras mais antigas (DH group14/group1 SHA1, AES-CBC, 3DES); o cliente já habilita
 essas opções porque o `ssh2` não as liga por padrão.
 
+### Wazuh (leitura, fora do catálogo de ferramentas dos agentes)
+Cliente em `apps/api/src/wazuh.ts`, consultado pela tela `/wazuh` (não é uma ferramenta do catálogo
+de agentes — não há `wazuh-leitura`/`wazuh-escrita` ligável a um projeto). Variáveis e detalhes em
+[docs/WAZUH.md](WAZUH.md).
+
+Isto NÃO substitui a observação acima sobre auditoria dos agentes: as ações dos agentes de IA
+continuam fora do Wazuh até existir um encaminhamento explícito delas para o manager.
+
 ## Regras
 - Agente só fica `ativo` sem erros em `revisarAgente()` (ex.: ferramenta de escrita exige aprovação humana). Validado no servidor (422).
 - Só agentes `arquivados` podem ser excluídos. Agente arquivado não executa.
