@@ -66,11 +66,15 @@ export interface PedidoRascunho {
   notas: { titulo: string; trecho: string }[];
 }
 export const gerarRascunho = (p: PedidoRascunho) =>
-  http.post<RascunhoIA>('/linkedin/rascunho', { ...p, estudo: contextoDoEstudo() }, { timeout: 180_000 }).then((r) => r.data);
+  http.post<RascunhoIA>('/linkedin/rascunho', { ...p, estudo: contextoDoEstudo() }, { timeout: 115_000 }).then((r) => r.data);
 
 /** Mensagem de erro legível a partir de uma resposta da API. */
 export function mensagemErro(e: unknown): string {
   const r = (e as { response?: { status?: number; data?: { error?: string } } }).response;
+  const code = (e as { code?: string }).code;
+  if (r?.status === 504 || code === 'ECONNABORTED' || code === 'ETIMEDOUT') {
+    return 'A geração demorou mais que o limite de espera. Evite clicar várias vezes; confira a API e a IA antes de tentar de novo.';
+  }
   if (r?.data?.error) return r.data.error;
   if (r?.status === 401 || r?.status === 403) return 'Sessão do Cloudflare Access expirou. Recarregue a página.';
   if (!r) return 'Não foi possível falar com a API. Ela está no ar?';

@@ -24,6 +24,16 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-14-linkedin-timeout',
+    data: '2026-11-14',
+    titulo: 'A geração de conteúdo precisava de mais tempo que as rotas comuns',
+    descricao:
+      'O proxy do web encerrava todas as respostas da API após 30 segundos, inclusive pedidos de geração por IA. ' +
+      'Aumentamos esse limite para a geração de conteúdo e deixamos a mensagem de timeout compreensível, sem depender do formato do post.',
+    categoria: 'aprendizado',
+    tags: ['linkedin', 'ia', 'timeout', 'experiencia-de-uso'],
+  },
+  {
     id: 'proj-2026-11-14-linkedin-estudio-visual',
     data: '2026-11-14',
     titulo: 'O Estúdio do LinkedIn prepara texto e material visual no mesmo rascunho',
