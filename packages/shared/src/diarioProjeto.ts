@@ -24,6 +24,20 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-14-iscas',
+    data: '2026-11-14',
+    titulo: 'Isca dentro da rede: quem mexer no arquivo errado se denuncia',
+    descricao:
+      'O honeypot exposto pega quem bate na porta. Mas um atacante que já entrou por outro caminho passa direto por ele. ' +
+      'Para cobrir isso, o Windows real ganhou iscas: um arquivo com credenciais falsas e uma conta sem uso legítimo. Qualquer ' +
+      'leitura do arquivo ou tentativa de entrar com a conta vira alerta no Wazuh e sobe ao Radar. Montar a isca levou ' +
+      'menos tempo que descobrir por que ela não alertava. Três armadilhas: o agente do Windows exclui por padrão o evento ' +
+      'de acesso a arquivo (4663), sem regra o manager descarta o evento em silêncio, e o rollback do snapshot deixa o agente ' +
+      'com a posição antiga do log de segurança. Lição: uma isca só vale depois de ver o alerta chegar de ponta a ponta.',
+    categoria: 'seguranca',
+    tags: ['honeytoken', 'wazuh', 'blue-team', 'windows'],
+  },
+  {
     id: 'proj-2026-11-14-cartoes-ficha',
     data: '2026-11-14',
     titulo: 'Todo cartão abre uma ficha lateral',

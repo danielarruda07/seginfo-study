@@ -122,6 +122,26 @@ não como root; se falhar, o reset acontece mesmo assim. No app: Inteligência �
 Limite conhecido: um rootkit de espaço de usuário (`/etc/ld.so.preload`) pode esconder arquivos e processos da própria
 coleta; o laudo avisa quando encontra um.
 
+## Iscas (honeytokens)
+Armadilhas dentro da rede: qualquer uso dispara alerta no Wazuh (nível 12 a 14), que chega ao Radar pelo coletor.
+Cobrem o que o honeypot exposto não vê, como um atacante que já entrou por outro caminho.
+
+- **Arquivo isca** em pasta do compartilhamento do Windows Server real, com credenciais falsas no formato real.
+  Auditoria "File System" ligada (sucesso e falha) e SACL de leitura só nessa pasta. Regra 100270 casa o evento 4663.
+- **Conta isca**: local, habilitada, senha aleatória, sem grupo administrativo. Regra 100271 (logon bem-sucedido)
+  e 100272 (tentativa falha).
+- Os nomes reais ficam fora do repositório (ele é público). O modelo com marcadores está em
+  [`infra/range/wazuh/range_canario_rules.xml`](../infra/range/wazuh/range_canario_rules.xml).
+
+Pontos que custam tempo se esquecidos:
+- O agente Wazuh do Windows **exclui o evento 4663 por padrão** na consulta do canal Security
+  (`EventID != 4663`, junto de 4656, 4658 e 4660). Sem tirar o 4663 dessa lista, o arquivo isca nunca gera alerta.
+- O alerta só existe se houver regra. Evento sem regra é descartado em silêncio pelo manager.
+- O rollback do snapshot deixa o agente com posição antiga no log Security: depois de reverter, reiniciar o
+  agente não basta. Foi preciso remover `wazuh-logcollector.state` (com cópia antes) para voltar a receber o canal.
+- O snapshot `limpo` precisa conter as iscas, senão o reset das 6 horas as apaga. Trocar o `limpo` é apagar e
+  criar de novo, na mesma VM, verificando a VM antes e depois.
+
 ## Como operar
 | Ação | Como |
 |---|---|
@@ -129,5 +149,6 @@ coleta; o laudo avisa quando encontra um.
 | Prorrogar | mudar o fim do agendamento da exposição |
 | Limpar um alvo real agora | rodar o serviço de reset no Wazuh (ou rollback do snapshot `limpo`) |
 | Ver ataques | app → Radar (tabela, ficha do evento) e Matriz ATT&CK (camada "Vistas no Radar") |
+| Isca tocada | Wazuh (regras 100270-100272) → Radar (fonte windows, ação e alvo no evento); ver o alerta e desligar o que foi usado |
 | Laudo agora (sem esperar o reset) | `systemctl start seginfo-pericia` na VM do Wazuh; `DRY_RUN=true` no env gera só o arquivo local |
 | Investigar a fundo | Wazuh (alertas), `cowrie.json`/`dionaea.json` no honeypot, logs do FortiGate |

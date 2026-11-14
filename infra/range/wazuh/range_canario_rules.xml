@@ -1,0 +1,27 @@
+<!-- Iscas (honeytokens) do cyber range. Os nomes reais (pasta, arquivo e conta) ficam FORA do repositorio:
+     troque os marcadores antes de instalar. Ver docs/RANGE.md, secao "Iscas (honeytokens)".
+     Pre-requisito no alvo: auditoria "File System" (sucesso e falha) e SACL ReadData para o SID S-1-1-0 na pasta. -->
+<group name="range,windows,honeytoken,">
+  <rule id="100270" level="12">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^4663$</field>
+    <field name="win.eventdata.objectName" type="pcre2">(?i)MARCADOR_PASTA_ISCA</field>
+    <description>Canario: arquivo isca acessado por $(win.eventdata.subjectUserName) em $(win.eventdata.objectName)</description>
+    <mitre><id>T1552.001</id></mitre>
+    <group>honeytoken,</group>
+  </rule>
+  <rule id="100271" level="14">
+    <if_sid>60106</if_sid>
+    <field name="win.eventdata.targetUserName" type="pcre2">(?i)^MARCADOR_CONTA_ISCA$</field>
+    <description>Canario: conta isca $(win.eventdata.targetUserName) LOGOU com sucesso a partir de $(win.eventdata.ipAddress)</description>
+    <mitre><id>T1078</id></mitre>
+    <group>honeytoken,authentication_success,</group>
+  </rule>
+  <rule id="100272" level="12">
+    <if_sid>60122</if_sid>
+    <field name="win.eventdata.targetUserName" type="pcre2">(?i)^MARCADOR_CONTA_ISCA$</field>
+    <description>Canario: tentativa contra a conta isca $(win.eventdata.targetUserName) a partir de $(win.eventdata.ipAddress)</description>
+    <mitre><id>T1110.001</id></mitre>
+    <group>honeytoken,authentication_failed,</group>
+  </rule>
+</group>

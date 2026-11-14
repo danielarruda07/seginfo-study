@@ -8,6 +8,7 @@ A versão aparece no rodapé do menu lateral (`v0.17.0 · build dd/mm hh:mm`) e 
 
 | Versão | Data | O que entrou |
 |---|---|---|
+| 0.18.0 | 14/11/2026 | Iscas (honeytokens) no Windows real: arquivo isca com credenciais falsas e conta isca, auditoria de arquivo, regras 100270-100272 do Wazuh (nível 12 a 14); seção "Iscas" no `docs/RANGE.md` com as armadilhas de configuração (filtro 4663 do agente, posição do log após rollback, snapshot limpo) |
 | 0.17.0 | 14/11/2026 | Todas as telas: cartões e linhas abrem uma ficha lateral com detalhe, relações e ações (↑/↓ entre itens); indicadores viram filtros; cores por tokens; menu lateral sempre recolhido; prévia de artefatos HTML isolada; senha do Cofre só com "Revelar" |
 | 0.16.1 | 14/11/2026 | Painel Wazuh: corrigido `GET /agents` que devolvia HTTP 400 nesta versão do Wazuh (4.14.10 rejeita `select=os`; precisa dos subcampos `os.name,os.version`) |
 | 0.16.0 | 14/11/2026 | Painel Wazuh: estado do manager e agentes via API somente leitura, alertas encaminhados com busca e detalhe, integração documentada e campos sensíveis redigidos. Mais superfície real na Matriz ATT&CK: Heralding (VNC, PostgreSQL, SMTP, POP3, IMAP) e iscas de Redis/Elasticsearch/API do Docker trazidas da infraestrutura real do range para `infra/range/honeypot/`, com `T1610` (Deploy Container) adicionado ao catálogo e regras novas no Wazuh (100223-100228) |
