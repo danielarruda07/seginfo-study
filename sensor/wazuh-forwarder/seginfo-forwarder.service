@@ -1,0 +1,22 @@
+[Unit]
+Description=SegInfo Wazuh Forwarder (alertas do Wazuh -> Radar)
+After=network-online.target wazuh-manager.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=seginfo-fwd
+Group=wazuh
+EnvironmentFile=/etc/seginfo-forwarder.env
+ExecStart=/usr/bin/python3 /opt/seginfo-forwarder/forwarder.py
+Restart=always
+RestartSec=10
+StateDirectory=seginfo-forwarder
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/var/ossec/logs/alerts
+
+[Install]
+WantedBy=multi-user.target

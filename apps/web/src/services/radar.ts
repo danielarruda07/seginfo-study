@@ -1,3 +1,4 @@
+import type { AtaqueFonte } from '@seginfo/shared';
 import { http } from './http';
 
 export interface RadarResumo {
@@ -33,13 +34,15 @@ export interface RadarEvento {
   acao: string;
   usuarioTentado: string | null;
   alvo: string | null;
+  /** Livre por coletor; nunca traz senha. Ex.: { mitre, regra, nivel, comando, url }. */
+  detalhes?: Record<string, unknown>;
 }
 
 export interface RadarEventosFiltro {
   ip?: string;
   servico?: string;
   acao?: string;
-  fonte?: 'fortigate' | 'windows' | 'cowrie' | 'opencanary' | 'outro';
+  fonte?: AtaqueFonte;
   pais?: string;
   q?: string;
   page: number;

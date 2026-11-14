@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { AtaqueFonte, AtaqueMitreSchema, type AtaqueMitre } from '@seginfo/shared';
 import { prisma } from './db.js';
 import type { AuthedRequest } from './auth.js';
 
@@ -23,7 +24,25 @@ const MITRE: Record<string, { id: string; nome: string }> = {
   scan: { id: 'T1046', nome: 'Network Service Discovery' },
   login_ok: { id: 'T1078', nome: 'Valid Accounts' },
   comando: { id: 'T1059', nome: 'Command and Scripting Interpreter' },
+  download: { id: 'T1105', nome: 'Ingress Tool Transfer' },
 };
+
+/**
+ * Técnicas do evento: as que o coletor mandou em `detalhes.mitre` (ex.: regra do Wazuh) ou,
+ * na falta delas, o mapeamento fixo por ação. Entradas malformadas são ignoradas.
+ */
+export function tecnicasDoEvento(acao: string, detalhes: unknown): AtaqueMitre[] {
+  const lista = (detalhes as { mitre?: unknown } | null)?.mitre;
+  if (Array.isArray(lista)) {
+    const validas = lista.flatMap((m) => {
+      const p = AtaqueMitreSchema.safeParse(m);
+      return p.success ? [p.data] : [];
+    });
+    if (validas.length) return validas;
+  }
+  const fixo = MITRE[acao];
+  return fixo ? [fixo] : [];
+}
 
 function top(map: Map<string, number>, n: number) {
   return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
@@ -79,7 +98,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
       where: { usuarioId: uid(req), ocorridoEm: { gte: desde } },
       select: {
         ocorridoEm: true, ipOrigem: true, paisOrigem: true, servico: true, acao: true,
-        usuarioTentado: true, senhaTentada: true,
+        usuarioTentado: true, senhaTentada: true, detalhes: true,
       },
       orderBy: { ocorridoEm: 'desc' },
       take: LIMITE + 1,
@@ -118,8 +137,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
       const iso = r.ocorridoEm.toISOString();
       inc(timeline, porHora ? iso.slice(0, 13) : iso.slice(0, 10));
 
-      const m = MITRE[r.acao];
-      if (m) {
+      for (const m of tecnicasDoEvento(r.acao, r.detalhes)) {
         const cur = mitre.get(m.id);
         if (cur) cur.eventos++;
         else mitre.set(m.id, { ...m, eventos: 1 });
@@ -150,7 +168,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
     ip: z.string().max(45).optional(),
     servico: z.string().max(32).optional(),
     acao: z.string().max(16).optional(),
-    fonte: z.enum(['fortigate', 'windows', 'cowrie', 'opencanary', 'outro']).optional(),
+    fonte: AtaqueFonte.optional(),
     pais: z.string().length(2).optional(),
     q: z.string().trim().max(100).optional(),
     page: z.coerce.number().int().min(0).default(0),
@@ -186,7 +204,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
         take: limit,
         select: {
           id: true, fonte: true, ocorridoEm: true, ipOrigem: true, paisOrigem: true, portaDestino: true,
-          servico: true, protocolo: true, acao: true, usuarioTentado: true, alvo: true,
+          servico: true, protocolo: true, acao: true, usuarioTentado: true, alvo: true, detalhes: true,
         },
       }),
     ]);

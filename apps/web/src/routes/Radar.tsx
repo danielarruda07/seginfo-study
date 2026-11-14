@@ -12,19 +12,21 @@ import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
 import { DetailHeader, DetailLayout, DetailSection } from '@/components/ui/Detail';
 import { Kpi, StatusStrip, Chip, Pill, Bar } from '@/components/InfraKit';
 import { getRadarResumo, getRadarEventos, type RadarEvento } from '@/services/radar';
+import type { AtaqueFonte } from '@seginfo/shared';
 import { useDebounce } from '@/hooks/useDebounce';
 
 const ROWS = 15;
 const DIAS_OPTS = [1, 7, 30];
 const FONTE_OPTS = [
   { label: 'FortiGate', value: 'fortigate' }, { label: 'Windows', value: 'windows' },
-  { label: 'Cowrie', value: 'cowrie' }, { label: 'OpenCanary', value: 'opencanary' }, { label: 'Outro', value: 'outro' },
+  { label: 'Cowrie', value: 'cowrie' }, { label: 'Dionaea', value: 'dionaea' }, { label: 'OpenCanary', value: 'opencanary' },
+  { label: 'Outro', value: 'outro' },
 ];
-const ACAO_OPTS = ['login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'outro'].map((value) => ({ label: value.replace('_', ' '), value }));
-const FONTE_LABEL: Record<string, string> = { fortigate: 'FortiGate', windows: 'Windows', cowrie: 'Cowrie', opencanary: 'OpenCanary', outro: 'Outro' };
+const ACAO_OPTS = ['login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'download', 'outro'].map((value) => ({ label: value.replace('_', ' '), value }));
+const FONTE_LABEL: Record<string, string> = { fortigate: 'FortiGate', windows: 'Windows', cowrie: 'Cowrie', dionaea: 'Dionaea', opencanary: 'OpenCanary', outro: 'Outro' };
 const ACAO_COLOR: Record<string, string> = {
   login_falha: '#f59e0b', lockout: '#ef4444', login_ok: '#dc2626', scan: '#0ea5e9',
-  bloqueio: '#64748b', conexao: '#64748b', comando: '#7c3aed', outro: '#64748b',
+  bloqueio: '#64748b', conexao: '#64748b', comando: '#7c3aed', download: '#b91c1c', outro: '#64748b',
 };
 
 /** Lista de "top N" com barras proporcionais ao maior valor. */
@@ -62,7 +64,7 @@ export function Radar() {
   const [ip, setIp] = useState<string | undefined>();
   const [servico, setServico] = useState<string | undefined>();
   const [acao, setAcao] = useState<string | undefined>();
-  const [fonte, setFonte] = useState<'fortigate' | 'windows' | 'cowrie' | 'opencanary' | 'outro' | undefined>();
+  const [fonte, setFonte] = useState<AtaqueFonte | undefined>();
   const [pais, setPais] = useState<string | undefined>();
   const [qRaw, setQRaw] = useState('');
   const q = useDebounce(qRaw, 300);
@@ -222,6 +224,19 @@ export function Radar() {
           <DetailSection title="Alvo"><p>{selected.alvo ?? '—'}</p></DetailSection>
           <DetailSection title="Serviço"><p>{selected.servico ?? '—'}{selected.portaDestino ? `:${selected.portaDestino}` : ''}{selected.protocolo ? ` · ${selected.protocolo}` : ''}</p></DetailSection>
           <DetailSection title="Usuário tentado"><p>{selected.usuarioTentado ?? '—'}</p></DetailSection>
+          {(() => {
+            const d = selected.detalhes ?? {};
+            const mitre = Array.isArray(d.mitre) ? (d.mitre as { id?: unknown; nome?: unknown }[]).filter((m) => typeof m?.id === 'string') : [];
+            const txt = (k: string) => (typeof d[k] === 'string' || typeof d[k] === 'number' ? String(d[k]) : null);
+            return <>
+              {mitre.length > 0 && <DetailSection title="Técnicas MITRE ATT&CK">
+                <p>{mitre.map((m) => <Link key={String(m.id)} to="/attack" style={{ marginRight: 8 }}><Chip label={`${String(m.id)} ${typeof m.nome === 'string' ? m.nome : ''}`} /></Link>)}</p>
+              </DetailSection>}
+              {txt('comando') && <DetailSection title="Comando"><p style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{txt('comando')}</p></DetailSection>}
+              {txt('url') && <DetailSection title="URL / arquivo"><p style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{txt('url')}</p></DetailSection>}
+              {txt('regra') && <DetailSection title="Regra do Wazuh"><p>{txt('regra')}{txt('nivel') ? ` · nível ${txt('nivel')}` : ''}{txt('descricao') ? ` · ${txt('descricao')}` : ''}</p></DetailSection>}
+            </>;
+          })()}
           <p className="iv-muted" style={{ fontSize: '.8rem' }}>O Radar não mostra senhas tentadas nesta tela.</p>
         </DetailLayout>}
       </Sidebar>

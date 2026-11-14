@@ -24,6 +24,22 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-13-radar-wazuh',
+    data: '2026-11-13',
+    titulo: 'Honeypot exposto de propósito, e o Radar aprendendo com o Wazuh',
+    descricao:
+      'O caminho foi inverso ao de costume: primeiro ficar exposto à internet, estudar os ataques reais e só depois ' +
+      'reproduzi-los no range. O honeypot (Cowrie e Dionaea) ganhou uma VLAN própria sem nenhuma saída, nem para a ' +
+      'internet nem para a rede interna, e a entrada fecha sozinha por um agendamento no firewall. O primeiro bot chegou em ' +
+      'cerca de dois minutos, entrou por Telnet com admin/admin e testou os comandos típicos de botnet de IoT. Como o ' +
+      'honeypot não pode falar com o app, o Wazuh virou o ponto central: recebe honeypot, firewall e Sysmon do Windows, ' +
+      'aplica regras próprias com a técnica MITRE e um coletor leva os alertas ao Radar. O Radar passou a usar a técnica ' +
+      'que vem da regra, e não só um mapeamento fixo por tipo de ação, então a matriz ATT&CK mostra o que de fato foi visto. ' +
+      'Antes de abrir qualquer porta, foi preciso fechar a administração do firewall e o RDP que estavam acessíveis pela WAN.',
+    categoria: 'seguranca',
+    tags: ['honeypot', 'wazuh', 'mitre-attack', 'blue-team', 'radar'],
+  },
+  {
     id: 'proj-2026-11-13-cofre-2fa',
     data: '2026-11-13',
     titulo: 'Segundo fator no Cofre, conferido pelo servidor',

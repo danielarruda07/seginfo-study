@@ -366,14 +366,24 @@ export type BiblioItem = z.infer<typeof BiblioItemSchema>;
 // ===================== RADAR DE ATAQUES (auto-vulnerabilidade / honeypot) =====================
 
 /** Origem do evento: de onde o coletor leu. */
-export const AtaqueFonte = z.enum(['fortigate', 'windows', 'cowrie', 'opencanary', 'outro']);
+export const AtaqueFonte = z.enum(['fortigate', 'windows', 'cowrie', 'opencanary', 'dionaea', 'outro']);
 export type AtaqueFonte = z.infer<typeof AtaqueFonte>;
 
 /** O que o atacante fez. */
 export const AtaqueAcao = z.enum([
-  'login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'outro',
+  'login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'download', 'outro',
 ]);
 export type AtaqueAcao = z.infer<typeof AtaqueAcao>;
+
+/**
+ * Técnica MITRE ATT&CK que o coletor já sabe (ex.: vinda da regra do Wazuh), em `detalhes.mitre`.
+ * Quando presente, o Radar usa estas técnicas em vez do mapeamento fixo por `acao`.
+ */
+export const AtaqueMitreSchema = z.object({
+  id: z.string().regex(/^T\d{4}(\.\d{3})?$/),
+  nome: z.string().max(120),
+});
+export type AtaqueMitre = z.infer<typeof AtaqueMitreSchema>;
 
 const IpSchema = z.union([z.ipv4(), z.ipv6()]);
 
@@ -393,7 +403,7 @@ export const AtaqueEventoInSchema = z.object({
   acao: AtaqueAcao,
   usuarioTentado: z.string().max(128).optional(),
   /**
-   * Senha tentada. SÓ de honeypots (cowrie/opencanary) e SÓ se o servidor tiver
+   * Senha tentada. SÓ de honeypots (cowrie/opencanary/dionaea) e SÓ se o servidor tiver
    * RADAR_GUARDAR_SENHAS=true; caso contrário a API descarta o campo sem armazenar.
    */
   senhaTentada: z.string().max(128).optional(),

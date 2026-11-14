@@ -217,3 +217,29 @@ force, T1046 discovery, T1078, T1059) e a tabela de eventos. A tabela permite bu
 IP/serviço/usuário/alvo e filtrar por origem, país, ação, IP ou serviço; selecionar uma
 linha abre os detalhes do evento. O endpoint de detalhe não retorna `senhaTentada`.
 Países só aparecem se o coletor enviar `paisOrigem` (enriquecimento GeoIP é um próximo passo).
+
+## 11. Alternativa: coletor via Wazuh (range do homelab)
+
+Quando o honeypot fica numa VLAN **sem saída para a internet** (o caso do range), o shipper
+não consegue chegar à API. Nesse desenho o Wazuh é o ponto central: o honeypot manda os logs
+para o Wazuh pela rede interna e um coletor na VM do Wazuh leva os alertas ao Radar.
+
+```
+Cowrie / Dionaea (VLAN exposta, sem saída) ─┐
+FortiGate (syslog UDP 514) ─────────────────┼─► Wazuh (regras próprias, com MITRE)
+Windows vítima (Sysmon, agente) ────────────┘          │ sensor/wazuh-forwarder
+                                                       ▼ HTTPS + Service Token + X-Ingest-Token
+                                                 /api/ingest ─► Radar ─► ATT&CK "Vistas no Radar"
+```
+
+- Fontes: `cowrie` (conexão, login, comando, download), `dionaea` (conexão, credenciais,
+  download), `fortigate` (só origem pública: bloqueio, IPS, login administrativo) e `windows`
+  (regras com MITRE e nível mínimo, ex.: ataques da Kali no range).
+- A técnica MITRE de cada alerta vai em `detalhes.mitre`; o Radar usa essa técnica e só cai no
+  mapeamento fixo por ação quando ela não vem. A ficha do evento mostra técnica, comando e regra.
+- Instalação: `forwarder.py` em `/opt/seginfo-forwarder/`, unit `seginfo-forwarder.service`
+  (usuário `seginfo-fwd` no grupo `wazuh`, só leitura dos alertas) e as variáveis em
+  `/etc/seginfo-forwarder.env` (modo 600, modelo em `seginfo-forwarder.env.exemplo`).
+- Teste sem enviar nada: `DRY_RUN=true DESDE_INICIO=true python3 forwarder.py` imprime os
+  eventos convertidos.
+- Reaproveita o mesmo Service Token e o mesmo `INGEST_TOKEN` das seções 2 e 3.

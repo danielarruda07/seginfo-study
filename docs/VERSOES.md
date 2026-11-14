@@ -1,6 +1,6 @@
 # Versões
 
-A versão aparece no rodapé do menu lateral (`v0.10.0 · build dd/mm hh:mm`) e em `/api/health`. Ela fica em `packages/shared/src/versao.ts`, lida pelo front e pela API.
+A versão aparece no rodapé do menu lateral (`v0.11.0 · build dd/mm hh:mm`) e em `/api/health`. Ela fica em `packages/shared/src/versao.ts`, lida pelo front e pela API.
 
 **Como conferir se você está na versão certa:** compare o número do rodapé com o da publicação mais recente abaixo. Se o rodapé mostrar um aviso "API em vX", o front e a API estão em versões diferentes: espere o deploy terminar ou recarregue com Ctrl+F5.
 
@@ -8,6 +8,7 @@ A versão aparece no rodapé do menu lateral (`v0.10.0 · build dd/mm hh:mm`) e 
 
 | Versão | Data | O que entrou |
 |---|---|---|
+| 0.11.0 | 13/11/2026 | Radar recebe os ataques do range via Wazuh: fontes novas (Dionaea, ação "download"), técnica MITRE vinda da regra do Wazuh alimentando a camada "Vistas no Radar" do ATT&CK, ficha do evento com técnica, comando executado e regra; coletor `sensor/wazuh-forwarder` |
 | 0.10.0 | 13/11/2026 | Cofre com segundo fator (Google Authenticator): o servidor confere o código de 6 dígitos antes de entregar o Cofre, que continua cifrado com a senha-mestra; Cofre sincronizado entre aparelhos; 10 códigos de recuperação de uso único; bloqueio após 5 erros; registro de acessos |
 | 0.9.1 | 13/11/2026 | Meu Ambiente: "Acessos e integrações" saiu do meio da página e virou uma barra de uma linha; o detalhe abre numa ficha lateral, com cartões por integração e variáveis faltantes marcadas |
 | 0.9.0 | 13/11/2026 | Agents: cartões com ciclo de vida (projeto → execução → avaliação → ativo) e próximo passo clicável; aprovações pendentes no topo com link direto para a execução; busca e filtro por status; modelos no diálogo "Novo agente"; onboarding na tela vazia |
