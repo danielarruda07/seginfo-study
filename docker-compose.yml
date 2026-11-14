@@ -52,6 +52,12 @@ services:
       - FORTIGATE_URL=${FORTIGATE_URL}
       - FORTIGATE_TOKEN=${FORTIGATE_TOKEN}
       - FORTIGATE_TLS_INSEGURO=${FORTIGATE_TLS_INSEGURO:-false}
+      # Wazuh: API somente leitura para saúde do manager/agentes (docs/WAZUH.md).
+      - WAZUH_API_URL=${WAZUH_API_URL}
+      - WAZUH_API_USERNAME=${WAZUH_API_USERNAME}
+      - WAZUH_API_PASSWORD=${WAZUH_API_PASSWORD}
+      - WAZUH_API_CA_B64=${WAZUH_API_CA_B64}
+      - WAZUH_API_TLS_INSEGURO=${WAZUH_API_TLS_INSEGURO:-false}
       # Agents: ferramentas do Catalyst 2960, por SSH (docs/AGENTS.md). Senha OU chave privada.
       #   CATALYST_HOST=IP do switch   CATALYST_USER=usuario   CATALYST_PASSWORD=senha (Secret)
       - CATALYST_HOST=${CATALYST_HOST}

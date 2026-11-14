@@ -60,14 +60,13 @@ describe('cobertura', () => {
 
     const r = resumoCobertura(c);
     expect(r.lacunas.map((t) => t.id)).toContain('T1110');
-    // T1078 foi validada (marcarDeteccao) mas não tem resposta documentada: pelo ciclo de
-    // 4 etapas (docs/INTELIGENCIA.md), "detectada sem respondida" ainda é lacuna por desenho.
+    // T1078 foi detectada manualmente, mas sem exercício Purple com resposta documentada:
+    // ainda conta como lacuna (detectada e não respondida), conforme docs/INTELIGENCIA.md.
     expect(r.lacunas.map((t) => t.id)).toContain('T1078');
 
+    // Pontuação é o ciclo operacional: observada + alerta + detectada + respondida (0 a 4).
+    // T1110 aqui só tem observada>0 (sem exercício Purple), logo score 1.
     const camada = camadaNavigator(c);
-    // pontuacao() soma só as 4 etapas do ciclo operacional (observada/alerta/detectada/
-    // respondida, docs/INTELIGENCIA.md); "praticada" é indicador de estudo, não evidência,
-    // e não entra na pontuação. T1110 aqui só tem observada > 0: score 1, não 2.
     expect(camada.techniques.find((t) => t.techniqueID === 'T1110')?.score).toBe(1);
   });
 });

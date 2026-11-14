@@ -1,0 +1,20 @@
+[Unit]
+Description=Laudo dos alvos reais do honeypot antes do reset (agente QEMU + saidas bloqueadas no Wazuh)
+After=network-online.target
+
+[Service]
+Type=oneshot
+# usuario do coletor (grupo wazuh): le os alertas; nao precisa de root
+User=seginfo-fwd
+Group=wazuh
+EnvironmentFile=/etc/seginfo-reset.env
+EnvironmentFile=/etc/seginfo-forwarder.env
+EnvironmentFile=/etc/seginfo-pericia.env
+ExecStart=/usr/bin/python3 /opt/seginfo-pericia/seginfo-pericia.py
+StateDirectory=seginfo-pericia
+StateDirectoryMode=0700
+TimeoutStartSec=20min
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true

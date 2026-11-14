@@ -3,6 +3,7 @@ import { iaConfigurada, MODELO } from './ia.js';
 import { proxmoxFaltando, proxmoxIdentidade } from './proxmox.js';
 import { fortigateFaltando } from './fortigate.js';
 import { catalystFaltando } from './catalyst.js';
+import { wazuhFaltando } from './wazuh.js';
 
 /**
  * Como o servidor se conecta a cada sistema do laboratório, para a tela Meu Ambiente.
@@ -13,7 +14,7 @@ import { catalystFaltando } from './catalyst.js';
  */
 
 export interface Integracao {
-  id: 'proxmox' | 'fortigate' | 'catalyst' | 'claude';
+  id: 'proxmox' | 'fortigate' | 'catalyst' | 'wazuh' | 'claude';
   nome: string;
   /** para que os agentes usam esta conexão */
   uso: string;
@@ -51,6 +52,7 @@ export function listarIntegracoes(): Integracao[] {
   const proxmoxF = proxmoxFaltando();
   const fortigateF = fortigateFaltando();
   const catalystF = catalystFaltando();
+  const wazuhF = wazuhFaltando();
   return [
     {
       id: 'proxmox', nome: 'Proxmox VE', uso: 'Consultar e operar VMs, containers, snapshots e armazenamento.',
@@ -80,6 +82,15 @@ export function listarIntegracoes(): Integracao[] {
       tls: e.CATALYST_HOST ? 'SSH (chave do host não é fixada)' : null,
       faltando: catalystF,
       variaveis: ['CATALYST_HOST', 'CATALYST_USER', 'CATALYST_PASSWORD', 'CATALYST_PRIVATE_KEY_B64'],
+    },
+    {
+      id: 'wazuh', nome: 'Wazuh', uso: 'Consultar saúde do manager e agentes; leitura somente.',
+      configurada: wazuhF.length === 0,
+      endereco: enderecoDe(e.WAZUH_API_URL, 55000),
+      identidade: e.WAZUH_API_USERNAME || null,
+      tls: e.WAZUH_API_URL ? tlsDe(e.WAZUH_API_TLS_INSEGURO, e.WAZUH_API_CA_B64) : null,
+      faltando: wazuhF,
+      variaveis: ['WAZUH_API_URL', 'WAZUH_API_USERNAME', 'WAZUH_API_PASSWORD', 'WAZUH_API_CA_B64', 'WAZUH_API_TLS_INSEGURO'],
     },
     {
       id: 'claude', nome: 'Claude API (Anthropic)', uso: 'Modelo que roda os agentes e a IA do LinkedIn.',

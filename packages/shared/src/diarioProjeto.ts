@@ -49,6 +49,33 @@ export const DIARIO_PROJETO: EntradaDiario[] = [
     tags: ['ux', 'navegacao'],
   },
   {
+    id: 'proj-2026-11-14-painel-wazuh',
+    data: '2026-11-14',
+    titulo: 'Wazuh: saúde do manager e alertas no mesmo lugar',
+    descricao:
+      'A aplicação já recebia alertas selecionados do Wazuh pelo forwarder, mas não mostrava se o manager e os agentes ' +
+      'estavam saudáveis. O novo painel consulta a API REST com uma identidade somente leitura e reúne estado dos serviços, ' +
+      'agentes e os alertas encaminhados. A investigação continua ligada ao Radar, enquanto a tela explica que esse recorte ' +
+      'não substitui a busca completa no Indexer. Credenciais ficam no servidor e campos sensíveis dos detalhes são redigidos.',
+    categoria: 'funcionalidade',
+    tags: ['wazuh', 'radar', 'monitoramento', 'segurança'],
+  },
+  {
+    id: 'proj-2026-11-14-honeypots-extras',
+    data: '2026-11-14',
+    titulo: 'Ampliando a Matriz ATT&CK com honeypots extras',
+    descricao:
+      'A Matriz ATT&CK do app mostrava cobertura concentrada em reconhecimento e acesso inicial, com táticas como ' +
+      'persistência, escalação e exfiltração zeradas. Em vez de simular esses ataques, trouxe para o repositório ' +
+      'público o código de honeypots extras que já roda na infraestrutura real: Heralding (expõe VNC, PostgreSQL, ' +
+      'SMTP, POP3 e IMAP, capturando credenciais sem aceitar nenhuma) e três iscas próprias que respondem como Redis, ' +
+      'Elasticsearch e a API do Docker, sempre registrando o comando tentado sem executar nada de verdade. Isso abre ' +
+      'a técnica de implantação de container (T1610) na matriz. Lição: ampliar a superfície observável de um jeito ' +
+      'seguro significa responder o suficiente para o atacante se revelar, nunca o bastante para ele conseguir algo real.',
+    categoria: 'funcionalidade',
+    tags: ['honeypot', 'mitre-attack', 'range'],
+  },
+  {
     id: 'proj-2026-11-14-laudo-alvos-reais',
     data: '2026-11-14',
     titulo: 'Laudo antes do reset: o que o malware deixou e para onde quis ligar',

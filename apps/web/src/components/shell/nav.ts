@@ -35,6 +35,7 @@ export const NAV_SECTIONS: NavSection[] = [
     title: 'Inteligência',
     items: [
       { to: '/radar', label: 'Radar', icon: 'pi-eye' },
+      { to: '/wazuh', label: 'Wazuh', icon: 'pi-shield' },
       { to: '/laudos', label: 'Laudos dos alvos', icon: 'pi-file-check' },
       { to: '/attack', label: 'Matriz ATT&CK', icon: 'pi-table' },
       { to: '/ameacas', label: 'Ameaças (KEV)', icon: 'pi-exclamation-triangle' },

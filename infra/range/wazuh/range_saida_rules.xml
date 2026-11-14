@@ -1,0 +1,15 @@
+<!-- Cada saida bloqueada de um alvo real do honeypot vira alerta (o laudo pre-reset soma estes alertas).
+     A regra padrao 81618 e nivel 1 (nao gera alerta) e a 81619 so resume rajadas.
+     Troque INTERFACE_DOS_ALVOS_REAIS pelo nome da interface/VLAN dos alvos reais no firewall.
+     "action" e campo estatico do decoder: usa <action>, nao <field name="action">. -->
+<group name="range,fortigate,saida_bloqueada,">
+  <rule id="100260" level="5">
+    <if_sid>81618</if_sid>
+    <field name="srcintf">^INTERFACE_DOS_ALVOS_REAIS$</field>
+    <action>deny</action>
+    <description>Range: alvo real $(srcip) tentou sair para $(dstip):$(dstport) (bloqueado)</description>
+    <mitre>
+      <id>T1071</id>
+    </mitre>
+  </rule>
+</group>
