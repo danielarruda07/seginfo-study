@@ -54,3 +54,7 @@ export const getRadarResumo = (dias: number) =>
 
 export const getRadarEventos = (f: RadarEventosFiltro) =>
   http.get<{ total: number; items: RadarEvento[] }>('/radar/eventos', { params: f }).then((r) => r.data);
+
+/** Todos os eventos de uma sessão do honeypot (mesmo detalhes.sessao), em ordem cronológica. */
+export const getRadarSessao = (id: string, ip: string) =>
+  http.get<{ sessao: string; truncado: boolean; items: RadarEvento[] }>('/radar/sessao', { params: { id, ip } }).then((r) => r.data);

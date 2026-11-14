@@ -14,6 +14,8 @@ import type { AuthedRequest } from './auth.js';
  */
 
 const LIMITE = 100_000;
+/** Eventos devolvidos por sessão (um bot que roda um script longo gera centenas de comandos). */
+const LIMITE_SESSAO = 1000;
 
 /** Senhas tentadas só são armazenadas e exibidas com RADAR_GUARDAR_SENHAS=true. */
 export const guardarSenhas = () => process.env.RADAR_GUARDAR_SENHAS === 'true';
@@ -25,6 +27,7 @@ const MITRE: Record<string, { id: string; nome: string }> = {
   login_ok: { id: 'T1078', nome: 'Valid Accounts' },
   comando: { id: 'T1059', nome: 'Command and Scripting Interpreter' },
   download: { id: 'T1105', nome: 'Ingress Tool Transfer' },
+  tunel: { id: 'T1090', nome: 'Proxy' },
 };
 
 /**
@@ -213,5 +216,27 @@ export async function registerRadarRoutes(app: FastifyInstance) {
       }),
     ]);
     return { total, items };
+  });
+
+  // Sessão do atacante: todos os eventos com o mesmo detalhes.sessao (Cowrie), em ordem.
+  // O IP é obrigatório para a busca usar o índice (usuarioId, ipOrigem) em vez de varrer a tabela.
+  const SessaoQuery = z.object({
+    id: z.string().trim().min(4).max(32).regex(/^[\w-]+$/),
+    ip: z.string().trim().min(3).max(45),
+  });
+
+  app.get('/api/radar/sessao', async (req, reply) => {
+    const q = SessaoQuery.safeParse(req.query);
+    if (!q.success) return reply.status(400).send({ error: 'parâmetros inválidos' });
+    const items = await prisma.ataqueEvento.findMany({
+      where: { usuarioId: uid(req), ipOrigem: q.data.ip, detalhes: { path: ['sessao'], equals: q.data.id } },
+      orderBy: { ocorridoEm: 'asc' },
+      take: LIMITE_SESSAO,
+      select: {
+        id: true, fonte: true, ocorridoEm: true, ipOrigem: true, paisOrigem: true, portaDestino: true,
+        servico: true, protocolo: true, acao: true, usuarioTentado: true, alvo: true, detalhes: true,
+      },
+    });
+    return { sessao: q.data.id, truncado: items.length === LIMITE_SESSAO, items };
   });
 }

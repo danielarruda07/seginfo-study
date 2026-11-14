@@ -371,7 +371,7 @@ export type AtaqueFonte = z.infer<typeof AtaqueFonte>;
 
 /** O que o atacante fez. */
 export const AtaqueAcao = z.enum([
-  'login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'download', 'outro',
+  'login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'download', 'tunel', 'outro',
 ]);
 export type AtaqueAcao = z.infer<typeof AtaqueAcao>;
 

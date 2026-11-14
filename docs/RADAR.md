@@ -232,11 +232,15 @@ Windows vítima (Sysmon, agente) ────────────┘        
                                                  /api/ingest ─► Radar ─► ATT&CK "Vistas no Radar"
 ```
 
-- Fontes: `cowrie` (conexão, login, comando, download), `dionaea` (conexão, credenciais,
+- Fontes: `cowrie` (conexão, login, comando, download e túnel: SSH usado como proxy, T1090), `dionaea` (conexão, credenciais,
   download), `fortigate` (só origem pública: bloqueio, IPS, login administrativo) e `windows`
   (regras com MITRE e nível mínimo, ex.: ataques da Kali no range).
 - A técnica MITRE de cada alerta vai em `detalhes.mitre`; o Radar usa essa técnica e só cai no
   mapeamento fixo por ação quando ela não vem. A ficha do evento mostra técnica, comando e regra.
+- Eventos do Cowrie levam `detalhes.sessao`. A ficha de qualquer evento da sessão mostra a sessão
+  inteira (`GET /api/radar/sessao?id=&ip=`, até 1000 eventos): resumo, etapas na ordem em que
+  apareceram, arquivos com SHA-256 e a linha do tempo com cada comando classificado
+  (regras em `apps/web/src/routes/radar/sessao.ts`).
 - Instalação: `forwarder.py` em `/opt/seginfo-forwarder/`, unit `seginfo-forwarder.service`
   (usuário `seginfo-fwd` no grupo `wazuh`, só leitura dos alertas) e as variáveis em
   `/etc/seginfo-forwarder.env` (modo 600, modelo em `seginfo-forwarder.env.exemplo`).

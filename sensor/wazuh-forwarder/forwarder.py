@@ -125,6 +125,8 @@ COWRIE_ACAO = {
     'cowrie.command.input': 'comando',
     'cowrie.session.file_download': 'download',
     'cowrie.session.file_upload': 'download',
+    # SSH usado como proxy (direct-tcpip): o bot testa se tem saída ou tenta esconder a origem (T1090)
+    'cowrie.direct-tcpip.request': 'tunel',
 }
 
 
@@ -141,6 +143,8 @@ def de_cowrie(a, regra, d):
     if acao == 'download':
         det['url'] = clip(d.get('url') or d.get('filename'), 300)
         det['sha256'] = clip(d.get('shasum'), 64)
+    if acao == 'tunel':
+        det['destino'] = clip(f"{d.get('dst_ip') or '?'}:{d.get('dst_port') or '?'}", 300)
     login = acao in ('login_falha', 'login_ok')
     return {'fonte': 'cowrie', 'ocorridoEm': quando(a), 'ipOrigem': ip, 'portaDestino': PORTA_COWRIE.get(proto),
             'protocolo': 'tcp', 'servico': proto, 'acao': acao,

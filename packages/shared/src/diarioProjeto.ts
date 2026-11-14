@@ -24,6 +24,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-14-sessao-atacante',
+    data: '2026-11-14',
+    titulo: 'Ver o ataque inteiro, não só o login',
+    descricao:
+      'Com o honeypot repassando o SSH para um Linux real, os bots passaram a mostrar o ataque completo, mas o Radar ' +
+      'exibia cada evento solto. Agora a ficha de qualquer evento conta a sessão inteira: quanto tempo ficou, quantas senhas ' +
+      'tentou, como entrou e cada comando classificado pela intenção. O padrão que apareceu nos dados reais é quase um ' +
+      'roteiro: reconhecimento (uname, nproc, contagem de CPUs), teste de sudo com a senha recém-descoberta, envio de um ' +
+      'binário por SCP, permissão de execução, execução com sudo e, por fim, apagar o arquivo. Alguns bots ainda tentam usar ' +
+      'o próprio SSH como túnel para a internet, só para saber se a máquina tem saída. Lição: o login é o começo; a ' +
+      'sequência de comandos é que revela o objetivo (aqui, cara de minerador) e o hash do binário leva à família do malware.',
+    categoria: 'aprendizado',
+    tags: ['honeypot', 'cowrie', 'radar', 'mitre', 'malware'],
+  },
+  {
     id: 'proj-2026-11-13-bot-testa-honeypot',
     data: '2026-11-13',
     titulo: 'O bot que testou se o honeypot era de verdade',

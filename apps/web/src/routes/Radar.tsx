@@ -14,6 +14,7 @@ import { Kpi, StatusStrip, Chip, Pill, Bar } from '@/components/InfraKit';
 import { getRadarResumo, getRadarEventos, type RadarEvento } from '@/services/radar';
 import type { AtaqueFonte } from '@seginfo/shared';
 import { useDebounce } from '@/hooks/useDebounce';
+import { SessaoAtacante } from './radar/SessaoAtacante';
 
 const ROWS = 15;
 const DIAS_OPTS = [1, 7, 30];
@@ -22,11 +23,11 @@ const FONTE_OPTS = [
   { label: 'Cowrie', value: 'cowrie' }, { label: 'Dionaea', value: 'dionaea' }, { label: 'OpenCanary', value: 'opencanary' },
   { label: 'Outro', value: 'outro' },
 ];
-const ACAO_OPTS = ['login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'download', 'outro'].map((value) => ({ label: value.replace('_', ' '), value }));
+const ACAO_OPTS = ['login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'download', 'tunel', 'outro'].map((value) => ({ label: value.replace('_', ' '), value }));
 const FONTE_LABEL: Record<string, string> = { fortigate: 'FortiGate', windows: 'Windows', cowrie: 'Cowrie', dionaea: 'Dionaea', opencanary: 'OpenCanary', outro: 'Outro' };
 const ACAO_COLOR: Record<string, string> = {
   login_falha: '#f59e0b', lockout: '#ef4444', login_ok: '#dc2626', scan: '#0ea5e9',
-  bloqueio: '#64748b', conexao: '#64748b', comando: '#7c3aed', download: '#b91c1c', outro: '#64748b',
+  bloqueio: '#64748b', conexao: '#64748b', comando: '#7c3aed', download: '#b91c1c', tunel: '#0f766e', outro: '#64748b',
 };
 
 /** Lista de "top N" com barras proporcionais ao maior valor. */
@@ -229,14 +230,14 @@ export function Radar() {
         </DataTable>
       </div>
 
-      <Sidebar visible={!!selected} position="right" onHide={() => setSelected(null)} style={{ width: 480 }}>
+      <Sidebar visible={!!selected} position="right" onHide={() => setSelected(null)} style={{ width: 'min(620px, 100vw)' }}>
         {selected && <DetailLayout>
           <DetailHeader title="Detalhes do evento"><Pill label={rotuloAcao(selected)} color={ACAO_COLOR[selected.acao]} /><Pill label={FONTE_LABEL[selected.fonte] ?? selected.fonte} /></DetailHeader>
           <DetailSection title="Quando"><p>{quando(selected.ocorridoEm)} <span className="iv-muted">({selected.ocorridoEm.replace('T', ' ').slice(0, 19)} UTC)</span></p></DetailSection>
           {ISCAS.has(selected.fonte) && selected.acao === 'login_ok' && (
             <StatusStrip icon="pi-info-circle">
-              Isca: o honeypot aceita a senha de propósito e entrega um shell <strong>simulado</strong>. Nada real foi acessado;
-              o que vale aqui é ver o que o atacante tenta fazer depois do login.
+              Isca: o honeypot aceita a senha de propósito. No SSH, a sessão é repassada a um <strong>Linux real descartável</strong>,
+              sem saída para a internet e restaurado periodicamente. O que vale aqui é ver o que o atacante faz depois de entrar.
             </StatusStrip>
           )}
           <DetailSection title="Origem"><p style={{ fontFamily: 'monospace' }}>{selected.ipOrigem ?? 'IP não informado'}{selected.paisOrigem ? ` · ${selected.paisOrigem}` : ''}</p></DetailSection>
@@ -256,6 +257,9 @@ export function Radar() {
               {txt('regra') && <DetailSection title="Regra do Wazuh"><p>{txt('regra')}{txt('nivel') ? ` · nível ${txt('nivel')}` : ''}{txt('descricao') ? ` · ${txt('descricao')}` : ''}</p></DetailSection>}
             </>;
           })()}
+          {selected.ipOrigem && typeof selected.detalhes?.sessao === 'string' && (
+            <SessaoAtacante sessao={selected.detalhes.sessao} ip={selected.ipOrigem} />
+          )}
           <p className="iv-muted" style={{ fontSize: '.8rem' }}>O Radar não mostra senhas tentadas nesta tela.</p>
         </DetailLayout>}
       </Sidebar>

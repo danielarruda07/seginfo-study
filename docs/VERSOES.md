@@ -8,6 +8,7 @@ A versão aparece no rodapé do menu lateral (`v0.11.2 · build dd/mm hh:mm`) e 
 
 | Versão | Data | O que entrou |
 |---|---|---|
+| 0.12.0 | 14/11/2026 | Radar mostra a sessão do atacante: na ficha do evento, a linha do tempo da sessão do honeypot (do primeiro contato ao último comando), cada comando classificado pela intenção (reconhecimento, privilégio, download, execução, persistência, limpeza, mineração, teste anti-honeypot), os arquivos enviados com SHA-256 e link do VirusTotal, e a nova ação "túnel" (SSH usado como proxy, T1090) trazida pelo coletor do Wazuh |
 | 0.11.2 | 14/11/2026 | Documentação para análise por IAs: `AGENTS.md`/`CLAUDE.md` na raiz (mapa, comandos, regras), `docs/RANGE.md` (arquitetura do range e do honeypot, sem dados reais) e `infra/range/` (scripts e regras do Wazuh reutilizáveis); IP público retirado do `docs/RADAR.md` |
 | 0.11.1 | 13/11/2026 | Radar no horário local (tabela, ficha e linha do tempo; a ficha mostra também o UTC); coluna "Detalhe" com o comando ou arquivo; login aceito por honeypot aparece como "login aceito (isca)" com explicação na ficha |
 | 0.11.0 | 13/11/2026 | Radar recebe os ataques do range via Wazuh: fontes novas (Dionaea, ação "download"), técnica MITRE vinda da regra do Wazuh alimentando a camada "Vistas no Radar" do ATT&CK, ficha do evento com técnica, comando executado e regra; coletor `sensor/wazuh-forwarder` |
