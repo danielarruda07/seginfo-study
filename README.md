@@ -5,6 +5,8 @@ labs, sessões e metas, organiza referências e notas, e oferece ferramentas par
 homelab. O Radar de Ataques recebe eventos de fontes autorizadas; o Segundo Cérebro
 guarda notas pesquisáveis com trechos e fontes.
 
+> Vai analisar ou alterar o projeto com uma IA? Comece por [AGENTS.md](AGENTS.md). O cyber range e o honeypot estão em [docs/RANGE.md](docs/RANGE.md).
+
 ## Executar localmente
 
 Na raiz do projeto:

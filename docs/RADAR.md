@@ -4,7 +4,7 @@ Transforma as tentativas de invasão contra o seu IP público em dados de estudo
 chega, de onde, contra qual serviço e com quais usuários.
 
 ```
-Internet ─► 138.122.82.214 ─► FortiGate ─┬─ port-forward ─► VM sensor (DMZ isolada)
+Internet ─► <IP-PUBLICO> ─► FortiGate ─┬─ port-forward ─► VM sensor (DMZ isolada)
                                          │                   ├─ Cowrie      22/23  (SSH/Telnet)
                                          │                   ├─ OpenCanary  21/80/1433/3389
                                          │                   └─ shipper ◄── syslog UDP 514 (FortiGate)
@@ -154,7 +154,7 @@ VIP por porta, repetindo para `21, 22, 23, 80, 1433, 3389`:
 ```
 config firewall vip
     edit "HP-3389"
-        set extip 138.122.82.214
+        set extip <IP-PUBLICO>
         set extintf "wan"
         set portforward enable
         set mappedip "IP_DA_VM_SENSOR"

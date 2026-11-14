@@ -1,0 +1,9 @@
+<!-- Bloco adicionado ao ossec.conf do manager para receber o syslog do firewall.
+     Troque os marcadores pelos valores do seu ambiente. -->
+<remote>
+  <connection>syslog</connection>
+  <port>514</port>
+  <protocol>udp</protocol>
+  <allowed-ips>IP_DO_FIREWALL_NA_REDE_DO_WAZUH</allowed-ips>
+  <local_ip>IP_DO_WAZUH</local_ip>
+</remote>

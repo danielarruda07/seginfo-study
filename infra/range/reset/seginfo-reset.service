@@ -1,0 +1,12 @@
+[Unit]
+Description=Reset dos alvos reais do honeypot (volta ao snapshot limpo)
+After=network-online.target
+[Service]
+Type=oneshot
+User=nobody
+EnvironmentFile=/etc/seginfo-reset.env
+ExecStart=/usr/bin/python3 /opt/seginfo-reset/seginfo-reset.py
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
