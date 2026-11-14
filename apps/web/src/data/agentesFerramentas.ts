@@ -103,16 +103,16 @@ export const FERRAMENTAS_CATALOGO: FerramentaCatalogo[] = [
     cuidados: 'Crie um usuário de API somente leitura, limitado aos grupos de hosts necessários.',
   },
   {
-    id: 'proxmox-leitura', nome: 'Proxmox: consultar nós, VMs, snapshots e armazenamento', categoria: 'infra',
-    descricao: 'Lê o estado do hipervisor pela API do Proxmox: hosts, máquinas virtuais, configuração, snapshots e espaço em disco.', risco: 'baixo',
+    id: 'proxmox-leitura', nome: 'Proxmox: consultar nós, VMs, snapshots, armazenamento e ISOs', categoria: 'infra',
+    descricao: 'Lê o estado do hipervisor pela API do Proxmox: hosts, máquinas virtuais, configuração, snapshots, espaço em disco, ISOs disponíveis e o próximo VMID livre.', risco: 'baixo',
     permissaoSugerida: 'leitura', aprovacaoSugerida: false,
     cuidados: 'O token de API fica só no servidor. Nomes de VM, endereços e configuração vão para o modelo de IA: use apenas com o laboratório.',
   },
   {
-    id: 'proxmox-escrita', nome: 'Proxmox: ligar, desligar, reiniciar e gerenciar snapshots', categoria: 'infra',
-    descricao: 'Altera o hipervisor pela API do Proxmox: liga, desliga e reinicia VMs, cria, reverte e apaga snapshots.', risco: 'alto',
+    id: 'proxmox-escrita', nome: 'Proxmox: energia, snapshots e criar, clonar ou apagar VMs', categoria: 'infra',
+    descricao: 'Altera o hipervisor pela API do Proxmox: liga, desliga e reinicia VMs; cria, reverte e apaga snapshots; cria VM nova, clona VM ou modelo e apaga VM.', risco: 'alto',
     permissaoSugerida: 'escrita', aprovacaoSugerida: true,
-    cuidados: 'Cada ação para na tela de aprovação e só roda depois da sua decisão. Reverter e apagar snapshot não têm volta: leia o resumo antes de aprovar.',
+    cuidados: 'Cada ação para na tela de aprovação e só roda depois da sua decisão. Reverter e apagar snapshot e apagar VM não têm volta: leia o resumo antes de aprovar. Apagar VM exige a VM desligada e o nome dela conferindo, e respeita a proteção do Proxmox e a lista PROXMOX_VMS_PROTEGIDAS do servidor. O token precisa das permissões VM.Allocate, VM.Clone, VM.Config.* e Datastore.AllocateSpace para criar e clonar.',
   },
   {
     id: 'fortigate-leitura', nome: 'FortiGate: consultar interfaces, policies, endereços e sessões', categoria: 'infra',

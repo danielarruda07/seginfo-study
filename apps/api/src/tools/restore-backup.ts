@@ -39,6 +39,14 @@ const Memoria = z.object({ id: z.string(), usuarioId: z.string(), titulo: z.stri
 const LinkedinPost = z.object({ id: z.string(), usuarioId: z.string(), url: z.string(), urlNormalizada: z.string(), publicadoEm: z.string(), texto: z.string(), formato: z.string(), metricas: z.unknown(), origem: z.string(), analise: z.unknown().nullable(), memoriaId: z.string().nullable(), criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional() });
 const DiarioEntrada = z.object({ id: z.string(), usuarioId: z.string(), data: z.string(), titulo: z.string(), descricao: z.string(), categoria: z.string(), tags: z.array(z.string()), criadoEm: z.coerce.date().optional() });
 const LinkedinEstrategia = z.object({ usuarioId: z.string(), objetivo: z.string(), publico: z.string(), voz: z.string(), pilares: z.array(z.string()), atualizadoEm: z.coerce.date().optional() }).nullable();
+const Agente = z.object({ id: z.string(), usuarioId: z.string(), nome: z.string(), resumo: z.string(), status: z.string(), config: z.unknown(), criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional() });
+const AgenteAvaliacao = z.object({ id: z.string(), usuarioId: z.string(), agenteId: z.string(), caso: z.string(), criterio: z.string(), resultado: z.string(), latenciaMs: z.number().int().nullable(), observacao: z.string(), criadoEm: z.coerce.date().optional() });
+const AgenteExecucao = z.object({
+  id: z.string(), usuarioId: z.string(), agenteId: z.string(), status: z.string(), entrada: z.string(), resposta: z.string(), erro: z.string(),
+  modelo: z.string(), passos: z.unknown(), mensagens: z.unknown(), pendencia: z.unknown().nullable(),
+  tokensEntrada: z.number().int(), tokensSaida: z.number().int(), duracaoMs: z.number().int(),
+  criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional(),
+});
 
 const Exportacao = z.object({
   formato: z.literal('seginfo-export'), versao: z.literal(1), usuario: Identidade.optional(),
@@ -48,6 +56,9 @@ const Exportacao = z.object({
   // LinkedIn (backups anteriores a 2026-11-11 não têm estas chaves)
   linkedinPosts: z.array(LinkedinPost).default([]), diario: z.array(DiarioEntrada).default([]),
   linkedinEstrategia: LinkedinEstrategia.default(null),
+  // Agentes (backups anteriores a 2026-11-14 não têm execuções; os mais antigos, nem agentes)
+  agentes: z.array(Agente).default([]), agenteAvaliacoes: z.array(AgenteAvaliacao).default([]),
+  agenteExecucoes: z.array(AgenteExecucao).default([]),
 });
 
 try {
@@ -58,7 +69,7 @@ try {
   const backup = parsed.data;
   const rows = [...backup.progresso, ...backup.sessoes, ...backup.metas, ...backup.posts,
     ...backup.arsenal, ...backup.biblioteca, ...backup.ataques, ...backup.memorias,
-    ...backup.linkedinPosts, ...backup.diario];
+    ...backup.linkedinPosts, ...backup.diario, ...backup.agentes, ...backup.agenteAvaliacoes, ...backup.agenteExecucoes];
   const userIds = new Set([...rows.map((r) => r.usuarioId), ...(backup.cofre ? [backup.cofre.usuarioId] : []), ...(backup.linkedinEstrategia ? [backup.linkedinEstrategia.usuarioId] : [])]);
   const userId = backup.usuario?.id ?? [...userIds][0];
   const email = backup.usuario?.email ?? process.env.RESTORE_USER_EMAIL;
@@ -102,16 +113,32 @@ try {
     );
     if (backup.linkedinEstrategia) ops.push(prisma.linkedinEstrategia.create({ data: backup.linkedinEstrategia }));
     if (backup.cofre) ops.push(prisma.cofreBlob.create({ data: backup.cofre }));
+    // agentes antes das avaliações e execuções (chave estrangeira agenteId); órfãos são descartados
+    const agentesRestaurados = new Set(backup.agentes.map((a) => a.id));
+    const json = (v: unknown) => (v === null || v === undefined ? Prisma.DbNull : (v as Prisma.InputJsonValue));
+    ops.push(
+      prisma.agente.createMany({ data: backup.agentes.map((a) => ({ ...a, config: a.config as Prisma.InputJsonValue })) }),
+      prisma.agenteAvaliacao.createMany({ data: backup.agenteAvaliacoes.filter((a) => agentesRestaurados.has(a.agenteId)) }),
+      prisma.agenteExecucao.createMany({
+        data: backup.agenteExecucoes.filter((e) => agentesRestaurados.has(e.agenteId)).map((e) => ({
+          ...e,
+          passos: (e.passos ?? []) as Prisma.InputJsonValue,
+          mensagens: (e.mensagens ?? []) as Prisma.InputJsonValue,
+          pendencia: json(e.pendencia),
+        })),
+      }),
+    );
     await prisma.$transaction(ops);
 
-    const [progresso, sessoes, metas, posts, arsenal, biblioteca, ataques, memorias, cofre] = await Promise.all([
+    const [progresso, sessoes, metas, posts, arsenal, biblioteca, ataques, memorias, cofre, agentes, agenteAvaliacoes, agenteExecucoes] = await Promise.all([
       prisma.progresso.count({ where: { usuarioId: userId } }), prisma.sessao.count({ where: { usuarioId: userId } }),
       prisma.meta.count({ where: { usuarioId: userId } }), prisma.post.count({ where: { usuarioId: userId } }),
       prisma.arsenalItem.count({ where: { usuarioId: userId } }), prisma.biblioItem.count({ where: { usuarioId: userId } }),
       prisma.ataqueEvento.count({ where: { usuarioId: userId } }), prisma.memoria.count({ where: { usuarioId: userId } }),
-      prisma.cofreBlob.count({ where: { usuarioId: userId } }),
+      prisma.cofreBlob.count({ where: { usuarioId: userId } }), prisma.agente.count({ where: { usuarioId: userId } }),
+      prisma.agenteAvaliacao.count({ where: { usuarioId: userId } }), prisma.agenteExecucao.count({ where: { usuarioId: userId } }),
     ]);
-    console.log(JSON.stringify({ ok: true, usuario: email, restaurado: { progresso, sessoes, metas, posts, arsenal, biblioteca, ataques, memorias, cofre } }, null, 2));
+    console.log(JSON.stringify({ ok: true, usuario: email, restaurado: { progresso, sessoes, metas, posts, arsenal, biblioteca, ataques, memorias, cofre, agentes, agenteAvaliacoes, agenteExecucoes } }, null, 2));
   } finally {
     await prisma.$disconnect();
   }

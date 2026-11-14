@@ -28,12 +28,18 @@ export const proxmoxGet = (caminho: string): Promise<unknown> => pedir('GET', ca
  * e essas só rodam depois da aprovação na tela (ver agenteRuntime.ts).
  * A maioria das alterações devolve o id de uma tarefa (UPID) que roda em segundo plano no nó.
  */
-export async function proxmoxAlterar(metodo: 'POST' | 'DELETE', no: string, caminho: string, parametros: Record<string, string | number> = {}): Promise<string> {
+export async function proxmoxAlterar(
+  metodo: 'POST' | 'DELETE',
+  no: string,
+  caminho: string,
+  parametros: Record<string, string | number> = {},
+  /** quanto esperar a tarefa terminar antes de devolver "em andamento" (clone completo demora mais) */
+  esperaSegundos = 90,
+): Promise<string> {
   const corpo = new URLSearchParams(Object.entries(parametros).map(([k, v]): [string, string] => [k, String(v)])).toString();
   const upid = await pedir(metodo, caminho, corpo);
   if (typeof upid !== 'string' || !upid.startsWith('UPID:')) return 'Concluído.';
-  // acompanha a tarefa por até 90 segundos
-  for (let i = 0; i < 45; i++) {
+  for (let i = 0; i < Math.ceil(esperaSegundos / 2); i++) {
     await new Promise((r) => setTimeout(r, 2000));
     const t = (await pedir('GET', `/nodes/${no}/tasks/${encodeURIComponent(upid)}/status`)) as { status?: string; exitstatus?: string };
     if (t.status === 'stopped') {
@@ -41,7 +47,7 @@ export async function proxmoxAlterar(metodo: 'POST' | 'DELETE', no: string, cami
       throw new Error(`A tarefa terminou com erro no Proxmox: ${resumirErroProxmox(t.exitstatus ?? 'sem detalhe')}`);
     }
   }
-  return 'A tarefa foi iniciada e ainda está em andamento no Proxmox depois de 90 segundos. Consulte o estado antes de concluir que terminou.';
+  return `A tarefa foi iniciada e ainda está em andamento no Proxmox depois de ${esperaSegundos} segundos. Consulte o estado antes de concluir que terminou.`;
 }
 
 function pedir(metodo: 'GET' | 'POST' | 'DELETE', caminho: string, corpo = ''): Promise<unknown> {

@@ -24,6 +24,20 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-14-agentes-vm-sync-backup',
+    data: '2026-11-14',
+    titulo: 'Agentes cuidam do ciclo de vida das VMs e o inventário se atualiza sozinho',
+    descricao:
+      'Os agentes passaram a criar, clonar e apagar VMs no Proxmox. Apagar é a ação mais perigosa, então além da tela de ' +
+      'aprovação o servidor confere no momento de executar: a VM precisa estar desligada, o nome precisa bater, a proteção do ' +
+      'Proxmox precisa estar desligada e o VMID não pode estar na lista de protegidas (a VM do próprio app). Meu Ambiente ganhou ' +
+      'o botão Sincronizar com o ambiente: o servidor lê Proxmox, FortiGate e switch e mostra uma prévia do que entra e do que ' +
+      'muda, sem apagar nada e sem pisar no que foi escrito à mão. As execuções dos agentes passaram a entrar no backup cifrado. ' +
+      'Lição: a segurança de uma ação destrutiva fica no servidor, conferindo o estado real, e não no que o modelo afirmou.',
+    categoria: 'funcionalidade',
+    tags: ['agentes', 'proxmox', 'inventario', 'backup'],
+  },
+  {
     id: 'proj-2026-11-14-linkedin-timeout',
     data: '2026-11-14',
     titulo: 'A geração de conteúdo precisava de mais tempo que as rotas comuns',

@@ -467,6 +467,23 @@ export async function registerExecucaoRoutes(app: FastifyInstance) {
     return { ...resto, pendentes: (pendencia as unknown as Pendencia | null)?.pedidos ?? [] };
   });
 
+  // ===================== exportação (cópia local das execuções) =====================
+  //
+  // Todas as execuções do usuário, completas (passos, conversa, aprovações), num JSON para baixar.
+  // O backup cifrado no OneDrive já leva as mesmas linhas; isto é a cópia que você guarda onde quiser.
+  app.get('/api/agentes/execucoes/exportar', async (req, reply) => {
+    const usuarioId = uid(req);
+    const [agentes, execucoes] = await Promise.all([
+      prisma.agente.findMany({ where: { usuarioId }, select: { id: true, nome: true, status: true } }),
+      prisma.agenteExecucao.findMany({ where: { usuarioId }, orderBy: { criadoEm: 'asc' } }),
+    ]);
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
+    return reply
+      .header('Content-Type', 'application/json; charset=utf-8')
+      .header('Content-Disposition', `attachment; filename="seginfo-agentes-execucoes-${stamp}.json"`)
+      .send(JSON.stringify({ formato: 'seginfo-agentes-execucoes', versao: 1, exportadoEm: new Date().toISOString(), agentes, execucoes }));
+  });
+
   // ===================== auditoria (sem SIEM ainda: visão própria + formato p/ outra IA ler) =====================
   //
   // Achata todas as execuções do usuário (de todos os agentes) numa lista de AÇÕES DE FERRAMENTA,
