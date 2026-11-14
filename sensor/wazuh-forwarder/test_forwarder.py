@@ -1,0 +1,91 @@
+"""Testes do forwarder (so biblioteca padrao): python3 -m unittest test_forwarder.py"""
+import gzip
+import os
+import tempfile
+import unittest
+
+import forwarder as fw
+
+
+class GeoIPTest(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.caminho = os.path.join(self.dir.name, 'geo.csv.gz')
+        # fora de ordem de proposito, com IPv6 e uma linha ZZ
+        with gzip.open(self.caminho, 'wt', encoding='utf-8') as f:
+            f.write('203.0.113.0,203.0.113.255,BR\n')
+            f.write('198.51.100.0,198.51.100.127,NL\n')
+            f.write('2001:db8::,2001:db8:ffff:ffff:ffff:ffff:ffff:ffff,"US"\n')
+            f.write('192.0.2.0,192.0.2.255,ZZ\n')
+            f.write('lixo\n')
+
+    def tearDown(self):
+        self.dir.cleanup()
+
+    def test_busca(self):
+        g = fw.GeoIP(self.caminho)
+        self.assertEqual(g.pais('203.0.113.10'), 'BR')
+        self.assertEqual(g.pais('198.51.100.5'), 'NL')
+        self.assertIsNone(g.pais('198.51.100.200'))  # buraco entre faixas
+        self.assertEqual(g.pais('2001:db8::1'), 'US')
+        self.assertIsNone(g.pais('192.0.2.1'))  # ZZ ignorado
+        self.assertIsNone(g.pais('nao-e-ip'))
+
+    def test_sem_arquivo(self):
+        g = fw.GeoIP(os.path.join(self.dir.name, 'nao-existe.csv'))
+        self.assertIsNone(g.pais('203.0.113.10'))
+
+
+class EnviarTest(unittest.TestCase):
+    def setUp(self):
+        self.postar_original = fw.postar
+        self.dry = fw.CFG['dry']
+        fw.CFG['dry'] = False
+        self.enviados = []
+
+        def postar(eventos):
+            if any(e.get('ruim') for e in eventos):
+                return 'invalido'
+            self.enviados.extend(eventos)
+            return 'ok'
+        fw.postar = postar
+
+    def tearDown(self):
+        fw.postar = self.postar_original
+        fw.CFG['dry'] = self.dry
+
+    def test_isola_evento_invalido(self):
+        lote = [{'n': i} for i in range(10)]
+        lote[6]['ruim'] = True
+        self.assertTrue(fw.enviar(lote))
+        self.assertEqual([e['n'] for e in self.enviados], [0, 1, 2, 3, 4, 5, 7, 8, 9])
+
+    def test_erro_de_rede_pede_reenvio(self):
+        fw.postar = lambda eventos: 'erro'
+        self.assertFalse(fw.enviar([{'n': 1}]))
+
+
+class ConverterTest(unittest.TestCase):
+    def test_cowrie_com_pais_so_para_ip_publico(self):
+        dirt = tempfile.TemporaryDirectory()
+        caminho = os.path.join(dirt.name, 'geo.csv')
+        with open(caminho, 'w', encoding='utf-8') as f:
+            f.write('8.8.8.0,8.8.8.255,US\n')  # faixa publica (as de documentacao contam como reservadas)
+        fw.GEO = fw.GeoIP(caminho)
+        try:
+            base = {'timestamp': '2026-11-13T20:42:23.101-0300', 'rule': {'groups': ['cowrie'], 'level': 5},
+                    'agent': {'name': 'range-honeypot'}}
+            ev = fw.converter({**base, 'data': {'eventid': 'cowrie.login.failed', 'src_ip': '8.8.8.8',
+                                                'username': 'root', 'protocol': 'ssh'}})
+            self.assertEqual(ev['paisOrigem'], 'US')
+            self.assertEqual(ev['ocorridoEm'], '2026-11-13T23:42:23.101Z')
+            interno = fw.converter({**base, 'data': {'eventid': 'cowrie.login.failed', 'src_ip': '10.10.81.10',
+                                                     'username': 'root', 'protocol': 'ssh'}})
+            self.assertNotIn('paisOrigem', interno)
+        finally:
+            fw.GEO = None
+            dirt.cleanup()
+
+
+if __name__ == '__main__':
+    unittest.main()

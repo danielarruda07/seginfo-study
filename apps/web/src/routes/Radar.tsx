@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Kpi, StatusStrip, Chip, EmptyState } from '@/components/InfraKit';
 import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import { useDebounce } from '@/hooks/useDebounce';
-import { getRadarResumo, getRadarEventos, type RadarResumo, type RadarEventosFiltro } from '@/services/radar';
+import { getRadarResumo, getRadarEventos, type RadarEscopo, type RadarResumo, type RadarEventosFiltro } from '@/services/radar';
 import { calcularCobertura } from '@/services/attack';
 import { FONTE_LABEL, acaoMeta } from './inteligencia/regras';
 import { TopList, type TopItem } from './inteligencia/radar/TopList';
@@ -18,6 +18,14 @@ import { Timeline } from './inteligencia/radar/Timeline';
 import '@/styles/telas/inteligencia.css';
 
 const DIAS_OPTS = [1, 7, 30];
+/** Atualização automática (só com a aba visível: o React Query pausa em segundo plano). */
+const ATUALIZAR_MS = 60_000;
+const ESCOPO_OPTS: { value: RadarEscopo; label: string; dica: string }[] = [
+  { value: 'internet', label: 'Internet', dica: 'Origem em IP público: o que chega de fora' },
+  { value: 'interno', label: 'Range', dica: 'Origem em rede privada: exercícios da Kali, testes e eventos sem IP' },
+  { value: 'todos', label: 'Tudo', dica: 'Internet e range juntos' },
+];
+const hora = (ms: number) => (ms ? new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—');
 const periodoLabel = (d: number) => (d === 1 ? '24 h' : `${d} dias`);
 
 function indicadores(r: RadarResumo | undefined, dim: Dimensao): TopItem[] {
@@ -29,6 +37,7 @@ function indicadores(r: RadarResumo | undefined, dim: Dimensao): TopItem[] {
 
 export function Radar() {
   const [dias, setDias] = useState(7);
+  const [escopo, setEscopo] = useState<RadarEscopo>('internet');
   const [ip, setIp] = useState<string | undefined>();
   const [servico, setServico] = useState<string | undefined>();
   const [acao, setAcao] = useState<string | undefined>();
@@ -38,9 +47,9 @@ export function Radar() {
   const q = useDebounce(qRaw, 300);
   const [page, setPage] = useState(0);
 
-  const resumo = useQuery({ queryKey: ['radar-resumo', dias], queryFn: () => getRadarResumo(dias), retry: false });
-  const filtros = useMemo(() => ({ ip, servico, acao, fonte: fonte as RadarEventosFiltro['fonte'], pais, q: q || undefined, page, limit: ROWS }), [ip, servico, acao, fonte, pais, q, page]);
-  const eventos = useQuery({ queryKey: ['radar-eventos', filtros], queryFn: () => getRadarEventos(filtros), retry: false });
+  const resumo = useQuery({ queryKey: ['radar-resumo', dias, escopo], queryFn: () => getRadarResumo(dias, escopo), retry: false, refetchInterval: ATUALIZAR_MS });
+  const filtros = useMemo(() => ({ ip, servico, acao, fonte: fonte as RadarEventosFiltro['fonte'], pais, escopo, q: q || undefined, page, limit: ROWS }), [ip, servico, acao, fonte, pais, escopo, q, page]);
+  const eventos = useQuery({ queryKey: ['radar-eventos', filtros], queryFn: () => getRadarEventos(filtros), retry: false, refetchInterval: ATUALIZAR_MS, placeholderData: (anterior) => anterior });
   const r = resumo.data;
 
   // três fichas possíveis (evento, indicador, técnica); abrir uma fecha as outras
@@ -88,9 +97,17 @@ export function Radar() {
   return (
     <div>
       <PageHeader title="Radar de Ataques" subtitle="Tentativas de invasão contra o seu ambiente: o que chega, de onde e o que tentam."
-        actions={<span className="in-periodo" role="group" aria-label="Período">
-          {DIAS_OPTS.map((d) => <Chip key={d} label={periodoLabel(d)} active={dias === d} onClick={() => { setDias(d); fecharTudo(); }} />)}
-        </span>} />
+        actions={<>
+          <span className="in-periodo" role="group" aria-label="Origem dos eventos">
+            {ESCOPO_OPTS.map((o) => <span key={o.value} title={o.dica}><Chip label={o.label} active={escopo === o.value} onClick={() => { setEscopo(o.value); setPage(0); fecharTudo(); }} /></span>)}
+          </span>
+          <span className="in-periodo" role="group" aria-label="Período">
+            {DIAS_OPTS.map((d) => <Chip key={d} label={periodoLabel(d)} active={dias === d} onClick={() => { setDias(d); fecharTudo(); }} />)}
+          </span>
+        </>} />
+      {!resumo.isError && (
+        <p className="in-atualizado" aria-live="polite">{resumo.isFetching ? 'atualizando…' : `atualizado às ${hora(resumo.dataUpdatedAt)} · a cada 1 min`}</p>
+      )}
 
       {resumo.isError ? (
         <div className="iv-card">
@@ -100,8 +117,8 @@ export function Radar() {
         </div>
       ) : (<>
         {loginsOk > 0 && (
-          <StatusStrip tone="crit" icon="pi-unlock">
-            <strong>{loginsOk} login(s) aceito(s)</strong> vindos de fora em {periodo}. Confirme se foram seus.{' '}
+          <StatusStrip tone="warn" icon="pi-unlock">
+            <strong>{loginsOk} login(s) aceito(s)</strong> em {periodo}. Em honeypot (isca) é esperado; fora dele, confirme se foi você.{' '}
             <button type="button" className="iv-linkbtn" onClick={() => alternarAcao('login_ok')}>Ver eventos</button>
           </StatusStrip>
         )}
@@ -122,7 +139,7 @@ export function Radar() {
           <TopList titulo="IPs mais ativos" itens={indicadores(r, 'ip')} onOpen={abrirIndicador('ip')} selId={indSel.selId} />
           <TopList titulo="Serviços visados" itens={indicadores(r, 'servico')} onOpen={abrirIndicador('servico')} selId={indSel.selId} />
           <TopList titulo="Usuários tentados" itens={indicadores(r, 'usuario')} onOpen={abrirIndicador('usuario')} selId={indSel.selId} />
-          <TopList titulo="Países de origem" itens={indicadores(r, 'pais')} onOpen={abrirIndicador('pais')} selId={indSel.selId} />
+          {escopo !== 'interno' && <TopList titulo="Países de origem" itens={indicadores(r, 'pais')} onOpen={abrirIndicador('pais')} selId={indSel.selId} />}
           {r?.senhasHabilitadas && (
             <TopList titulo="Senhas mais tentadas" aviso="Dado sensível: não publique nem compartilhe."
               itens={r.topSenhas.map((i) => ({ id: i.nome, rotulo: i.nome, total: i.total }))} />
@@ -144,7 +161,7 @@ export function Radar() {
         <EventosTabela itens={eventos.data?.items ?? []} total={eventos.data?.total ?? 0} loading={eventos.isLoading} page={page} onPage={setPage}
           onOpen={(id) => { fecharTudo(); evSel.open(id); }} selId={evSel.selId} f={f} />
 
-        <p className="in-rodape">Este painel resume eventos reais recebidos pelos coletores. Simulações ficam em <Link to="/labs">Labs</Link> e a cobertura em <Link to="/attack">ATT&amp;CK</Link>.</p>
+        <p className="in-rodape">Este painel resume eventos reais recebidos pelos coletores. Simulações ficam em <Link to="/labs">Labs</Link> e a cobertura em <Link to="/attack">ATT&amp;CK</Link>. Países: <a href="https://db-ip.com" target="_blank" rel="noopener noreferrer">IP Geolocation by DB-IP</a>.</p>
       </>)}
 
       {evSel.item && <EventoDrawer ev={evSel.item} nav={evSel.nav} onFiltrarIp={(x) => filtrarPor('ip', x)} />}

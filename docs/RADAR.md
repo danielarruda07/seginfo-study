@@ -3,8 +3,13 @@
 Transforma as tentativas de invasão contra o seu IP público em dados de estudo: o que
 chega, de onde, contra qual serviço e com quais usuários.
 
+> **Desenho em uso no homelab:** coletor via Wazuh (seção 11). Cowrie e Dionaea ficam numa
+> VLAN exposta sem saída para a internet, o Wazuh recebe tudo e o `sensor/wazuh-forwarder`
+> envia ao Radar. O desenho abaixo (sensor com OpenCanary e shipper próprio) continua válido
+> para quem não tem Wazuh.
+
 ```
-Internet ─► 138.122.82.214 ─► FortiGate ─┬─ port-forward ─► VM sensor (DMZ isolada)
+Internet ─► <IP-PUBLICO> ─► FortiGate ─┬─ port-forward ─► VM sensor (DMZ isolada)
                                          │                   ├─ Cowrie      22/23  (SSH/Telnet)
                                          │                   ├─ OpenCanary  21/80/1433/3389
                                          │                   └─ shipper ◄── syslog UDP 514 (FortiGate)
@@ -69,6 +74,7 @@ Não edite a aplicação `estudo` (a de login por e-mail).
 | `CF_ACCESS_INGEST_AUD` | AUD da aplicação `estudo-ingest` |
 | `RADAR_GUARDAR_SENHAS` | `false` (padrão). `true` só se decidir guardar senhas de honeypot |
 | `ATAQUES_RETENCAO_DIAS` | opcional, padrão 90 |
+| `ATAQUES_RETENCAO_CONEXAO_DIAS` | opcional, padrão 14: conexões simples (`acao = conexao`, sem login nem comando) são apagadas antes, porque são a maior parte do volume |
 
 `CF_ACCESS_TEAM` e `CF_ACCESS_AUD` (da app `estudo`) já existem. Depois de salvar, faça
 redeploy.
@@ -154,7 +160,7 @@ VIP por porta, repetindo para `21, 22, 23, 80, 1433, 3389`:
 ```
 config firewall vip
     edit "HP-3389"
-        set extip 138.122.82.214
+        set extip <IP-PUBLICO>
         set extintf "wan"
         set portforward enable
         set mappedip "IP_DA_VM_SENSOR"
@@ -216,4 +222,90 @@ ativos, serviços visados, usuários tentados, países, técnicas MITRE ATT&CK (
 force, T1046 discovery, T1078, T1059) e a tabela de eventos. A tabela permite buscar
 IP/serviço/usuário/alvo e filtrar por origem, país, ação, IP ou serviço; selecionar uma
 linha abre os detalhes do evento. O endpoint de detalhe não retorna `senhaTentada`.
-Países só aparecem se o coletor enviar `paisOrigem` (enriquecimento GeoIP é um próximo passo).
+
+**Origem: Internet × Range.** Cada evento ganha na ingestão um `escopo`: `internet` quando o IP
+de origem é público, `interno` quando é de rede privada ou reservada (exercícios da Kali, testes)
+ou não tem IP (lockout do Windows). A tela abre em **Internet**; **Range (interno)** e **Tudo**
+ficam no seletor "Origem". As faixas estão em `apps/api/src/radarEscopo.ts` e a migration
+`20261114000000_ataque_escopo` classificou os eventos antigos com as mesmas faixas.
+A página ATT&CK continua somando os dois escopos ("Vistas no Radar").
+
+**Volume.** O resumo é agregado no PostgreSQL (`GROUP BY` com o índice `usuarioId, escopo,
+ocorridoEm`), sem limite de linhas: a janela de 30 dias cobre os 30 dias inteiros mesmo com o
+honeypot exposto. A tela se atualiza sozinha a cada minuto com a aba visível.
+
+**Países** vêm do coletor (`paisOrigem`), com a base GeoIP da seção 11. Eventos recebidos antes
+de instalar a base ficam sem país.
+
+## 11. Alternativa: coletor via Wazuh (range do homelab)
+
+Quando o honeypot fica numa VLAN **sem saída para a internet** (o caso do range), o shipper
+não consegue chegar à API. Nesse desenho o Wazuh é o ponto central: o honeypot manda os logs
+para o Wazuh pela rede interna e um coletor na VM do Wazuh leva os alertas ao Radar.
+
+```
+Cowrie / Dionaea (VLAN exposta, sem saída) ─┐
+FortiGate (syslog UDP 514) ─────────────────┼─► Wazuh (regras próprias, com MITRE)
+Windows vítima (Sysmon, agente) ────────────┘          │ sensor/wazuh-forwarder
+                                                       ▼ HTTPS + Service Token + X-Ingest-Token
+                                                 /api/ingest ─► Radar ─► ATT&CK "Vistas no Radar"
+```
+
+- Fontes: `cowrie` (conexão, login, comando, download e túnel: SSH usado como proxy, T1090), `dionaea` (conexão, credenciais,
+  download), `fortigate` (só origem pública: bloqueio, IPS, login administrativo) e `windows`
+  (regras com MITRE e nível mínimo, ex.: ataques da Kali no range).
+- A técnica MITRE de cada alerta vai em `detalhes.mitre`; o Radar usa essa técnica e só cai no
+  mapeamento fixo por ação quando ela não vem. A ficha do evento mostra técnica, comando e regra.
+- Eventos do Cowrie levam `detalhes.sessao`. A ficha de qualquer evento da sessão mostra a sessão
+  inteira (`GET /api/radar/sessao?id=&ip=`, até 1000 eventos): resumo, etapas na ordem em que
+  apareceram, arquivos com SHA-256 e a linha do tempo com cada comando classificado
+  (regras em `apps/web/src/routes/radar/sessao.ts`).
+- Instalação: `forwarder.py` em `/opt/seginfo-forwarder/`, unit `seginfo-forwarder.service`
+  (usuário `seginfo-fwd` no grupo `wazuh`, só leitura dos alertas) e as variáveis em
+  `/etc/seginfo-forwarder.env` (modo 600, modelo em `seginfo-forwarder.env.exemplo`).
+- Teste sem enviar nada: `DRY_RUN=true DESDE_INICIO=true python3 forwarder.py` imprime os
+  eventos convertidos.
+- Reaproveita o mesmo Service Token e o mesmo `INGEST_TOKEN` das seções 2 e 3.
+- Testes do coletor (só biblioteca padrão): `python3 -m unittest test_forwarder` na pasta
+  `sensor/wazuh-forwarder`.
+
+### Robustez do coletor
+
+- **Lote recusado:** se a API responder 400, o coletor divide o lote ao meio até isolar o
+  evento inválido; só ele é descartado (fonte, ação e horário vão para o log) e os outros entram.
+  Erro de rede, 401 ou 5xx: o lote inteiro é reenviado depois, com espera crescente até 5 min
+  (a API deduplica o que já tinha entrado).
+- **Rotação diária:** o Wazuh troca o `alerts.json` à meia-noite. O coletor mantém o arquivo
+  aberto e só passa para o novo depois de ler o antigo até o fim, sem perder os últimos segundos.
+
+### País de origem (GeoIP)
+
+O coletor procura o país numa base local, sem consultar serviço externo: a **DB-IP "IP to
+Country Lite"** (gratuita, licença CC BY 4.0, atualizada todo mês). Na VM do Wazuh, como root:
+
+```bash
+mes=$(date +%Y-%m)
+curl -fsSLo /var/lib/seginfo-forwarder/dbip-country-lite.csv.gz \
+  "https://download.db-ip.com/free/dbip-country-lite-${mes}.csv.gz"
+chown seginfo-fwd: /var/lib/seginfo-forwarder/dbip-country-lite.csv.gz
+systemctl restart seginfo-forwarder
+journalctl -u seginfo-forwarder -n 5   # "geoip: N faixas IPv4 e M IPv6 carregadas"
+```
+
+- Caminho padrão `/var/lib/seginfo-forwarder/dbip-country-lite.csv.gz` (variável `GEOIP_CSV`).
+  Sem o arquivo, o coletor segue sem país e avisa uma vez no log.
+- O coletor confere a data do arquivo a cada hora e recarrega sozinho quando ele muda: basta
+  repetir o `curl` todo mês (ou agendar com um timer do systemd).
+- Só IP público recebe país. Atribuição exigida pela licença: "IP Geolocation by DB-IP"
+  (aparece na tela do Radar).
+
+### Atualizar o coletor na VM do Wazuh
+
+```bash
+# copie sensor/wazuh-forwarder/forwarder.py para a VM e, como root:
+install -o root -g root -m 755 forwarder.py /opt/seginfo-forwarder/forwarder.py
+systemctl restart seginfo-forwarder && journalctl -u seginfo-forwarder -f
+```
+
+O estado (`/var/lib/seginfo-forwarder/state.json`) continua valendo: a versão nova retoma do
+mesmo ponto do arquivo.

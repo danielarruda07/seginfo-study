@@ -56,7 +56,7 @@ export const INVENTARIO_DOCUMENTADO: Ativo[] = [
   },
   {
     id: 'doc-wan-sensor', ambiente: 'criecomia', tipo: 'rede', nome: 'Endereço WAN documentado · sensor',
-    endereco: '138.122.82.214', funcao: 'Endereço público associado pela documentação ao FortiGate e ao sensor de honeypot.',
+    endereco: '', funcao: 'Endereço público do FortiGate e do sensor de honeypot. O valor real fica no Cofre/Meu Ambiente, nunca no repositório público.',
     estado: 'atencao', detalhes: { referencia: 'docs/RADAR.md', pendencia: 'Confirmar se este endereço continua atribuído e se os encaminhamentos estão limitados à VM sensor' },
     tags: ['documentação', 'wan', 'sensor', 'revisar'], labsRelacionados: [], fonte: 'docs/RADAR.md · confirmar no FortiGate/Cloudflare antes de usar',
   },

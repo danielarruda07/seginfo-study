@@ -6,7 +6,7 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { ActiveFiltersBar, type ActiveFilter } from '@/components/ui/ActiveFiltersBar';
 import { EmptyState, Pill } from '@/components/InfraKit';
 import type { RadarEvento } from '@/services/radar';
-import { ACAO_META, FONTE_LABEL, acaoMeta, formatarUtc } from '../regras';
+import { ACAO_META, FONTE_LABEL, acaoDoEvento, formatarLocal, resumoDetalhe } from '../regras';
 
 export const ROWS = 15;
 const FONTE_OPTS = Object.entries(FONTE_LABEL).map(([value, label]) => ({ label, value }));
@@ -23,7 +23,7 @@ export interface FiltrosUi {
 }
 
 function linhaClasse(e: RadarEvento, selId: string | null) {
-  const tone = acaoMeta(e.acao).tone;
+  const tone = acaoDoEvento(e).tone;
   const alerta = tone === 'danger' || tone === 'serious' ? `iv-row-alert tone-${tone}` : '';
   return `${alerta}${e.id === selId ? ' in-row-sel' : ''}`;
 }
@@ -52,17 +52,19 @@ export function EventosTabela({ itens, total, loading, page, onPage, onOpen, sel
         emptyMessage={f.chips.length
           ? <EmptyState icon="pi-filter-slash" title="Nenhum evento com estes filtros" action={<Button label="Limpar filtros" text onClick={f.limpar} />} />
           : <EmptyState icon="pi-eye" title="Nenhum evento recebido" text="Quando os coletores enviarem eventos, eles aparecem aqui." />}>
-        <Column header="Quando (UTC)" style={{ width: 160 }} body={(e: RadarEvento) => <span className="tabular">{formatarUtc(e.ocorridoEm)}</span>} />
-        <Column header="Ação" body={(e: RadarEvento) => { const a = acaoMeta(e.acao); return <Pill label={a.label} tone={a.tone} icon={a.icon} />; }} />
+        <Column header="Quando" style={{ width: 160 }} body={(e: RadarEvento) => <span className="tabular">{formatarLocal(e.ocorridoEm)}</span>} />
+        <Column header="Ação" body={(e: RadarEvento) => { const a = acaoDoEvento(e); return <Pill label={a.label} tone={a.tone} icon={a.icon} />; }} />
         <Column header="Origem" body={(e: RadarEvento) => (
-          <span><span className="mono">{e.ipOrigem ?? '—'}</span>{e.paisOrigem && <><br /><span className="iv-maincell__sub">{e.paisOrigem}</span></>}</span>
+          <span><span className="mono">{e.ipOrigem ?? '—'}</span>{(e.paisOrigem || e.escopo === 'interno') && <><br /><span className="iv-maincell__sub">{e.escopo === 'interno' ? 'rede interna (range)' : e.paisOrigem}</span></>}</span>
         )} />
         <Column header="Serviço" body={(e: RadarEvento) => (
           <span>{e.servico ?? (e.portaDestino ? `porta ${e.portaDestino}` : '—')}
             {(e.servico && e.portaDestino) || e.protocolo ? <><br /><span className="iv-maincell__sub">{[e.servico && e.portaDestino ? `porta ${e.portaDestino}` : null, e.protocolo].filter(Boolean).join(' · ')}</span></> : null}</span>
         )} />
-        <Column header="Usuário tentado" className="iv-hide-sm" headerClassName="iv-hide-sm"
-          body={(e: RadarEvento) => e.usuarioTentado ? <span className="mono">{e.usuarioTentado}</span> : <span className="iv-muted">—</span>} />
+        <Column header="Usuário / detalhe" className="iv-hide-sm" headerClassName="iv-hide-sm"
+          body={(e: RadarEvento) => { const det = resumoDetalhe(e.detalhes, 48); return e.usuarioTentado || det
+            ? <span className="mono in-quebra">{e.usuarioTentado}{e.usuarioTentado && det ? ' · ' : ''}{det}</span>
+            : <span className="iv-muted">—</span>; }} />
         <Column header="Fonte" className="iv-hide-sm" headerClassName="iv-hide-sm" body={(e: RadarEvento) => FONTE_LABEL[e.fonte]?.split(' (')[0] ?? e.fonte} />
       </DataTable>
     </section>

@@ -16,6 +16,9 @@ export const ACAO_META: Record<string, AcaoMeta> = {
   lockout: { label: 'Conta bloqueada', tone: 'serious', icon: 'pi-lock', dica: 'A conta foi travada por excesso de tentativas. Verifique se é ataque de força bruta e se o bloqueio está atrapalhando o uso legítimo.' },
   comando: { label: 'Comando executado', tone: 'serious', icon: 'pi-code', dica: 'O atacante executou comandos (normalmente no honeypot). Leia os comandos para entender o objetivo e procure os mesmos indicadores nos ativos reais.' },
   login_falha: { label: 'Falha de login', tone: 'warning', icon: 'pi-user-minus', dica: 'Tentativa de senha errada. Muitas do mesmo IP indicam força bruta: considere bloquear o IP ou limitar tentativas.' },
+  download: { label: 'Download de ferramenta', tone: 'danger', icon: 'pi-download', dica: 'O atacante baixou um arquivo (malware, script, minerador). Veja a URL, procure o mesmo indicador nos ativos reais e bloqueie o domínio/IP de origem.' },
+  tunel: { label: 'Túnel / proxy', tone: 'serious', icon: 'pi-directions', dica: 'Tentativa de usar o alvo como ponte para outro destino (proxy, port forwarding). Confirme que o honeypot não tem saída e bloqueie o padrão no firewall.' },
+  reflexao: { label: 'Reflexão UDP', tone: 'warning', icon: 'pi-replay', dica: 'Tentativa de usar o seu IP como refletor de DDoS. A origem é falsificada: é a vítima que o atacante queria atingir. Garanta que nada responde a esses serviços UDP.' },
   scan: { label: 'Varredura', tone: 'info', icon: 'pi-search', dica: 'Reconhecimento de portas e serviços. Confira se só o que precisa estar exposto responde.' },
   bloqueio: { label: 'Bloqueado', icon: 'pi-ban', dica: 'O firewall barrou a conexão. Nada a fazer além de acompanhar volume e origem.' },
   conexao: { label: 'Conexão', icon: 'pi-arrows-h', dica: 'Conexão registrada sem ação maliciosa clara.' },
@@ -26,13 +29,39 @@ export const acaoMeta = (acao: string): AcaoMeta =>
   ACAO_META[acao] ?? { label: acao.replaceAll('_', ' '), icon: 'pi-circle', dica: 'Evento sem classificação específica.' };
 
 export const FONTE_LABEL: Record<string, string> = {
-  fortigate: 'FortiGate', windows: 'Windows', cowrie: 'Cowrie (honeypot SSH)', opencanary: 'OpenCanary (honeypot)', outro: 'Outro',
+  fortigate: 'FortiGate', windows: 'Windows', cowrie: 'Cowrie (honeypot SSH)', dionaea: 'Dionaea (honeypot)', heralding: 'Heralding (honeypot de credenciais)',
+  isca: 'Iscas (Redis/ES/Docker)', opencanary: 'OpenCanary (honeypot)', outro: 'Outro',
 };
 
 /** Espelho do mapeamento ação → técnica feito pela API do Radar (apps/api/src/radar.ts). */
 export const MITRE_POR_ACAO: Record<string, string> = {
   login_falha: 'T1110', lockout: 'T1110', scan: 'T1046', login_ok: 'T1078', comando: 'T1059',
+  download: 'T1105', tunel: 'T1090', reflexao: 'T1498.002',
 };
+
+/** Honeypots são iscas: login "aceito" ali é de propósito e não dá acesso a nada real. */
+export const FONTES_ISCA = new Set(['cowrie', 'dionaea', 'opencanary', 'heralding', 'isca']);
+
+/** Rótulo e tom do evento, rebaixando o login aceito em isca (esperado) para informativo. */
+export function acaoDoEvento(e: { acao: string; fonte: string }): AcaoMeta {
+  const m = acaoMeta(e.acao);
+  if (e.acao === 'login_ok' && FONTES_ISCA.has(e.fonte)) {
+    return { ...m, label: 'Login aceito (isca)', tone: 'info', dica: 'O honeypot aceita a senha de propósito. O que importa é o que o atacante faz depois de entrar: veja os comandos e downloads da sessão.' };
+  }
+  return m;
+}
+
+/** Resumo curto do que o atacante fez (comando, URL ou IPs), para a tabela. */
+export function resumoDetalhe(detalhes: Record<string, unknown> | null | undefined, max = 70): string {
+  const d = detalhes ?? {};
+  const s = (k: string) => (typeof d[k] === 'string' ? (d[k] as string) : '');
+  const txt = s('comando') || s('url') || s('ips');
+  return txt.length > max ? `${txt.slice(0, max)}…` : txt;
+}
+
+/** Data e hora no fuso do navegador. */
+export const formatarLocal = (iso: string) =>
+  new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
 /** Ações do Radar que geram eventos de uma técnica. */
 export const acoesDaTecnica = (tecnicaId: string) =>

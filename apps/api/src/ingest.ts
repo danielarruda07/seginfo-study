@@ -5,6 +5,8 @@ import { IngestBatchSchema } from '@seginfo/shared';
 import { prisma, resolveUsuario } from './db.js';
 import { verifyAccessJwt } from './auth.js';
 import { guardarSenhas } from './radar.js';
+import { escopoDoIp } from './radarEscopo.js';
+import { gravarPericia } from './pericia.js';
 
 /**
  * Ingestão de eventos de ataque, vinda de COLETORES (sensor honeypot, script Windows).
@@ -22,7 +24,7 @@ import { guardarSenhas } from './radar.js';
 const sha256 = (s: string) => createHash('sha256').update(s).digest();
 
 /** Só estas fontes podem trazer senha tentada (e só com RADAR_GUARDAR_SENHAS=true). */
-const FONTES_COM_SENHA = new Set(['cowrie', 'opencanary']);
+const FONTES_COM_SENHA = new Set(['cowrie', 'opencanary', 'dionaea', 'heralding', 'isca']);
 
 function tokenValido(recebido: string | undefined): boolean {
   const esperado = process.env.INGEST_TOKEN;
@@ -116,10 +118,19 @@ export async function registerIngestRoutes(app: FastifyInstance) {
         alvo: e.alvo,
         detalhes: (e.detalhes ?? {}) as Prisma.InputJsonObject,
         dedupKey,
+        escopo: escopoDoIp(e.ipOrigem),
       };
     });
 
     const r = await prisma.ataqueEvento.createMany({ data, skipDuplicates: true });
     return { ok: true, recebidos: data.length, inseridos: r.count };
+  });
+
+  // Laudo de um alvo real do honeypot (gerado na VM do Wazuh antes do reset). Mesma autenticação.
+  app.post('/api/ingest/pericia', { bodyLimit: 2_097_152 }, async (req, reply) => {
+    if (!(await autenticarColetor(req, reply))) return reply;
+    const r = await gravarPericia(process.env.INGEST_OWNER_EMAIL as string, req.body);
+    if (!r.ok) return reply.status(400).send({ error: 'Laudo inválido.' });
+    return { ok: true, id: r.id };
   });
 }

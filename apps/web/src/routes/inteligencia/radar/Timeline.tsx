@@ -5,7 +5,7 @@ export function Timeline({ pontos, porHora }: { pontos: { bucket: string; total:
   const fmt = (b: string) => (porHora ? `${b.slice(0, 10)} ${b.slice(11, 13)}h` : b);
   return (
     <section className="iv-card in-timeline-card" aria-labelledby="radar-tl">
-      <h3 id="radar-tl" className="iv-section-label">Linha do tempo ({porHora ? 'por hora' : 'por dia'}, UTC)</h3>
+      <h3 id="radar-tl" className="iv-section-label">Linha do tempo ({porHora ? 'por hora' : 'por dia'}, horário local)</h3>
       {pontos.length === 0
         ? <p className="in-muted-p">Sem eventos no período.</p>
         : <>

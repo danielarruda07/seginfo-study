@@ -3,6 +3,7 @@ import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import * as vault from '@/services/vault';
+import { cofre2fa, codigoErro, mensagemErro } from '@/services/cofre2fa';
 import { senhaMestraScore } from './regras';
 
 /** Campo de senha padrão do Cofre (sem medidor do PrimeReact, com botão de mostrar). */
@@ -21,8 +22,22 @@ export function SecretInput({ id, value, onChange, placeholder, ariaLabel, onKey
   );
 }
 
-/** Criar ou destravar o cofre. A senha digitada só vive no estado deste cartão. */
-export function CofreAcesso({ initialized, erroInicial, onAberto }: { initialized: boolean; erroInicial: string; onAberto: () => void }) {
+/**
+ * Criar ou destravar o cofre. A senha digitada só vive no estado deste cartão.
+ * Com o segundo fator ativo (`servidor`), o blob cifrado vem da API depois do código;
+ * a senha-mestra continua só neste navegador.
+ */
+export function CofreAcesso({ initialized, servidor, erroInicial, aviso, onAberto, onSessaoExpirou, onSemCofre }: {
+  /** false = mostrar "Criar cofre" */
+  initialized: boolean;
+  servidor: boolean;
+  erroInicial: string;
+  aviso?: string;
+  onAberto: () => void;
+  onSessaoExpirou: () => void;
+  /** o servidor diz que ainda não há cofre guardado lá */
+  onSemCofre: () => void;
+}) {
   const [erro, setErro] = useState('');
   const [master, setMaster] = useState('');
   const [master2, setMaster2] = useState('');
@@ -35,16 +50,37 @@ export function CofreAcesso({ initialized, erroInicial, onAberto }: { initialize
     if (master.length < 12) return setErro('Use uma senha-mestra com pelo menos 12 caracteres.');
     if (master !== master2) return setErro('As senhas não conferem.');
     setOcupado(true);
-    await vault.initVault(master);
-    setMaster(''); setMaster2(''); setOcupado(false);
+    try {
+      if (servidor) await vault.initVaultServidor(master); else await vault.initVault(master);
+    } catch (e) {
+      vault.lock();
+      if (codigoErro(e) === '2FA_NECESSARIO') return onSessaoExpirou();
+      return setErro(mensagemErro(e));
+    } finally {
+      setOcupado(false);
+    }
+    setMaster(''); setMaster2('');
     onAberto();
   }
 
   async function destravar() {
     setErro('');
     setOcupado(true);
-    const ok = await vault.unlock(master);
-    setOcupado(false);
+    let ok: boolean;
+    try {
+      if (servidor) {
+        const blob = await cofre2fa.lerBlob();
+        if (!blob) return onSemCofre();
+        ok = await vault.unlockServidor(master, blob);
+      } else {
+        ok = await vault.unlock(master);
+      }
+    } catch (e) {
+      if (codigoErro(e) === '2FA_NECESSARIO') return onSessaoExpirou();
+      return setErro(mensagemErro(e));
+    } finally {
+      setOcupado(false);
+    }
     if (!ok) { const s = vault.unlockWaitSeconds(); return setErro(`Senha-mestra incorreta.${s ? ` Aguarde ${s} s antes da próxima tentativa.` : ''}`); }
     setMaster('');
     onAberto();
@@ -53,6 +89,7 @@ export function CofreAcesso({ initialized, erroInicial, onAberto }: { initialize
   return (
     <form className="iv-card iv-mt ca-acesso" onSubmit={(e) => { e.preventDefault(); void (initialized ? destravar() : criar()); }}>
       {msg && <Message severity="error" text={msg} className="ca-w100 ca-mb" />}
+      {aviso && <Message severity="warn" text={aviso} className="ca-w100 ca-mb" />}
       {!initialized ? (
         <div className="iv-col iv-gap">
           <h3 className="ca-h3">Criar cofre</h3>
@@ -70,6 +107,7 @@ export function CofreAcesso({ initialized, erroInicial, onAberto }: { initialize
       ) : (
         <div className="iv-col iv-gap">
           <h3 className="ca-h3">Destravar</h3>
+          {servidor && <p className="iv-muted ca-small ca-mb0"><i className="pi pi-check" aria-hidden="true" /> Código aceito. Agora a senha-mestra (ela nunca sai deste navegador).</p>}
           <SecretInput value={master} onChange={setMaster} placeholder="Senha-mestra" ariaLabel="Senha-mestra" autoComplete="current-password" />
           <Button type="submit" label="Destravar cofre" icon="pi pi-unlock" loading={ocupado} />
         </div>

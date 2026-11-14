@@ -15,7 +15,7 @@ const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
 // CORS liberado para o dev server do Vite (ajuste a origem em produção).
 await app.register(cors, {
   origin: (process.env.WEB_ORIGIN ?? 'http://localhost:5173').split(','),
-  allowedHeaders: ['Content-Type'],
+  allowedHeaders: ['Content-Type', 'X-Cofre-Sessao'],
 });
 
 // versao: o rodapé do front compara com a dele para saber se os dois containers foram atualizados

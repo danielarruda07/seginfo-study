@@ -10,11 +10,14 @@ import * as vault from '@/services/vault';
 import { listAtivos } from '@/services/inventario';
 import { todayISO } from '@/services/store';
 import { SecretInput } from './CofreAcesso';
+import { explicarFalhaGravar } from './falhas';
 
 export type Rascunho = Partial<VaultEntry> & { secret?: string };
 
 /** Cadastro/edição de credencial. O segredo só existe no estado deste diálogo enquanto ele está aberto. */
-export function CredencialForm({ inicial, onClose, onSalvo }: { inicial: Rascunho; onClose: () => void; onSalvo: (titulo: string) => void }) {
+export function CredencialForm({ inicial, onClose, onSalvo, onSessaoExpirou }: {
+  inicial: Rascunho; onClose: () => void; onSalvo: (titulo: string) => void; onSessaoExpirou: () => void;
+}) {
   const [c, setC] = useState<Rascunho>(inicial);
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -24,10 +27,17 @@ export function CredencialForm({ inicial, onClose, onSalvo }: { inicial: Rascunh
     ev?.preventDefault();
     if (!c.titulo?.trim()) return setErro('Dê um título para achar a credencial depois.');
     setSalvando(true);
-    await vault.saveEntry({
-      id: c.id, titulo: c.titulo.trim(), usuario: c.usuario ?? '', url: c.url ?? '', ambiente: c.ambiente, ativoId: c.ativoId,
-      notas: c.notas ?? '', confirmadoEm: c.confirmadoEm || undefined, secret: c.secret ?? '',
-    });
+    try {
+      await vault.saveEntry({
+        id: c.id, titulo: c.titulo.trim(), usuario: c.usuario ?? '', url: c.url ?? '', ambiente: c.ambiente, ativoId: c.ativoId,
+        notas: c.notas ?? '', confirmadoEm: c.confirmadoEm || undefined, secret: c.secret ?? '',
+      });
+    } catch (e) {
+      setSalvando(false);
+      const f = explicarFalhaGravar(e);
+      if (f.expirou) { onClose(); onSessaoExpirou(); return; }
+      return setErro(f.texto);
+    }
     setSalvando(false);
     onSalvo(c.titulo.trim());
   }

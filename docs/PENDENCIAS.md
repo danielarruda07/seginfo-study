@@ -9,7 +9,7 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
       mensal) e cadastrar como Secret `ANTHROPIC_API_KEY` no serviço `seginfo-api` do Coolify.
       Nunca colar a chave em chat, issue ou commit.
 
-- [ ] **Tirar o RDP real da WAN.** O VIP `10.10.10.100:1401` publicado no IP público é o
+- [x] **Tirar o RDP real da WAN.** Feito em 13/11/2026: as regras de RDP vindas da WAN foram desativadas e a administração do FortiGate saiu da WAN (ver docs/RANGE.md). O VIP `10.10.10.100:1401` publicado no IP público é o
       alvo do brute force. Acessar pelo `rdp.criecom.ia.br` (Cloudflare Access). Conferir nos
       logs do FortiGate se há tentativas contra a porta 1401. Relacionado ao lab
       "Hardening do FortiGate".
@@ -55,7 +55,8 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
 - [ ] Subir a VM do sensor (DMZ isolada) e o port-forward só para ela.
 - [ ] Validar o parser do FortiGate com 2 ou 3 linhas reais de log.
 - [ ] Script do Windows (`windows/Send-LogonFailures.ps1`): só nos servidores com autorização.
-- [ ] Enriquecimento GeoIP (hoje o campo país só aparece se o coletor enviar).
+- [x] Enriquecimento GeoIP no coletor do Wazuh (v0.14.0).
+- [ ] Instalar a base DB-IP na VM do Wazuh e atualizar o `forwarder.py` (ver `docs/RADAR.md`, seção 11).
 - [ ] Decidir se liga `RADAR_GUARDAR_SENHAS` (hoje desligado).
 
 ## Produto

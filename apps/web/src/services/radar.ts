@@ -1,7 +1,12 @@
+import type { AtaqueFonte } from '@seginfo/shared';
 import { http } from './http';
+
+/** internet = IP público; interno = rede privada/reservada (exercícios do range) ou sem IP. */
+export type RadarEscopo = 'internet' | 'interno' | 'todos';
 
 export interface RadarResumo {
   dias: number;
+  escopo?: RadarEscopo;
   total: number;
   truncado: boolean;
   ipsUnicos: number;
@@ -33,21 +38,29 @@ export interface RadarEvento {
   acao: string;
   usuarioTentado: string | null;
   alvo: string | null;
+  escopo?: 'internet' | 'interno';
+  /** Livre por coletor; nunca traz senha. Ex.: { mitre, regra, nivel, comando, url }. */
+  detalhes?: Record<string, unknown>;
 }
 
 export interface RadarEventosFiltro {
   ip?: string;
   servico?: string;
   acao?: string;
-  fonte?: 'fortigate' | 'windows' | 'cowrie' | 'opencanary' | 'outro';
+  fonte?: AtaqueFonte;
   pais?: string;
+  escopo?: RadarEscopo;
   q?: string;
   page: number;
   limit: number;
 }
 
-export const getRadarResumo = (dias: number) =>
-  http.get<RadarResumo>('/radar/resumo', { params: { dias } }).then((r) => r.data);
+export const getRadarResumo = (dias: number, escopo: RadarEscopo = 'todos') =>
+  http.get<RadarResumo>('/radar/resumo', { params: { dias, escopo, tz: new Date().getTimezoneOffset() } }).then((r) => r.data);
 
 export const getRadarEventos = (f: RadarEventosFiltro) =>
   http.get<{ total: number; items: RadarEvento[] }>('/radar/eventos', { params: f }).then((r) => r.data);
+
+/** Todos os eventos de uma sessão do honeypot (mesmo detalhes.sessao), em ordem cronológica. */
+export const getRadarSessao = (id: string, ip: string) =>
+  http.get<{ sessao: string; truncado: boolean; items: RadarEvento[] }>('/radar/sessao', { params: { id, ip } }).then((r) => r.data);

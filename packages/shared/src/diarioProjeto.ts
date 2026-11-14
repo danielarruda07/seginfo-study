@@ -49,6 +49,114 @@ export const DIARIO_PROJETO: EntradaDiario[] = [
     tags: ['ux', 'navegacao'],
   },
   {
+    id: 'proj-2026-11-14-laudo-alvos-reais',
+    data: '2026-11-14',
+    titulo: 'Laudo antes do reset: o que o malware deixou e para onde quis ligar',
+    descricao:
+      'Os alvos reais do honeypot voltam ao estado limpo a cada 6 horas, e com isso a evidência sumia. Agora, logo antes ' +
+      'do reset, a VM do Wazuh examina cada alvo pelo agente do hipervisor (nada é instalado dentro, para o invasor não ' +
+      'perceber) e monta um laudo: arquivos criados ou alterados desde o snapshot limpo, com hash; cron, chaves SSH, ' +
+      'serviços e outros pontos de persistência; processos e conexões ainda vivos; e as conexões de saída que o firewall ' +
+      'barrou. Para essa última parte, uma regra nova no Wazuh transforma cada bloqueio de saída dos alvos em alerta, ' +
+      'já que a regra padrão só registrava um resumo de vez em quando. O primeiro dado foi eloquente: o Linux real, ' +
+      'infectado, tentava falar com dois servidores HTTP e com um DNS público cerca de uma vez por segundo, o batimento ' +
+      'típico de um malware procurando o próximo estágio ou o servidor de comando. Lição: sem saída, o malware não causa ' +
+      'dano, mas denuncia para onde iria.',
+    categoria: 'funcionalidade',
+    tags: ['honeypot', 'wazuh', 'forense', 'malware', 'fortigate'],
+  },
+  {
+    id: 'proj-2026-11-14-radar-escala',
+    data: '2026-11-14',
+    titulo: 'Radar aguenta o honeypot exposto e separa internet de laboratório',
+    descricao:
+      'Com o honeypot na internet o volume virou centenas de milhares de eventos por dia, e o resumo, que carregava ' +
+      'as linhas na memória com teto de 100 mil, passaria a cobrir só as últimas horas. A agregação foi para o ' +
+      'PostgreSQL (GROUP BY com índice). Cada evento agora sabe se veio da internet ou da rede interna, para os ' +
+      'exercícios da Kali não inflarem os números de ataque real. O coletor ganhou país por IP com base local ' +
+      '(DB-IP), passou a isolar só o evento inválido de um lote recusado e não perde mais o fim do arquivo na ' +
+      'rotação da meia-noite. Lição: dado de segurança cresce rápido; agregue onde o dado mora.',
+    categoria: 'funcionalidade',
+    tags: ['radar', 'postgresql', 'wazuh', 'geoip'],
+  },
+  {
+    id: 'proj-2026-11-14-honeypot-amplo',
+    data: '2026-11-14',
+    titulo: 'Mais portas abertas, com uma linha que não se cruza',
+    descricao:
+      'O honeypot passou a responder em dezenas de serviços: SSH e Telnet em portas alternativas, painéis web, VoIP, ' +
+      'MQTT, impressora, bancos de dados, e-mail e VNC, além de iscas próprias de Redis, Elasticsearch e da API do ' +
+      'Docker, que registram exatamente o que o atacante tenta rodar (o container do minerador, o CONFIG SET do Redis ' +
+      'para plantar chave SSH). Um Windows Server real e um Ubuntu real atrás do SSH falso dão alta interação, isolados ' +
+      'e restaurados a cada seis horas. A linha que não se cruza: serviços UDP de reflexão. Responder a eles faria do ' +
+      'homelab uma arma de DDoS contra terceiros. Em vez disso, o firewall registra e descarta esses pacotes, e o app ' +
+      'mostra a tentativa, lembrando que a origem é falsificada e aponta para a vítima. Estudar o ataque não exige ' +
+      'participar dele.',
+    categoria: 'seguranca',
+    tags: ['honeypot', 'ddos', 'reflexao', 'heralding', 'blue-team'],
+  },
+  {
+    id: 'proj-2026-11-14-sessao-atacante',
+    data: '2026-11-14',
+    titulo: 'Ver o ataque inteiro, não só o login',
+    descricao:
+      'Com o honeypot repassando o SSH para um Linux real, os bots passaram a mostrar o ataque completo, mas o Radar ' +
+      'exibia cada evento solto. Agora a ficha de qualquer evento conta a sessão inteira: quanto tempo ficou, quantas senhas ' +
+      'tentou, como entrou e cada comando classificado pela intenção. O padrão que apareceu nos dados reais é quase um ' +
+      'roteiro: reconhecimento (uname, nproc, contagem de CPUs), teste de sudo com a senha recém-descoberta, envio de um ' +
+      'binário por SCP, permissão de execução, execução com sudo e, por fim, apagar o arquivo. Alguns bots ainda tentam usar ' +
+      'o próprio SSH como túnel para a internet, só para saber se a máquina tem saída. Lição: o login é o começo; a ' +
+      'sequência de comandos é que revela o objetivo (aqui, cara de minerador) e o hash do binário leva à família do malware.',
+    categoria: 'aprendizado',
+    tags: ['honeypot', 'cowrie', 'radar', 'mitre', 'malware'],
+  },
+  {
+    id: 'proj-2026-11-13-bot-testa-honeypot',
+    data: '2026-11-13',
+    titulo: 'O bot que testou se o honeypot era de verdade',
+    descricao:
+      'Um "login aceito" no Radar assusta, mas no honeypot ele é a isca funcionando: a senha é aceita de propósito e o ' +
+      'atacante cai num shell simulado. O interessante foi o que veio depois. Um dos bots não rodou nenhum malware: ' +
+      'disparou dezenas de comandos de verificação (contas aritméticas no shell, PID do processo, funções, subshells, ' +
+      'leitura de /proc/self/stat) e conferiu as respostas. É uma checagem anti-honeypot: se o shell não se comporta como ' +
+      'um Linux real, o bot vai embora sem entregar o payload. Lição para o blue team: o comportamento pós-login diz mais ' +
+      'do que o login em si, e um honeypot de baixa interação mostra o reconhecimento, mas nem sempre o ataque completo. ' +
+      'No app, o Radar passou a mostrar o horário local, o comando de cada evento e a marcação de isca.',
+    categoria: 'aprendizado',
+    tags: ['honeypot', 'cowrie', 'anti-honeypot', 'blue-team'],
+  },
+  {
+    id: 'proj-2026-11-13-radar-wazuh',
+    data: '2026-11-13',
+    titulo: 'Honeypot exposto de propósito, e o Radar aprendendo com o Wazuh',
+    descricao:
+      'O caminho foi inverso ao de costume: primeiro ficar exposto à internet, estudar os ataques reais e só depois ' +
+      'reproduzi-los no range. O honeypot (Cowrie e Dionaea) ganhou uma VLAN própria sem nenhuma saída, nem para a ' +
+      'internet nem para a rede interna, e a entrada fecha sozinha por um agendamento no firewall. O primeiro bot chegou em ' +
+      'cerca de dois minutos, entrou por Telnet com admin/admin e testou os comandos típicos de botnet de IoT. Como o ' +
+      'honeypot não pode falar com o app, o Wazuh virou o ponto central: recebe honeypot, firewall e Sysmon do Windows, ' +
+      'aplica regras próprias com a técnica MITRE e um coletor leva os alertas ao Radar. O Radar passou a usar a técnica ' +
+      'que vem da regra, e não só um mapeamento fixo por tipo de ação, então a matriz ATT&CK mostra o que de fato foi visto. ' +
+      'Antes de abrir qualquer porta, foi preciso fechar a administração do firewall e o RDP que estavam acessíveis pela WAN.',
+    categoria: 'seguranca',
+    tags: ['honeypot', 'wazuh', 'mitre-attack', 'blue-team', 'radar'],
+  },
+  {
+    id: 'proj-2026-11-13-cofre-2fa',
+    data: '2026-11-13',
+    titulo: 'Segundo fator no Cofre, conferido pelo servidor',
+    descricao:
+      'O Cofre vivia só no navegador, protegido pela senha-mestra. Para abrir em qualquer aparelho sem enfraquecer nada, ' +
+      'ganhou um segundo fator TOTP (Google Authenticator). A lição: 2FA só no front é teatro, porque o segredo do código ' +
+      'ficaria no mesmo lugar que o cofre. Quem confere o código é o servidor, que só então entrega o blob, ainda cifrado; ' +
+      'a senha-mestra nunca sai do navegador. São três camadas independentes: identidade no proxy, código no celular e ' +
+      'senha-mestra. Ativar e enviar o cofre acontecem numa única operação atômica, o mesmo código não vale duas vezes, ' +
+      'cinco erros bloqueiam com espera crescente, os códigos de recuperação ficam só como hash e todo acesso vira evento ' +
+      'de auditoria. O TOTP foi implementado com a biblioteca de criptografia nativa e validado contra os vetores da RFC 6238.',
+    categoria: 'seguranca',
+    tags: ['2fa', 'totp', 'cofre', 'zero-knowledge'],
+  },
+  {
     id: 'proj-2026-11-13-acessos-ficha',
     data: '2026-11-13',
     titulo: 'Acessos e integrações saem do caminho do inventário',

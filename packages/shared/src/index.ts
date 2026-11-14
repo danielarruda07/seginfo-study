@@ -366,20 +366,30 @@ export type BiblioItem = z.infer<typeof BiblioItemSchema>;
 // ===================== RADAR DE ATAQUES (auto-vulnerabilidade / honeypot) =====================
 
 /** Origem do evento: de onde o coletor leu. */
-export const AtaqueFonte = z.enum(['fortigate', 'windows', 'cowrie', 'opencanary', 'outro']);
+export const AtaqueFonte = z.enum(['fortigate', 'windows', 'cowrie', 'opencanary', 'dionaea', 'heralding', 'isca', 'outro']);
 export type AtaqueFonte = z.infer<typeof AtaqueFonte>;
 
 /** O que o atacante fez. */
 export const AtaqueAcao = z.enum([
-  'login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'outro',
+  'login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'download', 'tunel', 'reflexao', 'outro',
 ]);
 export type AtaqueAcao = z.infer<typeof AtaqueAcao>;
+
+/**
+ * Técnica MITRE ATT&CK que o coletor já sabe (ex.: vinda da regra do Wazuh), em `detalhes.mitre`.
+ * Quando presente, o Radar usa estas técnicas em vez do mapeamento fixo por `acao`.
+ */
+export const AtaqueMitreSchema = z.object({
+  id: z.string().regex(/^T\d{4}(\.\d{3})?$/),
+  nome: z.string().max(120),
+});
+export type AtaqueMitre = z.infer<typeof AtaqueMitreSchema>;
 
 const IpSchema = z.union([z.ipv4(), z.ipv6()]);
 
 /**
- * Evento enviado pelo coletor. NÃO existe campo de senha: por desenho, a plataforma
- * nunca armazena senhas tentadas (em honeypot elas podem ser credenciais reais vazadas).
+ * Evento enviado pelo coletor. A senha tentada (`senhaTentada`) é opcional e só é guardada
+ * de honeypots com RADAR_GUARDAR_SENHAS=true; em honeypot ela pode ser credencial real vazada.
  */
 export const AtaqueEventoInSchema = z.object({
   fonte: AtaqueFonte,
@@ -393,7 +403,7 @@ export const AtaqueEventoInSchema = z.object({
   acao: AtaqueAcao,
   usuarioTentado: z.string().max(128).optional(),
   /**
-   * Senha tentada. SÓ de honeypots (cowrie/opencanary) e SÓ se o servidor tiver
+   * Senha tentada. SÓ de honeypots (cowrie/opencanary/dionaea/heralding/isca) e SÓ se o servidor tiver
    * RADAR_GUARDAR_SENHAS=true; caso contrário a API descarta o campo sem armazenar.
    */
   senhaTentada: z.string().max(128).optional(),
@@ -413,6 +423,48 @@ export const IngestBatchSchema = z.object({
   eventos: z.array(AtaqueEventoInSchema).min(1).max(500),
 });
 export type IngestBatch = z.infer<typeof IngestBatchSchema>;
+
+// ===================== LAUDO DOS ALVOS REAIS =====================
+/**
+ * Laudo de um alvo real do honeypot, montado na VM do Wazuh ANTES de cada reset: o que mudou no
+ * disco desde o último reset, persistência, processos e conexões do invasor e as tentativas de
+ * saída que o firewall bloqueou. Enviado por POST /api/ingest/pericia (mesma autenticação do ingest).
+ */
+const txt = (n: number) => z.string().max(n);
+export const PericiaArquivoSchema = z.object({
+  caminho: txt(500),
+  tamanho: z.number().int().min(0),
+  modificadoEm: z.string().datetime({ offset: true }).optional(),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  tipo: z.enum(['elf', 'pe', 'script', 'outro']),
+  executavel: z.boolean(),
+});
+export const PericiaSaidaSchema = z.object({
+  destino: txt(64),
+  porta: z.number().int().min(0).max(65535).optional(),
+  protocolo: txt(16).optional(),
+  tentativas: z.number().int().min(1),
+  primeira: z.string().datetime({ offset: true }),
+  ultima: z.string().datetime({ offset: true }),
+});
+export const PericiaInSchema = z.object({
+  alvo: txt(128).min(1),
+  vmid: z.number().int().min(1),
+  sistema: z.enum(['linux', 'windows']),
+  /** Nome do sensor no Radar (alvo dos eventos) para cruzar com quem entrou na janela. */
+  sensor: txt(128).optional(),
+  janelaInicio: z.string().datetime({ offset: true }),
+  janelaFim: z.string().datetime({ offset: true }),
+  arquivos: z.array(PericiaArquivoSchema).max(500).default([]),
+  persistencia: z.array(z.object({ tipo: txt(40), onde: txt(300), conteudo: txt(2000) })).max(200).default([]),
+  processos: z.array(z.object({ pid: z.number().int(), usuario: txt(64).optional(), inicio: txt(40).optional(), comando: txt(1000) })).max(200).default([]),
+  conexoes: z.array(z.object({ local: txt(80).optional(), remoto: txt(80), estado: txt(20).optional(), processo: txt(200).optional() })).max(200).default([]),
+  saidas: z.array(PericiaSaidaSchema).max(500).default([]),
+  amostras: z.array(z.object({ sha256: z.string().regex(/^[a-f0-9]{64}$/), caminho: txt(500), tamanho: z.number().int().min(0), guardada: z.boolean() })).max(50).default([]),
+  observacoes: z.array(txt(500)).max(50).default([]),
+  erros: z.array(txt(500)).max(20).default([]),
+});
+export type PericiaIn = z.infer<typeof PericiaInSchema>;
 
 // ===================== DIÁRIO DO PROJETO =====================
 export * from './diarioProjeto';

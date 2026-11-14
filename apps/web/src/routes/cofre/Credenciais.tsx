@@ -1,4 +1,5 @@
 import { useMemo, useState, type ChangeEvent } from 'react';
+import { isAxiosError } from 'axios';
 import { InputNumber } from 'primereact/inputnumber';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
@@ -15,6 +16,7 @@ import { todayISO } from '@/services/store';
 import { CredencialDrawer } from './CredencialDrawer';
 import { CredencialForm, type Rascunho } from './CredencialForm';
 import { estadoTeste, filtrarCredenciais } from './regras';
+import { explicarFalhaGravar } from './falhas';
 
 /** Metadados para salvar de novo sem perder o segredo (montado campo a campo: nada extra vaza). */
 const paraSalvar = (e: VaultEntry, extra: Partial<VaultEntry> = {}) => ({
@@ -23,7 +25,7 @@ const paraSalvar = (e: VaultEntry, extra: Partial<VaultEntry> = {}) => ({
 });
 
 /** Lista de credenciais do cofre destravado: cartões sem segredo + ficha com revelar/copiar explícitos. */
-export function Credenciais({ onLock }: { onLock: () => void }) {
+export function Credenciais({ onLock, onSessaoExpirou }: { onLock: () => void; onSessaoExpirou: () => void }) {
   const [entries, setEntries] = useState<VaultEntry[]>(() => vault.listEntries());
   const [busca, setBusca] = useState('');
   const [form, setForm] = useState<Rascunho | null>(null);
@@ -35,21 +37,31 @@ export function Credenciais({ onLock }: { onLock: () => void }) {
 
   const refresh = () => setEntries(vault.listEntries());
 
+  /** true = sessão do 2FA venceu (a tela já voltou para o código); senão mostra o motivo. */
+  function falhaAoGravar(e: unknown): boolean {
+    const f = explicarFalhaGravar(e);
+    if (f.expirou) { onSessaoExpirou(); return true; }
+    setAviso({ sev: 'error', text: f.texto });
+    return false;
+  }
+
   async function importarArquivo(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    const texto = await file.text();
     try {
-      const r = await vault.importEntries(await file.text());
+      const r = await vault.importEntries(texto);
       setAviso({ sev: 'info', text: `${r.novas} credencial(is) nova(s), ${r.atualizadas} atualizada(s). Apague o arquivo de origem: ele tem os segredos em texto puro.` });
-    } catch {
-      setAviso({ sev: 'error', text: 'Arquivo inválido: esperado um JSON com a lista de credenciais.' });
+    } catch (err) {
+      if (isAxiosError(err)) { if (falhaAoGravar(err)) return; }
+      else setAviso({ sev: 'error', text: 'Arquivo inválido: esperado um JSON com a lista de credenciais.' });
     }
     refresh();
   }
 
   async function testadaHoje(e: VaultEntry) {
-    await vault.saveEntry(paraSalvar(e, { confirmadoEm: todayISO() }));
+    try { await vault.saveEntry(paraSalvar(e, { confirmadoEm: todayISO() })); } catch (err) { if (falhaAoGravar(err)) return; }
     refresh();
   }
 
@@ -58,7 +70,10 @@ export function Credenciais({ onLock }: { onLock: () => void }) {
       header: 'Excluir credencial',
       message: <span>Excluir <strong>{e.titulo}</strong> do cofre? Não dá para desfazer.<br /><small className="iv-muted">Se ela só parou de funcionar, prefira editar e trocar o segredo.</small></span>,
       icon: 'pi pi-exclamation-triangle', acceptLabel: 'Excluir', rejectLabel: 'Cancelar', acceptClassName: 'p-button-danger',
-      accept: async () => { await vault.removeEntry(e.id); sel.close(); refresh(); },
+      accept: async () => {
+        try { await vault.removeEntry(e.id); } catch (err) { if (falhaAoGravar(err)) return; refresh(); return; }
+        sel.close(); refresh();
+      },
     });
   }
 
@@ -126,7 +141,7 @@ export function Credenciais({ onLock }: { onLock: () => void }) {
           onExcluir={() => excluir(sel.item!)} />
       )}
 
-      {form && <CredencialForm inicial={form} onClose={() => setForm(null)} onSalvo={(titulo) => { setForm(null); refresh(); setAviso({ sev: 'success', text: `"${titulo}" guardada no cofre.` }); }} />}
+      {form && <CredencialForm inicial={form} onClose={() => setForm(null)} onSessaoExpirou={onSessaoExpirou} onSalvo={(titulo) => { setForm(null); refresh(); setAviso({ sev: 'success', text: `"${titulo}" guardada no cofre.` }); }} />}
     </div>
   );
 }

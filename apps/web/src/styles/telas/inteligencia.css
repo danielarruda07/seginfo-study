@@ -107,3 +107,8 @@ button.in-top__item:focus-visible { outline: 2px solid var(--alvoar-teal-600); o
   .in-tops { grid-template-columns: minmax(0, 1fr); }
   .in-timeline__eixo > span:nth-child(2) { display: none; }
 }
+
+/* ficha do evento do Radar: comando/URL longos quebram; lista de técnicas sem marcador */
+.in-quebra { overflow-wrap: anywhere; word-break: break-all; }
+.in-lista-simples { display: grid; gap: .35rem; margin: 0 0 .5rem; padding: 0; list-style: none; font-size: .875rem; }
+.in-atualizado { margin: .35rem 0 0; color: var(--text-color-secondary); font-size: .75rem; text-align: right; }

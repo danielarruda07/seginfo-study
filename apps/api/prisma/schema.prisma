@@ -25,7 +25,11 @@ model Usuario {
   arsenal      ArsenalItem[]
   biblioteca   BiblioItem[]
   cofre        CofreBlob?
+  cofre2fa     Cofre2fa?
+  cofreSessoes CofreSessao[]
+  cofreEventos CofreEvento[]
   ataques      AtaqueEvento[]
+  pericias     Pericia[]
   armazenamento ArmazenamentoConta?
   backups      BackupRegistro[]
   memorias     Memoria[]
@@ -148,29 +152,92 @@ model CofreBlob {
   atualizadoEm DateTime @updatedAt
 }
 
+// Segundo fator (TOTP) do Cofre. `segredo` é cifrado com STORAGE_TOKEN_KEY (AES-256-GCM).
+// Códigos de recuperação guardados só como SHA-256. `ultimoPasso` impede reusar um código.
+model Cofre2fa {
+  usuarioId          String    @id
+  usuario            Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  segredo            String
+  ativo              Boolean   @default(false)
+  ultimoPasso        Int       @default(0)
+  falhas             Int       @default(0)
+  bloqueadoAte       DateTime?
+  codigosRecuperacao String[]  @default([])
+  ativadoEm          DateTime?
+  atualizadoEm       DateTime  @updatedAt
+}
+
+// Sessão curta aberta por um código válido; o token só existe no navegador, aqui fica o hash.
+model CofreSessao {
+  id        String   @id @default(cuid())
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiraEm  DateTime
+  criadoEm  DateTime @default(now())
+
+  @@index([usuarioId])
+}
+
+// Trilha de auditoria do Cofre: aberturas, falhas, bloqueios, leituras e gravações.
+model CofreEvento {
+  id        String   @id @default(cuid())
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tipo      String
+  detalhe   String   @default("")
+  ip        String?
+  agente    String?
+  criadoEm  DateTime @default(now())
+
+  @@index([usuarioId, criadoEm])
+}
+
+// Laudo de um alvo real do honeypot, gerado na VM do Wazuh antes de cada reset (POST /api/ingest/pericia).
+// `dados` guarda o laudo validado (PericiaInSchema); `resumo` traz as contagens para a lista.
+model Pericia {
+  id           String   @id @default(cuid())
+  usuarioId    String
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  alvo         String
+  vmid         Int
+  sistema      String   // linux | windows
+  sensor       String?
+  janelaInicio DateTime
+  janelaFim    DateTime
+  resumo       Json     @default("{}")
+  dados        Json     @default("{}")
+  criadoEm     DateTime @default(now())
+
+  @@unique([usuarioId, alvo, janelaFim])
+  @@index([usuarioId, janelaFim])
+}
+
 // Radar de Ataques: eventos de tentativa de invasão (FortiGate, Windows 4625/4740, honeypot).
 // Nunca guarda senha tentada. `dedupKey` torna a ingestão idempotente (reenvio do coletor).
 model AtaqueEvento {
   id             String   @id @default(cuid())
   usuarioId      String
   usuario        Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  fonte          String   // fortigate | windows | cowrie | opencanary | outro
+  fonte          String   // fortigate | windows | cowrie | opencanary | dionaea | heralding | isca | outro
   ocorridoEm     DateTime
   ipOrigem       String?  // nulo só em lockout (evento 4740 não traz IP)
   paisOrigem     String?
   portaDestino   Int?
   protocolo      String?
   servico        String?
-  acao           String   // login_falha | login_ok | lockout | scan | bloqueio | conexao | comando | outro
+  acao           String   // login_falha | login_ok | lockout | scan | bloqueio | conexao | comando | download | reflexao | outro
   usuarioTentado String?
   senhaTentada   String?  // opcional e sensível: só honeypot e só com RADAR_GUARDAR_SENHAS=true
   alvo           String?
   detalhes       Json     @default("{}")
   dedupKey       String
+  escopo         String   @default("internet") // internet | interno (rede privada ou sem IP); ver src/radarEscopo.ts
   criadoEm       DateTime @default(now())
 
   @@unique([usuarioId, dedupKey])
   @@index([usuarioId, ocorridoEm])
+  @@index([usuarioId, escopo, ocorridoEm])
   @@index([usuarioId, ipOrigem])
   @@index([usuarioId, servico])
 }

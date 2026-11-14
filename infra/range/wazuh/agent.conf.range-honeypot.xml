@@ -1,0 +1,12 @@
+<agent_config>
+  <localfile>
+    <location>/opt/honeypot/cowrie/log/cowrie.json</location>
+    <log_format>json</log_format>
+    <label key="honeypot">cowrie</label>
+  </localfile>
+  <localfile>
+    <location>/opt/honeypot/dionaea/var/lib/dionaea/dionaea.json</location>
+    <log_format>json</log_format>
+    <label key="honeypot">dionaea</label>
+  </localfile>
+</agent_config>
