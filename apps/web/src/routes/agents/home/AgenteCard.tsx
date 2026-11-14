@@ -1,11 +1,12 @@
 import { Link } from '@tanstack/react-router';
+import { ClickCard } from '@/components/ui/ClickCard';
 import { Pill } from '@/components/InfraKit';
 import { toneClass } from '@/theme/status';
 import type { AgenteResumo } from '@/services/agentes';
 import { STATUS_LABEL, STATUS_PILL, etapas, proximoPasso, taxaOk, tempoRelativo, TAXA_MINIMA, type ProximoPasso } from './regras';
 
 /** Link do próximo passo: cada destino abre a tela onde ele se resolve. */
-function LinkPasso({ a, p }: { a: AgenteResumo; p: ProximoPasso }) {
+export function LinkPasso({ a, p }: { a: AgenteResumo; p: ProximoPasso }) {
   const conteudo = (
     <>
       <i className={`pi ${p.icon}`} aria-hidden="true" />
@@ -24,7 +25,7 @@ function LinkPasso({ a, p }: { a: AgenteResumo; p: ProximoPasso }) {
 }
 
 /** Trilha de 4 etapas (projeto → execução → avaliação → ativo). */
-function Etapas({ a }: { a: AgenteResumo }) {
+export function Etapas({ a }: { a: AgenteResumo }) {
   const lista = etapas(a);
   const feitas = lista.filter((e) => e.feita).length;
   return (
@@ -39,15 +40,17 @@ function Etapas({ a }: { a: AgenteResumo }) {
   );
 }
 
-export function AgenteCard({ a }: { a: AgenteResumo }) {
+/** Cartão do agente: inteiro clicável (abre a ficha); título, próximo passo e botões continuam sendo links. */
+export function AgenteCard({ a, onOpen, selected }: { a: AgenteResumo; onOpen: () => void; selected?: boolean }) {
   const passo = proximoPasso(a);
-  const alerta = passo && (passo.tone === 'danger' || passo.tone === 'serious');
+  const alerta = !!passo && (passo.tone === 'danger' || passo.tone === 'serious');
   const taxa = taxaOk(a);
   const st = STATUS_PILL[a.status];
   const arquivado = a.status === 'arquivado';
 
   return (
-    <article className={`iv-card ag-card ${alerta ? toneClass(passo.tone) : ''}`} data-alert={alerta || undefined} data-arquivado={arquivado || undefined}>
+    <ClickCard onOpen={onOpen} label={`Abrir a ficha de ${a.nome}`} tone={alerta ? passo.tone : undefined} selected={selected}
+      className={`ag-card${arquivado ? ' ag-card--arquivado' : ''}`}>
       <header className="ag-card__topo">
         <span className="ag-card__icone" aria-hidden="true"><i className="pi pi-sparkles" /></span>
         <div className="ag-card__titulo">
@@ -92,6 +95,6 @@ export function AgenteCard({ a }: { a: AgenteResumo }) {
           </Link>
         )}
       </footer>
-    </article>
+    </ClickCard>
   );
 }

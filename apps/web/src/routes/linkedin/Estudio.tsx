@@ -11,8 +11,11 @@ import { POST_TEMPLATES } from '@/data/postTemplates';
 import { listTopicos } from '@/services/catalog';
 import {
   checklistPost, criarRascunho, editarRascunho, FORMATOS, gerarRascunho, getEstrategia, listRascunhos,
-  mensagemErro, removerRascunho, riscosDePublicacao, statusIA, type RascunhoIA,
+  mensagemErro, removerRascunho, riscosDePublicacao, statusIA, type Rascunho, type RascunhoIA,
 } from '@/services/linkedin';
+import { confirmDialog } from 'primereact/confirmdialog';
+import { Rascunhos } from './Rascunhos';
+import { tomChecklist } from './regras';
 import { buscarMemorias } from '@/services/cerebro';
 import { useInvalidate } from '@/hooks/useInvalidate';
 import { copyToClipboard } from '@/lib/clipboard';
@@ -125,9 +128,20 @@ export function Estudio({ pedido, onPedidoConsumido, onPublicado }: {
     }
   }
 
-  async function excluir(id: string) {
-    try { await removerRascunho(id); invalidate('linkedin-rascunhos'); }
-    catch (e) { setErro(mensagemErro(e)); }
+  function excluir(r: Rascunho) {
+    confirmDialog({
+      header: 'Excluir rascunho', message: <span>Excluir o rascunho <strong>{r.titulo}</strong>? Não dá para desfazer.</span>,
+      icon: 'pi pi-exclamation-triangle', acceptLabel: 'Excluir', rejectLabel: 'Cancelar', acceptClassName: 'p-button-danger',
+      accept: async () => {
+        try { await removerRascunho(r.id); if (editingId === r.id) limpar(); invalidate('linkedin-rascunhos'); }
+        catch (e) { setErro(mensagemErro(e)); }
+      },
+    });
+  }
+
+  function editar(p: Rascunho) {
+    setEditingId(p.id); setTitulo(p.titulo); setGancho(p.gancho); setCorpo(p.corpo); setTopicoId(p.topicoId ?? undefined); setSugestao(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   const checklist = checklistPost(gancho, corpo);
@@ -142,29 +156,29 @@ export function Estudio({ pedido, onPedidoConsumido, onPublicado }: {
       </StatusStrip>
 
       <section className="iv-card iv-mt">
-        <div className="iv-row iv-wrap" style={{ justifyContent: 'space-between' }}>
-          <h3 style={{ margin: 0 }}><i className="pi pi-sparkles" /> Rascunho com IA</h3>
-          <Pill label={iaPronta ? 'IA pronta' : 'IA não configurada'} color={iaPronta ? '#16a34a' : '#94a3b8'} />
+        <div className="ca-toolbar">
+          <h3 className="ca-h3"><i className="pi pi-sparkles" aria-hidden="true" /> Rascunho com IA</h3>
+          <Pill label={iaPronta ? 'IA pronta' : 'IA não configurada'} tone={iaPronta ? 'ok' : 'muted'} />
         </div>
         {ia && !iaPronta && (
-          <p className="iv-muted" style={{ fontSize: '.85rem' }}>Defina o Secret <code>ANTHROPIC_API_KEY</code> na API no Coolify (veja a aba Estratégia & IA).</p>
+          <p className="iv-muted ca-small">Defina o Secret <code>ANTHROPIC_API_KEY</code> na API no Coolify (veja a aba Estratégia & IA).</p>
         )}
         <div className="iv-col iv-gap iv-mt">
           <InputTextarea value={briefing} onChange={(e) => setBriefing(e.target.value)} rows={3} autoResize
-            placeholder="Sobre o que é o post? Ex.: o que aprendi montando um honeypot e analisando as primeiras tentativas de login." />
+            aria-label="Briefing do post" placeholder="Sobre o que é o post? Ex.: o que aprendi montando um honeypot e analisando as primeiras tentativas de login." />
           <div className="iv-row iv-wrap iv-gap">
-            <Dropdown value={pilar} options={estrategia?.pilares ?? []} onChange={(e) => setPilar(e.value)} placeholder="Pilar (a IA escolhe)" showClear style={{ minWidth: 240 }} />
-            <Dropdown value={formato} options={[...FORMATOS]} onChange={(e) => setFormato(e.value)} style={{ minWidth: 140 }} />
-            <label className="iv-row" style={{ gap: '.4rem', fontSize: '.88rem' }}>
+            <Dropdown value={pilar} options={estrategia?.pilares ?? []} onChange={(e) => setPilar(e.value)} placeholder="Pilar (a IA escolhe)" ariaLabel="Pilar" showClear style={{ minWidth: 240 }} />
+            <Dropdown value={formato} options={[...FORMATOS]} onChange={(e) => setFormato(e.value)} ariaLabel="Formato" style={{ minWidth: 140 }} />
+            <label className="iv-row ca-small">
               <Checkbox checked={incluirDiario} onChange={(e) => setIncluirDiario(!!e.checked)} />
               Usar o diário do projeto (posts sobre a SegInfo)
             </label>
             <Button label={gerando ? 'Gerando...' : 'Gerar rascunho'} icon="pi pi-sparkles" loading={gerando} disabled={!iaPronta || briefing.trim().length < 5} onClick={gerar} />
           </div>
-          {erroIA && <Message severity="error" text={erroIA} style={{ width: '100%' }} />}
+          {erroIA && <Message severity="error" text={erroIA} className="ca-w100" />}
           {sugestao && (
-            <Message severity="info" style={{ width: '100%' }} content={
-              <div style={{ fontSize: '.88rem' }}>
+            <Message severity="info" className="ca-w100" content={
+              <div className="ca-small">
                 <div><strong>Por que funciona:</strong> {sugestao.porQueFunciona}</div>
                 {sugestao.dadosParaConfirmar.length > 0 && <div className="iv-mt"><strong>Confira antes de publicar:</strong> {sugestao.dadosParaConfirmar.join(' · ')}</div>}
                 <div className="iv-muted iv-mt">Contexto usado: estratégia, estudo, histórico de posts{incluirDiario ? ', diário do projeto' : ''}{sugestao.notasUsadas ? `, ${sugestao.notasUsadas} notas do Segundo Cérebro` : ''}. O rascunho já está no editor abaixo.</div>
@@ -176,46 +190,46 @@ export function Estudio({ pedido, onPedidoConsumido, onPublicado }: {
 
       <div className="posts-workspace iv-mt">
         <section className="iv-card posts-editor">
-          <div className="iv-row" style={{ justifyContent: 'space-between', gap: '1rem' }}>
-            <h3 style={{ margin: 0 }}>{editingId ? 'Editar rascunho' : 'Editor'}</h3>
+          <div className="ca-toolbar">
+            <h3 className="ca-h3">{editingId ? 'Editar rascunho' : 'Editor'}</h3>
             {(editingId || titulo || corpo) && <Button label="Limpar" text onClick={limpar} />}
           </div>
           <div className="posts-title-row iv-mt">
-            <InputText value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título interno do post" />
-            <Dropdown value={topicoId} options={topicOptions} onChange={(e) => setTopicoId(e.value)} placeholder="Tópico relacionado (opcional)" showClear filter />
+            <InputText value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título interno do post" aria-label="Título interno do post" />
+            <Dropdown value={topicoId} options={topicOptions} onChange={(e) => setTopicoId(e.value)} placeholder="Tópico relacionado (opcional)" ariaLabel="Tópico relacionado" showClear filter />
           </div>
-          <InputText value={gancho} onChange={(e) => setGancho(e.target.value)} placeholder="Gancho (primeira linha, o que prende a atenção)" />
-          <InputTextarea value={corpo} onChange={(e) => setCorpo(e.target.value)} rows={12} autoResize placeholder="Desenvolva a ideia, o que aprendeu e como aplicou..." />
+          <InputText value={gancho} onChange={(e) => setGancho(e.target.value)} placeholder="Gancho (primeira linha, o que prende a atenção)" aria-label="Gancho" />
+          <InputTextarea value={corpo} onChange={(e) => setCorpo(e.target.value)} rows={12} autoResize placeholder="Desenvolva a ideia, o que aprendeu e como aplicou..." aria-label="Corpo do post" />
           <div className="iv-row iv-wrap">
             <Button label={editingId ? 'Atualizar rascunho' : 'Salvar rascunho'} icon="pi pi-save" onClick={salvar} disabled={!titulo.trim()} />
             <Button label="Copiar texto" icon="pi pi-copy" outlined onClick={() => copiar(gancho, corpo)} />
           </div>
-          {erro && <Message severity="error" text={erro} style={{ width: '100%' }} />}
+          {erro && <Message severity="error" text={erro} className="ca-w100" />}
         </section>
 
         <aside className="posts-aside">
           <section className="iv-card">
-            <div className="iv-row" style={{ justifyContent: 'space-between' }}>
-              <h3 style={{ margin: 0 }}>Checklist do post</h3>
-              <Pill label={`${nota}/${checklist.length}`} color={nota >= 6 ? '#16a34a' : nota >= 4 ? '#f59e0b' : '#ef4444'} />
+            <div className="ca-toolbar">
+              <h3 className="ca-h3">Checklist do post</h3>
+              <Pill label={`${nota}/${checklist.length}`} tone={tomChecklist(nota)} />
             </div>
             <ul className="linkedin-checklist">
               {checklist.map((c) => (
                 <li key={c.id} title={c.dica}>
-                  <i className={`pi ${c.ok ? 'pi-check-circle' : 'pi-circle'}`} style={{ color: c.ok ? '#16a34a' : 'var(--text-color-secondary)' }} aria-hidden="true" />
+                  <i className={`pi ${c.ok ? 'pi-check-circle ca-ok' : 'pi-circle iv-muted'}`} aria-hidden="true" />
                   <span><strong>{c.label}</strong>{!c.ok && <span className="iv-muted"> — {c.dica}</span>}</span>
                 </li>
               ))}
             </ul>
-            {riscos.length > 0 && <Message severity="warn" style={{ width: '100%' }} text={`Pode expor: ${riscos.join(', ')}.`} />}
+            {riscos.length > 0 && <Message severity="warn" className="ca-w100" text={`Pode expor: ${riscos.join(', ')}.`} />}
           </section>
           <section className="iv-card posts-preview" aria-live="polite">
-            <div className="iv-row" style={{ justifyContent: 'space-between' }}><h3 style={{ margin: 0 }}>Prévia</h3><Pill label="LinkedIn" /></div>
+            <div className="ca-toolbar"><h3 className="ca-h3">Prévia</h3><Pill label="LinkedIn" /></div>
             <strong>{gancho || 'Seu gancho aparece aqui'}</strong>
-            <p className="iv-muted" style={{ whiteSpace: 'pre-wrap', marginBottom: 0 }}>{corpo || 'A prévia acompanha o texto enquanto você escreve.'}</p>
+            <p className="iv-muted ca-pre ca-mb0">{corpo || 'A prévia acompanha o texto enquanto você escreve.'}</p>
           </section>
           <section className="iv-card">
-            <h3 style={{ marginTop: 0 }}>Modelos</h3>
+            <h3 className="ca-h3 ca-mb">Modelos</h3>
             <div className="posts-template-list">
               {POST_TEMPLATES.map((t) => <Chip key={t.id} label={t.titulo} icon="pi-copy" onClick={() => aplicarTemplate(t.id)} />)}
             </div>
@@ -223,29 +237,7 @@ export function Estudio({ pedido, onPedidoConsumido, onPublicado }: {
         </aside>
       </div>
 
-      <h3 className="iv-mt">Rascunhos</h3>
-      <div className="posts-drafts">
-        {rascunhos.length === 0 && <p className="iv-muted">Nenhum rascunho salvo ainda.</p>}
-        {rascunhos.map((p) => (
-          <div key={p.id} className="iv-card">
-            <div className="iv-row" style={{ justifyContent: 'space-between' }}>
-              <strong>{p.titulo}</strong>
-              <div className="iv-row">
-                {p.publicado && <Pill label="Publicado" color="#16a34a" />}
-                <Button icon="pi pi-pencil" text tooltip="Editar" aria-label={`Editar ${p.titulo}`}
-                  onClick={() => { setEditingId(p.id); setTitulo(p.titulo); setGancho(p.gancho); setCorpo(p.corpo); setTopicoId(p.topicoId ?? undefined); setSugestao(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
-                <Button icon="pi pi-copy" text tooltip="Copiar" aria-label="Copiar" onClick={() => copiar(p.gancho, p.corpo)} />
-                {!p.publicado && (
-                  <Button icon="pi pi-send" text tooltip="Publiquei — registrar o post" aria-label="Registrar publicação" onClick={() => marcarPublicado(p)} />
-                )}
-                <Button icon="pi pi-trash" text severity="danger" aria-label="Excluir" onClick={() => excluir(p.id)} />
-              </div>
-            </div>
-            <p style={{ fontWeight: 600, margin: '.5rem 0 .25rem' }}>{p.gancho}</p>
-            <p className="iv-muted" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{p.corpo}</p>
-          </div>
-        ))}
-      </div>
+      <Rascunhos rascunhos={rascunhos} onEditar={editar} onCopiar={(r) => copiar(r.gancho, r.corpo)} onMarcarPublicado={marcarPublicado} onExcluir={excluir} />
     </div>
   );
 }

@@ -90,7 +90,7 @@
 .tf-tipo__n { flex: none; min-width: 1.6rem; text-align: right; font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .iv-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .6rem; }
 .iv-kpi {
-  --tone: var(--text-color-secondary);
+  /* sem --tone padrão: quem define é a classe tone-* (tokens.css carrega antes e perderia) */
   display: flex; flex-direction: column; gap: .15rem;
   min-width: 0; width: 100%;
   padding: .55rem .7rem;
@@ -109,7 +109,7 @@ button.iv-kpi:hover { border-color: color-mix(in srgb, var(--alvoar-navy) 30%, v
 .iv-kpi[data-alert='true'] .iv-kpi__value { color: var(--tone); }
 .iv-kpi[aria-pressed='true'] {
   box-shadow: inset 0 0 0 2px var(--tone, var(--primary-color));
-  background: color-mix(in srgb, var(--tone) 8%, var(--surface-card));
+  background: color-mix(in srgb, var(--tone, var(--primary-color)) 8%, var(--surface-card));
 }
 .iv-kpi:not([data-alert='true'])[aria-pressed='true'] { --tone: var(--primary-color); }
 .iv-kpi__label { display: flex; align-items: center; gap: .35rem; color: var(--text-color-secondary); font-size: .75rem; }
@@ -260,3 +260,8 @@ button.iv-kpi:hover { border-color: color-mix(in srgb, var(--alvoar-navy) 30%, v
 
 /* ficha lateral mais larga para conteúdo denso */
 .iv-drawer--wide.p-sidebar { width: min(100vw, 56rem); }
+
+/* em grade, o espaçamento vem do gap: o margin-top de .iv-card + .iv-card desalinharia o 2º cartão */
+:is(.grid-cards, .ag-grid) > .iv-card + .iv-card { margin-top: 0; }
+/* cartões clicáveis vivem em grades com gap: sem margem herdada de .iv-card + .iv-card */
+.iv-card--click + .iv-card--click { margin-top: 0; }

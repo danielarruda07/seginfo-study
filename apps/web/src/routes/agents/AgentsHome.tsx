@@ -15,6 +15,9 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { listAgentes, createAgente, erroApi, getRuntime } from '@/services/agentes';
 import type { ModeloAgente } from '@/data/agentesModelos';
 import { AgenteCard } from './home/AgenteCard';
+import { AgenteFicha } from './ficha/AgenteFicha';
+import { useDrawerSelection } from '@/hooks/useDrawerSelection';
+import '@/styles/telas/agents.css';
 import { EM_BRANCO, ModelosGaleria } from './home/ModelosGaleria';
 import { STATUS_LABEL, contarPorStatus, filtrarAgentes, ordenarAgentes, precisaDeVoce, type FiltroStatus } from './home/regras';
 
@@ -65,6 +68,8 @@ export function AgentsHome() {
     () => ordenarAgentes(filtrarAgentes(agentes, { status, busca: buscaDebounced, soPendentes })),
     [agentes, status, buscaDebounced, soPendentes],
   );
+
+  const sel = useDrawerSelection(visiveis);
 
   const emUso = agentes.filter((a) => a.status !== 'arquivado');
   const pendentes = emUso.filter(precisaDeVoce).length;
@@ -170,7 +175,7 @@ export function AgentsHome() {
           ]} />
 
           {visiveis.length > 0
-            ? <div className="ag-grid">{visiveis.map((a) => <AgenteCard key={a.id} a={a} />)}</div>
+            ? <div className="ag-grid">{visiveis.map((a) => <AgenteCard key={a.id} a={a} onOpen={() => sel.open(a.id)} selected={sel.isOpen(a.id)} />)}</div>
             : (
               <EmptyState icon="pi-filter-slash" title="Nenhum agente nesta visão"
                 text={soPendentes ? 'Nada esperando por você. Bom sinal.' : 'Mude o filtro ou a busca.'}
@@ -178,6 +183,8 @@ export function AgentsHome() {
             )}
         </>
       )}
+
+      {sel.item && <AgenteFicha a={sel.item} nav={sel.nav} />}
 
       <Dialog header="Novo agente" visible={dialogo} onHide={() => !criando && setDialogo(false)}
         style={{ width: 'min(96vw, 980px)' }} dismissableMask={!criando} closable={!criando}>

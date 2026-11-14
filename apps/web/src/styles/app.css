@@ -239,10 +239,10 @@
 .ag-etapa__rotulo { color: var(--text-color-secondary); font-size: .68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ag-etapa[data-feita='true'] .ag-etapa__rotulo { color: var(--text-color); font-weight: 600; }
 
-.ag-passo { --tone: var(--tone-info); display: flex; align-items: center; gap: .6rem; padding: .55rem .7rem; border: 1px solid color-mix(in srgb, var(--tone) 30%, var(--surface-border)); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--tone) 6%, var(--surface-card)); color: var(--text-color); text-decoration: none; transition: background .15s, border-color .15s; }
-.ag-passo:hover { border-color: var(--tone); background: color-mix(in srgb, var(--tone) 11%, var(--surface-card)); }
+.ag-passo { display: flex; align-items: center; gap: .6rem; padding: .55rem .7rem; border: 1px solid color-mix(in srgb, var(--tone, var(--tone-info)) 30%, var(--surface-border)); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--tone, var(--tone-info)) 6%, var(--surface-card)); color: var(--text-color); text-decoration: none; transition: background .15s, border-color .15s; }
+.ag-passo:hover { border-color: var(--tone, var(--tone-info)); background: color-mix(in srgb, var(--tone, var(--tone-info)) 11%, var(--surface-card)); }
 .ag-passo:focus-visible, .ag-btn:focus-visible, .ag-card__titulo h3 a:focus-visible { outline: 2px solid var(--alvoar-teal-600); outline-offset: 2px; }
-.ag-passo > .pi:first-child { color: var(--tone); }
+.ag-passo > .pi:first-child { color: var(--tone, var(--tone-info)); }
 .ag-passo__texto { display: grid; flex: 1; min-width: 0; line-height: 1.3; }
 .ag-passo__texto strong { font-size: .85rem; }
 .ag-passo__texto small { color: var(--text-color-secondary); font-size: .75rem; }

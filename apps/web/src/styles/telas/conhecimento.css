@@ -1,0 +1,92 @@
+/* Telas de Conhecimento: Biblioteca, Segundo Cérebro e Arsenal IA. Prefixo co-; só variáveis de tokens.css. */
+
+/* utilitários locais */
+.co-w100 { width: 100%; }
+.co-grow { flex: 1 1 16rem; min-width: 0; }
+.co-min0 { min-width: 0; }
+.co-gap-sm { gap: .5rem; }
+.co-gap-xs { gap: .15rem; }
+.co-label { color: var(--text-color-secondary); font-size: .8rem; }
+.co-nota { margin: 0; color: var(--text-color-secondary); font-size: .8rem; }
+.co-vazio { margin: 0; color: var(--text-color-secondary); font-size: .875rem; }
+.co-paragrafo { margin: 0; font-size: .9rem; line-height: 1.55; }
+.co-upload { cursor: pointer; }
+
+/* linha "campo + botões" (adicionar URL, busca, captura) */
+.co-add__linha { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+
+/* chips de filtro abaixo da toolbar */
+.co-chips { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; margin: .25rem 0 .75rem; }
+
+/* busca + captura lado a lado no desktop */
+.co-duo { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+
+/* cartões */
+.co-grid { margin-top: .5rem; }
+.co-grid > .iv-card + .iv-card, .co-duo > .iv-card + .iv-card, .co-trecho + .co-trecho { margin-top: 0; } /* grid já espaça */
+.co-card { display: flex; flex-direction: column; gap: .35rem; min-height: 11rem; }
+.co-card__top { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 2rem; }
+.co-card__titulo {
+  margin: 0; font-size: 1rem; font-weight: 600; line-height: 1.3; color: var(--text-color);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+}
+.co-card__sub { color: var(--text-color-secondary); font-size: .78rem; overflow-wrap: anywhere; }
+.co-card__resumo {
+  margin: 0; color: var(--text-color-secondary); font-size: .85rem; line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.co-card__rodape { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; margin-top: auto; padding-top: .35rem; }
+.co-card__icone { color: var(--text-color-secondary); font-size: .8rem; margin-left: auto; }
+.co-tag { color: var(--text-color-secondary); font-size: .75rem; white-space: nowrap; }
+.co-tipo { display: inline-flex; align-items: center; gap: .35rem; color: var(--text-color-secondary); font-size: .8rem; font-weight: 600; }
+.co-fav.p-button .p-button-icon { color: var(--tone-warning); }
+.co-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* trechos da busca do Segundo Cérebro */
+.co-trecho { padding: .75rem .9rem; }
+.co-trecho__texto { margin: .35rem 0 0; font-size: .875rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ficha lateral */
+.co-sec-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.co-sec-head .iv-section-label { margin: 0; }
+.co-url { overflow-wrap: anywhere; font-size: .85rem; }
+.co-nowrap-min { min-width: 0; flex-wrap: nowrap; }
+.co-conteudo {
+  max-height: 28rem; overflow: auto; padding: .75rem 1rem; font-size: .9rem; line-height: 1.55;
+  border: 1px solid var(--surface-border); border-radius: var(--radius-sm); background: var(--surface-ground);
+}
+.co-conteudo > :first-child { margin-top: 0; }
+.co-codigo {
+  max-height: 28rem; overflow: auto; margin: 0; padding: .75rem 1rem; white-space: pre-wrap; overflow-wrap: anywhere;
+  font-size: .8rem; line-height: 1.5; border: 1px solid var(--surface-border); border-radius: var(--radius-sm);
+  background: var(--surface-ground); color: var(--text-color);
+}
+.co-details summary { cursor: pointer; color: var(--primary-color); font-size: .875rem; }
+.co-details summary:focus-visible { outline: 2px solid var(--alvoar-teal-600); outline-offset: 2px; }
+.co-texto { max-height: 20rem; overflow: auto; margin-top: .5rem; white-space: pre-wrap; font-size: .85rem; line-height: 1.5; color: var(--text-color-secondary); }
+
+/* listas de relacionados / agentes / artefatos */
+.co-rel { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+.co-rel__btn {
+  display: grid; gap: .1rem; width: 100%; padding: .5rem .7rem; text-align: left; font: inherit; color: inherit; text-decoration: none;
+  border: 1px solid var(--surface-border); border-radius: var(--radius-sm); background: var(--surface-card); cursor: pointer;
+}
+.co-rel__btn:hover { background: var(--surface-hover); }
+.co-rel__btn:focus-visible { outline: 2px solid var(--alvoar-teal-600); outline-offset: 2px; }
+.co-rel__titulo { font-size: .875rem; font-weight: 600; color: var(--text-color); overflow-wrap: anywhere; }
+.co-rel__sub { font-size: .75rem; color: var(--text-color-secondary); overflow-wrap: anywhere; }
+.co-artefato {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap;
+  padding: .45rem .7rem; border: 1px solid var(--surface-border); border-radius: var(--radius-sm);
+}
+.co-artefato__info { display: grid; gap: .1rem; min-width: 0; flex: 1 1 12rem; }
+.co-iframe { width: 100%; height: 22rem; border: 1px solid var(--surface-border); border-radius: var(--radius-sm); background: var(--surface-card); }
+
+@media (max-width: 900px) {
+  .co-duo { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .co-card { min-height: 0; }
+  .co-add__linha > .p-button { flex: 1 1 auto; }
+  .co-conteudo, .co-codigo { max-height: none; }
+}

@@ -1,60 +1,30 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Message } from 'primereact/message';
-import { InputText } from 'primereact/inputtext';
-import { Dropdown } from 'primereact/dropdown';
-import { Sidebar } from 'primereact/sidebar';
+import { Button } from 'primereact/button';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
-import { DetailHeader, DetailLayout, DetailSection } from '@/components/ui/Detail';
-import { Kpi, StatusStrip, Chip, Pill, Bar } from '@/components/InfraKit';
-import { getRadarResumo, getRadarEventos, type RadarEvento } from '@/services/radar';
+import { Kpi, StatusStrip, Chip, EmptyState } from '@/components/InfraKit';
+import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import { useDebounce } from '@/hooks/useDebounce';
+import { getRadarResumo, getRadarEventos, type RadarResumo, type RadarEventosFiltro } from '@/services/radar';
+import { calcularCobertura } from '@/services/attack';
+import { FONTE_LABEL, acaoMeta } from './inteligencia/regras';
+import { TopList, type TopItem } from './inteligencia/radar/TopList';
+import { EventosTabela, ROWS, type FiltrosUi } from './inteligencia/radar/EventosTabela';
+import { EventoDrawer } from './inteligencia/radar/EventoDrawer';
+import { IndicadorDrawer, type Dimensao } from './inteligencia/radar/IndicadorDrawer';
+import { TecnicaDrawer } from './inteligencia/TecnicaDrawer';
+import { Timeline } from './inteligencia/radar/Timeline';
+import '@/styles/telas/inteligencia.css';
 
-const ROWS = 15;
 const DIAS_OPTS = [1, 7, 30];
-const FONTE_OPTS = [
-  { label: 'FortiGate', value: 'fortigate' }, { label: 'Windows', value: 'windows' },
-  { label: 'Cowrie', value: 'cowrie' }, { label: 'OpenCanary', value: 'opencanary' }, { label: 'Outro', value: 'outro' },
-];
-const ACAO_OPTS = ['login_falha', 'login_ok', 'lockout', 'scan', 'bloqueio', 'conexao', 'comando', 'outro'].map((value) => ({ label: value.replace('_', ' '), value }));
-const FONTE_LABEL: Record<string, string> = { fortigate: 'FortiGate', windows: 'Windows', cowrie: 'Cowrie', opencanary: 'OpenCanary', outro: 'Outro' };
-const ACAO_COLOR: Record<string, string> = {
-  login_falha: '#f59e0b', lockout: '#ef4444', login_ok: '#dc2626', scan: '#0ea5e9',
-  bloqueio: '#64748b', conexao: '#64748b', comando: '#7c3aed', outro: '#64748b',
-};
+const periodoLabel = (d: number) => (d === 1 ? '24 h' : `${d} dias`);
 
-/** Lista de "top N" com barras proporcionais ao maior valor. */
-function TopList({ titulo, itens, onPick }: {
-  titulo: string;
-  itens: { rotulo: string; extra?: string | null; total: number }[];
-  onPick?: (rotulo: string) => void;
-}) {
-  const max = Math.max(1, ...itens.map((i) => i.total));
-  return (
-    <div className="iv-card">
-      <h4 style={{ margin: '0 0 .6rem' }}>{titulo}</h4>
-      {itens.length === 0 && <p className="iv-muted" style={{ margin: 0, fontSize: '.85rem' }}>Sem dados no período.</p>}
-      <div className="iv-col">
-        {itens.map((i) => {
-          const conteudo = <>
-            <div className="iv-row" style={{ justifyContent: 'space-between', fontSize: '.85rem' }}>
-              <span style={{ fontFamily: 'monospace' }}>{i.rotulo}{i.extra ? ` · ${i.extra}` : ''}</span>
-              <strong>{i.total}</strong>
-            </div>
-            <Bar pct={(i.total / max) * 100} />
-          </>;
-          return onPick
-            ? <div key={i.rotulo} className="radar-top-item" role="button" tabIndex={0} onClick={() => onPick(i.rotulo)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(i.rotulo); } }}>{conteudo}</div>
-            : <div key={i.rotulo}>{conteudo}</div>;
-        })}
-      </div>
-    </div>
-  );
+function indicadores(r: RadarResumo | undefined, dim: Dimensao): TopItem[] {
+  if (!r) return [];
+  if (dim === 'ip') return r.topIps.map((i) => ({ id: `ip:${i.ip}`, rotulo: i.ip, extra: i.pais, total: i.total }));
+  const src = dim === 'servico' ? r.topServicos : dim === 'usuario' ? r.topUsuarios : r.topPaises;
+  return src.map((i) => ({ id: `${dim}:${i.nome}`, rotulo: i.nome, total: i.total }));
 }
 
 export function Radar() {
@@ -62,169 +32,124 @@ export function Radar() {
   const [ip, setIp] = useState<string | undefined>();
   const [servico, setServico] = useState<string | undefined>();
   const [acao, setAcao] = useState<string | undefined>();
-  const [fonte, setFonte] = useState<'fortigate' | 'windows' | 'cowrie' | 'opencanary' | 'outro' | undefined>();
+  const [fonte, setFonte] = useState<string | undefined>();
   const [pais, setPais] = useState<string | undefined>();
   const [qRaw, setQRaw] = useState('');
   const q = useDebounce(qRaw, 300);
   const [page, setPage] = useState(0);
-  const [selected, setSelected] = useState<RadarEvento | null>(null);
 
-  const resumo = useQuery({ queryKey: ['radar-resumo', dias], queryFn: () => getRadarResumo(dias) });
-
-  const filtros = useMemo(() => ({ ip, servico, acao, fonte, pais, q: q || undefined, page, limit: ROWS }), [ip, servico, acao, fonte, pais, q, page]);
-  const eventos = useQuery({ queryKey: ['radar-eventos', filtros], queryFn: () => getRadarEventos(filtros) });
-
-  // qualquer mudança de filtro volta para a página 1
-  const setF = <T,>(set: (v: T | undefined) => void) => (v: T | undefined) => { set(v); setPage(0); };
-  const pickIp = setF(setIp);
-  const pickServico = setF(setServico);
-  const pickAcao = setF(setAcao);
-  const pickFonte = setF(setFonte);
-  const pickPais = setF(setPais);
-  const pickBusca = (value: string) => { setQRaw(value); setPage(0); };
-
+  const resumo = useQuery({ queryKey: ['radar-resumo', dias], queryFn: () => getRadarResumo(dias), retry: false });
+  const filtros = useMemo(() => ({ ip, servico, acao, fonte: fonte as RadarEventosFiltro['fonte'], pais, q: q || undefined, page, limit: ROWS }), [ip, servico, acao, fonte, pais, q, page]);
+  const eventos = useQuery({ queryKey: ['radar-eventos', filtros], queryFn: () => getRadarEventos(filtros), retry: false });
   const r = resumo.data;
-  const tone = !r ? 'ok' : r.lockouts > 0 ? 'crit' : r.total > 0 ? 'warn' : 'ok';
 
-  const activeFilters = [
-    ip && { key: 'ip', label: `IP: ${ip}`, onRemove: () => pickIp(undefined) },
-    servico && { key: 'srv', label: `Serviço: ${servico}`, onRemove: () => pickServico(undefined) },
-    acao && { key: 'acao', label: `Ação: ${acao}`, onRemove: () => pickAcao(undefined) },
-    fonte && { key: 'fonte', label: `Fonte: ${FONTE_LABEL[fonte]}`, onRemove: () => pickFonte(undefined) },
-    pais && { key: 'pais', label: `País: ${pais}`, onRemove: () => pickPais(undefined) },
-    q && { key: 'q', label: `Busca: ${q}`, onRemove: () => pickBusca('') },
-  ].filter(Boolean) as { key: string; label: string; onRemove: () => void }[];
+  // três fichas possíveis (evento, indicador, técnica); abrir uma fecha as outras
+  const evSel = useDrawerSelection(eventos.data?.items ?? []);
+  const [dim, setDim] = useState<Dimensao>('ip');
+  const listaDim = useMemo(() => indicadores(r, dim), [r, dim]);
+  const indSel = useDrawerSelection(listaDim);
+  const [versao, setVersao] = useState(0); // recalcula após marcar detecção
+  const cobertura = useMemo(() => {
+    const obs = Object.fromEntries((r?.mitre ?? []).map((m) => [m.id, m.eventos]));
+    const ordem = (r?.mitre ?? []).map((m) => m.id);
+    return calcularCobertura(obs).filter((t) => ordem.includes(t.id)).sort((a, b) => ordem.indexOf(a.id) - ordem.indexOf(b.id));
+  }, [r, versao]);
+  const tecSel = useDrawerSelection(cobertura);
+  const fecharTudo = () => { evSel.close(); indSel.close(); tecSel.close(); };
+  const abrirIndicador = (d: Dimensao) => (id: string) => { fecharTudo(); setDim(d); indSel.open(id); };
 
-  const maxTl = Math.max(1, ...(r?.timeline.map((t) => t.total) ?? [1]));
+  const reset = <T,>(set: (v: T | undefined) => void) => (v: T | undefined) => { set(v); setPage(0); };
+  const limpar = useCallback(() => { setIp(undefined); setServico(undefined); setAcao(undefined); setFonte(undefined); setPais(undefined); setQRaw(''); setPage(0); }, []);
+  const filtrarPor = (d: Dimensao, valor: string) => {
+    fecharTudo(); limpar();
+    if (d === 'ip') setIp(valor); else if (d === 'servico') setServico(valor); else if (d === 'pais') setPais(valor); else setQRaw(valor);
+    document.getElementById('radar-eventos-titulo')?.scrollIntoView({ behavior: 'smooth' });
+  };
+  const alternarAcao = (a: string) => reset(setAcao)(acao === a ? undefined : a);
+
+  const f: FiltrosUi = {
+    busca: qRaw, setBusca: (v) => { setQRaw(v); setPage(0); },
+    fonte, setFonte: reset(setFonte), acao, setAcao: reset(setAcao), pais, setPais: reset(setPais),
+    paises: r?.topPaises ?? [], limpar,
+    chips: [
+      ip && { key: 'ip', label: `IP: ${ip}`, onRemove: () => reset(setIp)(undefined) },
+      servico && { key: 'srv', label: `Serviço: ${servico}`, onRemove: () => reset(setServico)(undefined) },
+      acao && { key: 'acao', label: `Ação: ${acaoMeta(acao).label}`, onRemove: () => reset(setAcao)(undefined) },
+      fonte && { key: 'fonte', label: `Fonte: ${FONTE_LABEL[fonte] ?? fonte}`, onRemove: () => reset(setFonte)(undefined) },
+      pais && { key: 'pais', label: `País: ${pais}`, onRemove: () => reset(setPais)(undefined) },
+      q && { key: 'q', label: `Busca: ${q}`, onRemove: () => f.setBusca('') },
+    ].filter((c): c is { key: string; label: string; onRemove: () => void } => Boolean(c)),
+  };
+
+  const loginsOk = r?.porAcao.find((a) => a.nome === 'login_ok')?.total ?? 0;
+  const periodo = periodoLabel(dias);
+  const v = (n: number | undefined) => (resumo.isLoading ? '…' : n ?? 0);
 
   return (
     <div>
-      <PageHeader
-        title="Radar de Ataques"
-        subtitle="Tentativas de invasão contra o seu ambiente: o que chega, de onde e o que tentam."
-      />
+      <PageHeader title="Radar de Ataques" subtitle="Tentativas de invasão contra o seu ambiente: o que chega, de onde e o que tentam."
+        actions={<span className="in-periodo" role="group" aria-label="Período">
+          {DIAS_OPTS.map((d) => <Chip key={d} label={periodoLabel(d)} active={dias === d} onClick={() => { setDias(d); fecharTudo(); }} />)}
+        </span>} />
 
-      {(resumo.isError || eventos.isError) && (
-        <Message severity="warn" style={{ width: '100%', marginBottom: '1rem' }}
-          text="API ou banco indisponível. O Radar precisa do servidor (apps/api + PostgreSQL) e não funciona só com dados locais." />
-      )}
-
-      <StatusStrip tone={tone} icon="pi-eye">
-        {r
-          ? <>Últimos {r.dias} dia(s): <strong>{r.total}</strong> eventos de <strong>{r.ipsUnicos}</strong> IPs, {r.falhasLogin} falhas de login e <strong>{r.lockouts}</strong> bloqueios de conta.</>
-          : 'Carregando…'}
-        {r?.truncado && ' A janela tem mais eventos que o limite de análise; o resumo cobre os mais recentes.'}
-      </StatusStrip>
-
-      <StatusStrip tone="ok" icon="pi-shield">
-        Este painel resume eventos reais recebidos pelos coletores. Simulações de laboratório ficam em <Link to="/labs">Labs</Link> e sua cobertura em <Link to="/attack">ATT&amp;CK</Link>.
-      </StatusStrip>
-
-      <div className="iv-row iv-wrap iv-mt">
-        <span className="iv-muted" style={{ fontSize: '.8rem' }}>Período:</span>
-        {DIAS_OPTS.map((d) => (
-          <Chip key={d} label={d === 1 ? '24 h' : `${d} dias`} active={dias === d} onClick={() => { setDias(d); }} />
-        ))}
-      </div>
-
-      <div className="iv-card iv-row iv-wrap iv-mt radar-filters" aria-label="Filtros dos eventos">
-        <InputText value={qRaw} onChange={(e) => pickBusca(e.target.value)} placeholder="Buscar IP, serviço, usuário ou alvo…" aria-label="Buscar eventos do Radar" />
-        <Dropdown value={fonte} options={FONTE_OPTS} onChange={(e) => pickFonte(e.value)} placeholder="Todas as fontes" showClear />
-        <Dropdown value={pais} options={(r?.topPaises ?? []).map((p) => ({ label: `${p.nome} (${p.total})`, value: p.nome }))} onChange={(e) => pickPais(e.value)} placeholder="Todos os países" showClear />
-        <Dropdown value={acao} options={ACAO_OPTS} onChange={(e) => pickAcao(e.value)} placeholder="Todas as ações" showClear />
-      </div>
-
-      <div className="iv-kpis iv-mt">
-        <Kpi label="Eventos" value={r?.total ?? 0} />
-        <Kpi label="IPs únicos" value={r?.ipsUnicos ?? 0} />
-        <Kpi label="Falhas de login" value={r?.falhasLogin ?? 0} active={acao === 'login_falha'}
-          onClick={() => pickAcao(acao === 'login_falha' ? undefined : 'login_falha')} />
-        <Kpi label="Contas bloqueadas" value={r?.lockouts ?? 0} active={acao === 'lockout'}
-          onClick={() => pickAcao(acao === 'lockout' ? undefined : 'lockout')} />
-      </div>
-
-      <div className="iv-card iv-mt">
-        <h4 style={{ margin: '0 0 .6rem' }}>Linha do tempo ({r?.granularidade === 'hora' ? 'por hora, UTC' : 'por dia, UTC'})</h4>
-        {(r?.timeline.length ?? 0) === 0
-          ? <p className="iv-muted" style={{ margin: 0, fontSize: '.85rem' }}>Sem eventos no período.</p>
-          : (
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 90 }}>
-              {r!.timeline.map((t) => (
-                <div key={t.bucket} title={`${t.bucket}: ${t.total}`}
-                  style={{ flex: 1, minWidth: 2, height: `${Math.max(4, (t.total / maxTl) * 100)}%`, background: 'var(--alvoar-teal)', borderRadius: 2 }} />
-              ))}
-            </div>
-          )}
-      </div>
-
-      <div className="grid-cards iv-mt">
-        <TopList titulo="IPs mais ativos (clique para filtrar)"
-          itens={(r?.topIps ?? []).map((i) => ({ rotulo: i.ip, extra: i.pais, total: i.total }))} onPick={(v) => pickIp(v)} />
-        <TopList titulo="Serviços visados (clique para filtrar)"
-          itens={(r?.topServicos ?? []).map((i) => ({ rotulo: i.nome, total: i.total }))} onPick={(v) => pickServico(v)} />
-        <TopList titulo="Usuários tentados"
-          itens={(r?.topUsuarios ?? []).map((i) => ({ rotulo: i.nome, total: i.total }))} />
-        <TopList titulo="Países de origem (clique para filtrar)"
-          itens={(r?.topPaises ?? []).map((i) => ({ rotulo: i.nome, total: i.total }))} onPick={(v) => pickPais(v)} />
-        {r?.senhasHabilitadas && (
-          <TopList titulo="Senhas mais tentadas (dado sensível, não publique)"
-            itens={(r.topSenhas).map((i) => ({ rotulo: i.nome, total: i.total }))} />
-        )}
-      </div>
-
-      <div className="iv-card iv-mt">
-        <h4 style={{ margin: '0 0 .6rem' }}>Técnicas MITRE ATT&amp;CK observadas</h4>
-        {(r?.mitre.length ?? 0) === 0
-          ? <p className="iv-muted" style={{ margin: 0, fontSize: '.85rem' }}>Nenhuma técnica mapeada no período.</p>
-          : (
-            <div className="iv-row iv-wrap">
-              {r!.mitre.map((m) => (
-                <Pill key={m.id} label={`${m.id} · ${m.nome} (${m.eventos})`} color="#7c3aed" />
-              ))}
-            </div>
-          )}
-      </div>
-
-      <div className="iv-card iv-mt">
-        <div className="iv-row iv-wrap" style={{ justifyContent: 'space-between', marginBottom: '.6rem' }}>
-          <h4 style={{ margin: 0 }}>Eventos recentes</h4>
-          <span className="iv-muted" style={{ fontSize: '.82rem' }}>{eventos.data?.total ?? 0} resultados · selecione uma linha para detalhes</span>
+      {resumo.isError ? (
+        <div className="iv-card">
+          <EmptyState icon="pi-server" title="O Radar precisa do servidor"
+            text="Ele lê os eventos que os coletores gravam no PostgreSQL (apps/api). No modo só local, sem API, não há o que mostrar."
+            action={<Button label="Tentar de novo" icon="pi pi-refresh" outlined onClick={() => { void resumo.refetch(); void eventos.refetch(); }} />} />
         </div>
-        <ActiveFiltersBar filters={activeFilters} />
-        <DataTable
-          value={eventos.data?.items ?? []}
-          lazy paginator first={page * ROWS} rows={ROWS} totalRecords={eventos.data?.total ?? 0}
-          onPage={(e) => setPage(e.page ?? 0)}
-          emptyMessage="Nenhum evento para os filtros."
-          dataKey="id"
-          selectionMode="single"
-          onSelectionChange={(e) => setSelected(e.value as RadarEvento)}
-          rowHover
-        >
-          <Column header="Quando (UTC)" style={{ width: 170 }}
-            body={(e: RadarEvento) => e.ocorridoEm.replace('T', ' ').slice(0, 19)} />
-          <Column header="IP" body={(e: RadarEvento) => (
-            <span style={{ fontFamily: 'monospace' }}>{e.ipOrigem ?? '—'}{e.paisOrigem ? ` · ${e.paisOrigem}` : ''}</span>
-          )} />
-          <Column header="Serviço" body={(e: RadarEvento) => e.servico ? `${e.servico}${e.portaDestino ? `:${e.portaDestino}` : ''}` : (e.portaDestino ?? '—')} />
-          <Column header="Protocolo" field="protocolo" />
-          <Column header="Ação" body={(e: RadarEvento) => <Pill label={e.acao} color={ACAO_COLOR[e.acao]} />} />
-          <Column header="Usuário tentado" field="usuarioTentado" />
-          <Column header="Fonte" field="fonte" style={{ width: 110 }} />
-        </DataTable>
-      </div>
+      ) : (<>
+        {loginsOk > 0 && (
+          <StatusStrip tone="crit" icon="pi-unlock">
+            <strong>{loginsOk} login(s) aceito(s)</strong> vindos de fora em {periodo}. Confirme se foram seus.{' '}
+            <button type="button" className="iv-linkbtn" onClick={() => alternarAcao('login_ok')}>Ver eventos</button>
+          </StatusStrip>
+        )}
+        {r?.truncado && <StatusStrip icon="pi-info-circle">A janela tem mais eventos que o limite de análise; o resumo cobre os mais recentes.</StatusStrip>}
 
-      <Sidebar visible={!!selected} position="right" onHide={() => setSelected(null)} style={{ width: 480 }}>
-        {selected && <DetailLayout>
-          <DetailHeader title="Detalhes do evento"><Pill label={selected.acao} color={ACAO_COLOR[selected.acao]} /><Pill label={FONTE_LABEL[selected.fonte] ?? selected.fonte} /></DetailHeader>
-          <DetailSection title="Quando"><p>{selected.ocorridoEm.replace('T', ' ').slice(0, 19)} UTC</p></DetailSection>
-          <DetailSection title="Origem"><p style={{ fontFamily: 'monospace' }}>{selected.ipOrigem ?? 'IP não informado'}{selected.paisOrigem ? ` · ${selected.paisOrigem}` : ''}</p></DetailSection>
-          <DetailSection title="Alvo"><p>{selected.alvo ?? '—'}</p></DetailSection>
-          <DetailSection title="Serviço"><p>{selected.servico ?? '—'}{selected.portaDestino ? `:${selected.portaDestino}` : ''}{selected.protocolo ? ` · ${selected.protocolo}` : ''}</p></DetailSection>
-          <DetailSection title="Usuário tentado"><p>{selected.usuarioTentado ?? '—'}</p></DetailSection>
-          <p className="iv-muted" style={{ fontSize: '.8rem' }}>O Radar não mostra senhas tentadas nesta tela.</p>
-        </DetailLayout>}
-      </Sidebar>
+        <div className="iv-summary iv-mt">
+          <div className="iv-kpis in-kpis-5">
+            <Kpi label="Eventos" icon="pi-bolt" value={v(r?.total)} hint={`em ${periodo}`} />
+            <Kpi label="IPs únicos" icon="pi-globe" value={v(r?.ipsUnicos)} />
+            <Kpi label="Falhas de login" icon="pi-user-minus" tone="warning" value={v(r?.falhasLogin)} active={acao === 'login_falha'} onClick={() => alternarAcao('login_falha')} />
+            <Kpi label="Contas bloqueadas" icon="pi-lock" tone="serious" value={v(r?.lockouts)} active={acao === 'lockout'} onClick={() => alternarAcao('lockout')} />
+            <Kpi label="Logins aceitos" icon="pi-unlock" tone="danger" value={v(loginsOk)} active={acao === 'login_ok'} onClick={() => alternarAcao('login_ok')} />
+          </div>
+          <Timeline pontos={r?.timeline ?? []} porHora={r?.granularidade === 'hora'} />
+        </div>
+
+        <div className="in-tops iv-mt">
+          <TopList titulo="IPs mais ativos" itens={indicadores(r, 'ip')} onOpen={abrirIndicador('ip')} selId={indSel.selId} />
+          <TopList titulo="Serviços visados" itens={indicadores(r, 'servico')} onOpen={abrirIndicador('servico')} selId={indSel.selId} />
+          <TopList titulo="Usuários tentados" itens={indicadores(r, 'usuario')} onOpen={abrirIndicador('usuario')} selId={indSel.selId} />
+          <TopList titulo="Países de origem" itens={indicadores(r, 'pais')} onOpen={abrirIndicador('pais')} selId={indSel.selId} />
+          {r?.senhasHabilitadas && (
+            <TopList titulo="Senhas mais tentadas" aviso="Dado sensível: não publique nem compartilhe."
+              itens={r.topSenhas.map((i) => ({ id: i.nome, rotulo: i.nome, total: i.total }))} />
+          )}
+        </div>
+
+        <section className="iv-card iv-mt" aria-labelledby="radar-mitre">
+          <h3 id="radar-mitre" className="iv-section-label">Técnicas MITRE ATT&amp;CK observadas</h3>
+          {(r?.mitre.length ?? 0) === 0
+            ? <p className="in-muted-p">Nenhuma técnica mapeada no período.</p>
+            : <div className="iv-row iv-wrap">{r!.mitre.map((m) => (
+                <button key={m.id} type="button" className="in-tag" data-sel={tecSel.isOpen(m.id) || undefined} aria-haspopup="dialog"
+                  onClick={() => { fecharTudo(); tecSel.open(m.id); }}>
+                  <span className="mono">{m.id}</span> {m.nome} <strong className="tabular">{m.eventos}</strong>
+                </button>
+              ))}</div>}
+        </section>
+
+        <EventosTabela itens={eventos.data?.items ?? []} total={eventos.data?.total ?? 0} loading={eventos.isLoading} page={page} onPage={setPage}
+          onOpen={(id) => { fecharTudo(); evSel.open(id); }} selId={evSel.selId} f={f} />
+
+        <p className="in-rodape">Este painel resume eventos reais recebidos pelos coletores. Simulações ficam em <Link to="/labs">Labs</Link> e a cobertura em <Link to="/attack">ATT&amp;CK</Link>.</p>
+      </>)}
+
+      {evSel.item && <EventoDrawer ev={evSel.item} nav={evSel.nav} onFiltrarIp={(x) => filtrarPor('ip', x)} />}
+      {indSel.item && <IndicadorDrawer dim={dim} item={indSel.item} totalPeriodo={r?.total ?? 0} periodo={periodo} nav={indSel.nav} onFiltrar={filtrarPor} />}
+      {tecSel.item && <TecnicaDrawer tecnica={tecSel.item} nav={tecSel.nav} periodo={periodo} onChange={() => setVersao((n) => n + 1)} />}
     </div>
   );
 }

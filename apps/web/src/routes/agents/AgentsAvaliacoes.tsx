@@ -1,26 +1,22 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearch } from '@tanstack/react-router';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Dropdown } from 'primereact/dropdown';
-import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { InputNumber } from 'primereact/inputnumber';
-import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import type { AvaliacaoResultado } from '@seginfo/shared';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Bar, Kpi, Pill, StatusStrip } from '@/components/InfraKit';
-import { progressTone } from '@/theme/status';
-import { addAvaliacao, deleteAvaliacao, erroApi, listAgentes, listAvaliacoes, type Avaliacao } from '@/services/agentes';
-
-const RESULTADO_OPTS = [
-  { label: 'Ok: atendeu ao critério', value: 'ok' },
-  { label: 'Parcial', value: 'parcial' },
-  { label: 'Falha', value: 'falha' },
-];
-const RESULTADO_COR: Record<AvaliacaoResultado, string> = { ok: '#16a34a', parcial: '#f59e0b', falha: '#ef4444' };
+import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
+import { Kpi, StatusStrip } from '@/components/InfraKit';
+import { useDrawerSelection } from '@/hooks/useDrawerSelection';
+import { deleteAvaliacao, erroApi, listAgentes, listAvaliacoes, type Avaliacao } from '@/services/agentes';
+import { RESULTADO_META, duracao, placar, truncar } from './regras';
+import { MetaPill } from './ficha/comum';
+import { CasoFicha } from './ficha/CasoFicha';
+import { RegistrarCaso } from './avaliacoes/RegistrarCaso';
+import '@/styles/telas/agents.css';
 
 const TIPOS_DE_CASO = [
   ['Comum', 'O pedido típico, o que o agente existe para fazer.'],
@@ -30,137 +26,113 @@ const TIPOS_DE_CASO = [
   ['Ferramenta com falha', 'A fonte de dados cai ou devolve lixo: o agente deve avisar, não inventar.'],
 ];
 
-const fmtData = (iso: string) => iso.replace('T', ' ').slice(0, 16);
-
 export function AgentsAvaliacoes() {
   const qc = useQueryClient();
   const agentes = useQuery({ queryKey: ['agentes'], queryFn: listAgentes });
   const { agente: agenteDaUrl } = useSearch({ strict: false }) as { agente?: string };
   const [agenteId, setAgenteId] = useState<string | null>(agenteDaUrl ?? null);
+  const [filtro, setFiltro] = useState<AvaliacaoResultado | null>(null);
+  const [erro, setErro] = useState('');
 
   const lista = agentes.data ?? [];
   const atual = agenteId ?? lista.find((a) => a.status !== 'arquivado')?.id ?? null;
-  const execucoes = useQuery({
-    queryKey: ['agente-avaliacoes', atual], queryFn: () => listAvaliacoes(atual as string), enabled: !!atual,
-  });
+  const nomeAtual = lista.find((a) => a.id === atual)?.nome;
+  const casos = useQuery({ queryKey: ['agente-avaliacoes', atual], queryFn: () => listAvaliacoes(atual as string), enabled: !!atual });
 
-  const [caso, setCaso] = useState('');
-  const [criterio, setCriterio] = useState('');
-  const [resultado, setResultado] = useState<AvaliacaoResultado>('ok');
-  const [latencia, setLatencia] = useState<number | null>(null);
-  const [observacao, setObservacao] = useState('');
-  const [erro, setErro] = useState('');
-  const [salvando, setSalvando] = useState(false);
+  const itens = useMemo(() => casos.data ?? [], [casos.data]);
+  const visiveis = useMemo(() => (filtro ? itens.filter((i) => i.resultado === filtro) : itens), [itens, filtro]);
+  const sel = useDrawerSelection(visiveis);
+  const p = placar(itens);
+  const alternar = (r: AvaliacaoResultado) => setFiltro(filtro === r ? null : r);
 
-  const itens = execucoes.data ?? [];
-  const total = itens.length;
-  const ok = itens.filter((i) => i.resultado === 'ok').length;
-  const falhas = itens.filter((i) => i.resultado === 'falha').length;
-  const pct = total ? Math.round((ok / total) * 100) : 0;
-  const comLatencia = itens.filter((i) => i.latenciaMs !== null);
-  const latMedia = comLatencia.length ? Math.round(comLatencia.reduce((s, i) => s + (i.latenciaMs ?? 0), 0) / comLatencia.length) : null;
-
-  async function registrar() {
-    if (!atual || !caso.trim()) return;
-    setSalvando(true); setErro('');
-    try {
-      await addAvaliacao(atual, {
-        caso: caso.trim(), criterio, resultado, observacao,
-        ...(latencia !== null ? { latenciaMs: Math.round(latencia) } : {}),
-      });
-      setCaso(''); setCriterio(''); setObservacao(''); setLatencia(null); setResultado('ok');
-      qc.invalidateQueries({ queryKey: ['agente-avaliacoes', atual] });
-      qc.invalidateQueries({ queryKey: ['agentes'] });
-    } catch (e) {
-      setErro(erroApi(e, 'Falha ao registrar o teste.'));
-    } finally {
-      setSalvando(false);
-    }
-  }
-
-  async function remover(id: string) {
-    if (!atual) return;
-    await deleteAvaliacao(atual, id);
-    qc.invalidateQueries({ queryKey: ['agente-avaliacoes', atual] });
-    qc.invalidateQueries({ queryKey: ['agentes'] });
+  function remover(c: Avaliacao) {
+    confirmDialog({
+      header: 'Remover caso de teste',
+      message: `Remover "${truncar(c.caso, 80)}"? O placar do agente muda. Se o agente melhorou, prefira registrar um novo resultado e manter este como histórico.`,
+      icon: 'pi pi-exclamation-triangle', acceptLabel: 'Remover', rejectLabel: 'Cancelar', acceptClassName: 'p-button-danger',
+      accept: async () => {
+        try {
+          await deleteAvaliacao(c.agenteId, c.id);
+          sel.close();
+          qc.invalidateQueries({ queryKey: ['agente-avaliacoes', c.agenteId] });
+          qc.invalidateQueries({ queryKey: ['agentes'] });
+        } catch (e) {
+          setErro(erroApi(e, 'Falha ao remover o caso.'));
+        }
+      },
+    });
   }
 
   return (
     <div>
+      <ConfirmDialog />
       <PageHeader
         title="Testes e avaliações"
-        subtitle="Rode o agente nos seus casos (onde você o executa) e registre o resultado aqui. Repita depois de cada mudança de prompt, modelo ou ferramenta."
+        subtitle="Rode o agente nos seus casos e registre o resultado. Repita depois de cada mudança de prompt, modelo ou ferramenta."
+        actions={atual ? <Link to="/agents/agente/$agenteId" params={{ agenteId: atual }} className="ag-btn"><i className="pi pi-pencil" aria-hidden="true" /> Abrir o projeto</Link> : undefined}
       />
 
-      {agentes.isError && (
-        <Message severity="warn" style={{ width: '100%', marginBottom: '1rem' }} text="API ou banco indisponível. As avaliações ficam no servidor." />
-      )}
+      {agentes.isError && <Message severity="warn" className="ag-largo" text="API ou banco indisponível. As avaliações ficam no servidor." />}
+      {erro && <Message severity="error" className="ag-largo" text={erro} />}
 
-      {lista.length === 0 && !agentes.isLoading ? (
+      {lista.length === 0 && !agentes.isLoading && !agentes.isError ? (
         <StatusStrip tone="warn" icon="pi-info-circle">
           Você ainda não tem agentes. <Link to="/agents">Crie o primeiro</Link> para registrar avaliações.
         </StatusStrip>
       ) : (
         <>
-          <div className="iv-card">
-            <div className="iv-row iv-wrap" style={{ gap: '.6rem' }}>
-              <Dropdown value={atual} options={lista.map((a) => ({ label: a.nome, value: a.id }))} onChange={(e) => setAgenteId(e.value)}
-                placeholder="Escolha o agente" style={{ minWidth: 280 }} aria-label="Agente avaliado" />
-              {atual && <Link to="/agents/agente/$agenteId" params={{ agenteId: atual }}>Abrir o projeto do agente</Link>}
-            </div>
+          <div className="iv-toolbar">
+            <label htmlFor="av-agente" className="ag-rotulo">Agente avaliado</label>
+            <Dropdown inputId="av-agente" value={atual} options={lista.map((a) => ({ label: a.nome, value: a.id }))}
+              onChange={(e) => { setAgenteId(e.value); setFiltro(null); }} placeholder="Escolha o agente" className="ag-dropdown" />
           </div>
 
-          <div className="iv-kpis iv-mt">
-            <Kpi label="Casos executados" value={total} />
-            <Kpi label="Atendeu ao critério" value={total ? `${pct}%` : '—'} hint={`${ok} de ${total}`} />
-            <Kpi label="Falhas" value={falhas} />
-            <Kpi label="Latência média" value={latMedia !== null ? `${latMedia} ms` : '—'} hint={comLatencia.length ? `em ${comLatencia.length} caso(s)` : 'informe a latência'} />
+          <div className="iv-kpis">
+            <Kpi label="Casos registrados" icon="pi-list" value={p.total} />
+            <Kpi label="Atendeu ao critério" icon="pi-check" value={p.pct !== null ? `${p.pct}%` : '—'} hint={p.total ? `${p.ok} de ${p.total}` : 'nenhum caso ainda'}
+              active={filtro === 'ok'} onClick={p.ok ? () => alternar('ok') : undefined} />
+            <Kpi label="Parciais" icon="pi-minus-circle" value={p.parcial} tone="warning" active={filtro === 'parcial'} onClick={() => alternar('parcial')} />
+            <Kpi label="Falhas" icon="pi-times" value={p.falha} tone="danger" active={filtro === 'falha'} onClick={() => alternar('falha')} />
+            <Kpi label="Latência média" icon="pi-stopwatch" value={p.latMedia !== null ? duracao(p.latMedia) : '—'}
+              hint={p.comLatencia ? `em ${p.comLatencia} caso(s)` : 'informe a latência ao registrar'} />
           </div>
-          {total > 0 && <div className="iv-mt"><Bar pct={pct} tone={progressTone(pct)} /></div>}
 
-          <div className="iv-card iv-mt">
-            <h4 style={{ margin: '0 0 .6rem' }}>Registrar um caso</h4>
-            <div className="iv-col" style={{ gap: '.7rem' }}>
-              <InputTextarea rows={2} value={caso} onChange={(e) => setCaso(e.target.value)} maxLength={2000} placeholder="O que você pediu ao agente (entrada do teste)" aria-label="Entrada do teste" style={{ width: '100%' }} />
-              <InputTextarea rows={2} value={criterio} onChange={(e) => setCriterio(e.target.value)} maxLength={2000} placeholder="Critério: como seria uma boa resposta?" aria-label="Critério" style={{ width: '100%' }} />
-              <div className="iv-row iv-wrap" style={{ gap: '.6rem' }}>
-                <Dropdown value={resultado} options={RESULTADO_OPTS} onChange={(e) => setResultado(e.value)} aria-label="Resultado" />
-                <InputNumber value={latencia} onValueChange={(e) => setLatencia(e.value ?? null)} suffix=" ms" min={0} max={600000} placeholder="Latência (opcional)" />
-                <InputText value={observacao} onChange={(e) => setObservacao(e.target.value)} maxLength={2000} placeholder="Observação (o que errou, o que ajustar)" style={{ flex: 1, minWidth: 220 }} aria-label="Observação" />
-                <Button label="Registrar" icon="pi pi-plus" onClick={registrar} loading={salvando} disabled={!atual || !caso.trim()} />
-              </div>
-              {erro && <Message severity="error" text={erro} style={{ width: '100%' }} />}
-            </div>
+          <div className="iv-card iv-mt ag-bloco">
+            <h3>Registrar um caso</h3>
+            <RegistrarCaso agenteId={atual} />
           </div>
 
           <div className="iv-card iv-mt">
-            <h4 style={{ margin: '0 0 .6rem' }}>Histórico</h4>
-            <DataTable value={itens} dataKey="id" paginator rows={10} emptyMessage="Nenhum caso registrado para este agente.">
-              <Column header="Quando (UTC)" style={{ width: 150 }} body={(i: Avaliacao) => fmtData(i.criadoEm)} />
+            <div className="iv-toolbar">
+              <h3 className="ag-titulo-card">Histórico</h3>
+              <span className="iv-toolbar__count">{visiveis.length} de {itens.length}</span>
+            </div>
+            <ActiveFiltersBar filters={[filtro && { key: 'res', label: RESULTADO_META[filtro].rotulo, onRemove: () => setFiltro(null) }]} />
+            <DataTable className="ag-tabela" value={visiveis} dataKey="id" paginator={visiveis.length > 25} rows={25} rowHover loading={casos.isLoading}
+              onRowClick={(e) => sel.open((e.data as Avaliacao).id)}
+              rowClassName={(i: Avaliacao) => `${i.resultado === 'falha' ? 'iv-row-alert tone-danger' : ''}${sel.isOpen(i.id) ? ' ag-row-sel' : ''}`}
+              emptyMessage={filtro ? 'Nenhum caso com este resultado.' : 'Nenhum caso registrado para este agente. Comece pelos tipos sugeridos abaixo.'}>
+              <Column header="Resultado" style={{ width: '8.5rem' }} body={(i: Avaliacao) => <MetaPill m={RESULTADO_META[i.resultado]} />} />
               <Column header="Caso" body={(i: Avaliacao) => (
                 <div>
-                  <div style={{ fontWeight: 600 }}>{i.caso}</div>
-                  {i.criterio && <div className="iv-muted" style={{ fontSize: '.8rem' }}>Critério: {i.criterio}</div>}
-                  {i.observacao && <div className="iv-muted" style={{ fontSize: '.8rem' }}>{i.observacao}</div>}
+                  <div className="iv-maincell__title">{truncar(i.caso, 140)}</div>
+                  {(i.criterio || i.observacao) && <div className="iv-maincell__sub">{truncar(i.observacao || `Critério: ${i.criterio}`, 120)}</div>}
                 </div>
               )} />
-              <Column header="Resultado" style={{ width: 120 }} body={(i: Avaliacao) => <Pill label={i.resultado} color={RESULTADO_COR[i.resultado]} />} />
-              <Column header="Latência" style={{ width: 110 }} body={(i: Avaliacao) => (i.latenciaMs !== null ? `${i.latenciaMs} ms` : '—')} />
-              <Column style={{ width: 70 }} body={(i: Avaliacao) => <Button icon="pi pi-trash" text severity="danger" aria-label="Remover caso" onClick={() => remover(i.id)} />} />
+              <Column header="Latência" className="iv-hide-sm tabular" headerClassName="iv-hide-sm" body={(i: Avaliacao) => (i.latenciaMs !== null ? duracao(i.latenciaMs) : '—')} />
+              <Column header="Quando" className="iv-hide-sm tabular" headerClassName="iv-hide-sm" body={(i: Avaliacao) => new Date(i.criadoEm).toLocaleDateString('pt-BR')} />
             </DataTable>
           </div>
         </>
       )}
 
-      <div className="iv-card iv-mt">
-        <h4 style={{ margin: '0 0 .5rem' }}>Que casos testar</h4>
-        <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
-          {TIPOS_DE_CASO.map(([titulo, texto]) => <li key={titulo} style={{ marginBottom: '.25rem' }}><strong>{titulo}:</strong> {texto}</li>)}
-        </ul>
-        <p className="iv-muted" style={{ fontSize: '.82rem', marginBottom: 0 }}>
-          Dica: comece com 20 casos que representem o uso real e acrescente um caso novo sempre que o agente errar.
-        </p>
+      <div className="iv-card iv-mt ag-bloco">
+        <h3>Que casos testar</h3>
+        <ul>{TIPOS_DE_CASO.map(([titulo, texto]) => <li key={titulo}><strong>{titulo}:</strong> {texto}</li>)}</ul>
+        <p className="ag-dica">Dica: comece com 20 casos que representem o uso real e acrescente um caso novo sempre que o agente errar.</p>
       </div>
+
+      {sel.item && <CasoFicha c={sel.item} agenteNome={nomeAtual} nav={sel.nav} onRemover={remover} />}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { Ativo, EstadoAtivo, TipoAtivo } from '@seginfo/shared';
+import type { Ativo, CriticidadeAtivo, EstadoAtivo, TipoAtivo } from '@seginfo/shared';
 import type { Tone } from '@/theme/status';
 import { TIPO_ATIVO_LABEL } from '@/theme/status';
 
@@ -113,3 +113,11 @@ export function validarAtivo(nome: string, detalhesRaw: string): { erros: AtivoE
   }
   return { erros, detalhes };
 }
+
+/** Criticidade operacional → rótulo e tom (sem hex: segue os tons do guia). Baixa fica neutra. */
+export const CRITICIDADE_META: Record<CriticidadeAtivo, { label: string; tone?: Tone }> = {
+  critica: { label: 'Crítica', tone: 'danger' },
+  alta: { label: 'Alta', tone: 'serious' },
+  media: { label: 'Média', tone: 'warning' },
+  baixa: { label: 'Baixa' },
+};

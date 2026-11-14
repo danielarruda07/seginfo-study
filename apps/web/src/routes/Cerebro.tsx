@@ -1,328 +1,182 @@
-import { useMemo, useState, type ChangeEvent } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { Sidebar } from 'primereact/sidebar';
 import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
-import { Message } from 'primereact/message';
+import { Menu } from 'primereact/menu';
+import { Toast } from 'primereact/toast';
+import { ConfirmDialog } from 'primereact/confirmdialog';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
-import { Kpi, StatusStrip, Chip, Pill } from '@/components/InfraKit';
-import {
-  listMemorias, getMemoria, createMemoria, updateMemoria, deleteMemoria, restoreMemoria,
-  buscarMemorias, capturarUrl, importarNotas,
-  type Escopo, type MemoriaResumo, type TrechoEncontrado,
-} from '@/services/cerebro';
+import { Kpi, Chip, Pill, StatusStrip, EmptyState } from '@/components/InfraKit';
+import { useDrawerSelection } from '@/hooks/useDrawerSelection';
+import { listMemorias, buscarMemorias, type Escopo, type MemoriaResumo, type TrechoEncontrado } from '@/services/cerebro';
+import { listTagsBase } from '@/services/agentes';
+import { ESCOPO_META, fmtData, origemMeta } from './conhecimento/regras';
+import { useCerebroAcoes, erroDe } from './conhecimento/useCerebroAcoes';
+import { MemoriaDrawer } from './conhecimento/MemoriaDrawer';
+import { MemoriaForm } from './conhecimento/MemoriaForm';
+import { BuscaCerebro, CapturaPagina } from './conhecimento/CerebroEntrada';
+import '@/styles/telas/conhecimento.css';
 
 const ROWS = 15;
-const ESCOPO_OPTS = [
-  { label: 'Pessoal', value: 'pessoal' },
-  { label: 'Corporativo (fora do backup)', value: 'corporativo' },
-];
-const MAX_ARQUIVO = 200_000;
-
-interface Rascunho {
-  id?: string;
-  titulo: string;
-  conteudo: string;
-  tagsTexto: string;
-  escopo: Escopo;
-  excluirEm: string | null;
-  urlOrigem: string | null;
-}
-
-const fmtData = (iso: string) => iso.replace('T', ' ').slice(0, 16);
-const parseTags = (t: string) => t.split(',').map((s) => s.trim()).filter(Boolean);
-const erroDe = (e: unknown, padrao: string) =>
-  (e as { response?: { data?: { error?: string } } }).response?.data?.error ?? padrao;
+const idDoTrecho = (t: TrechoEncontrado) => t.memoriaId;
+const contar = (f: { escopo?: Escopo; lixeira?: boolean }) => listMemorias({ ...f, page: 0, limit: 1 }).then((r) => r.total);
 
 export function Cerebro() {
-  const qc = useQueryClient();
-  const [consulta, setConsulta] = useState('');
-  const [achados, setAchados] = useState<TrechoEncontrado[] | null>(null);
-  const [buscando, setBuscando] = useState(false);
-
+  const toast = useRef<Toast>(null);
+  const menu = useRef<Menu>(null);
+  const [menuDe, setMenuDe] = useState<MemoriaResumo | null>(null);
   const [escopo, setEscopo] = useState<Escopo | undefined>();
   const [tag, setTag] = useState<string | undefined>();
   const [lixeira, setLixeira] = useState(false);
   const [page, setPage] = useState(0);
-
-  const [rascunho, setRascunho] = useState<Rascunho | null>(null);
-  const [url, setUrl] = useState('');
-  const [ocupado, setOcupado] = useState(false);
-  const [msg, setMsg] = useState<{ sev: 'success' | 'error' | 'info'; texto: string } | null>(null);
+  const [achados, setAchados] = useState<TrechoEncontrado[] | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  const [avulso, setAvulso] = useState<string | null>(null);
 
   const filtros = useMemo(() => ({ escopo, tag, lixeira, page, limit: ROWS }), [escopo, tag, lixeira, page]);
-  const lista = useQuery({ queryKey: ['memorias', filtros], queryFn: () => listMemorias(filtros) });
+  const lista = useQuery({ queryKey: ['memorias', filtros], queryFn: () => listMemorias(filtros), placeholderData: keepPreviousData });
+  const total = useQuery({ queryKey: ['memorias', 'contagem', 'todas'], queryFn: () => contar({}) }).data;
+  const corp = useQuery({ queryKey: ['memorias', 'contagem', 'corp'], queryFn: () => contar({ escopo: 'corporativo' }) }).data;
+  const naLixeira = useQuery({ queryKey: ['memorias', 'contagem', 'lixeira'], queryFn: () => contar({ lixeira: true }) }).data;
+  const tagsBase = useQuery({ queryKey: ['agentes-base-tags'], queryFn: listTagsBase, retry: false }).data ?? [];
+
+  const itens = lista.data?.items ?? [];
+  const unicos = useMemo(() => (achados ?? []).filter((a, i, l) => l.findIndex((b) => b.memoriaId === a.memoriaId) === i), [achados]);
+  const selLista = useDrawerSelection(itens);
+  const selBusca = useDrawerSelection(unicos, idDoTrecho);
+  const acoes = useCerebroAcoes(toast, () => { selLista.close(); selBusca.close(); setAvulso(null); });
 
   // qualquer mudança de filtro volta para a página 1
   const mudar = <T,>(set: (v: T) => void) => (v: T) => { set(v); setPage(0); };
-  const refresh = () => qc.invalidateQueries({ queryKey: ['memorias'] });
+  const toggleTag = (t: string) => mudar(setTag)(tag === t ? undefined : t);
+  const limpar = () => { setEscopo(undefined); setTag(undefined); setLixeira(false); setPage(0); };
 
-  async function buscar() {
-    if (!consulta.trim()) return;
-    setBuscando(true); setMsg(null);
-    try {
-      setAchados(await buscarMemorias(consulta.trim()));
-    } catch (e) {
-      setMsg({ sev: 'error', texto: erroDe(e, 'Falha na busca.') });
-    } finally {
-      setBuscando(false);
-    }
+  function abrirDaLista(id: string) { selBusca.close(); setAvulso(null); selLista.open(id); }
+  function abrirDaBusca(id: string) { selLista.close(); setAvulso(null); selBusca.open(id); }
+  function abrirAvulso(id: string) {
+    if (itens.some((m) => m.id === id)) return abrirDaLista(id);
+    selLista.close(); selBusca.close(); setAvulso(id);
   }
+  const aberto = selLista.item ? { id: selLista.item.id, nav: selLista.nav }
+    : selBusca.item ? { id: selBusca.item.memoriaId, nav: selBusca.nav }
+      : avulso ? { id: avulso, nav: { onClose: () => setAvulso(null) } } : null;
 
-  async function abrir(id: string) {
-    try {
-      const m = await getMemoria(id);
-      setRascunho({
-        id: m.id, titulo: m.titulo, conteudo: m.conteudo, tagsTexto: m.tags.join(', '),
-        escopo: m.escopo, excluirEm: m.excluirEm, urlOrigem: m.urlOrigem,
-      });
-    } catch (e) {
-      setMsg({ sev: 'error', texto: erroDe(e, 'Não foi possível abrir a memória.') });
-    }
-  }
-
-  async function salvar() {
-    if (!rascunho || !rascunho.titulo.trim()) return;
-    const corpo = {
-      titulo: rascunho.titulo.trim(), conteudo: rascunho.conteudo,
-      tags: parseTags(rascunho.tagsTexto), escopo: rascunho.escopo,
-    };
-    try {
-      if (rascunho.id) await updateMemoria(rascunho.id, corpo);
-      else await createMemoria(corpo);
-      setRascunho(null); setMsg({ sev: 'success', texto: 'Memória salva.' });
-      refresh();
-    } catch (e) {
-      setMsg({ sev: 'error', texto: erroDe(e, 'Falha ao salvar.') });
-    }
-  }
-
-  async function excluir() {
-    if (!rascunho?.id) return;
-    try {
-      await deleteMemoria(rascunho.id);
-      setRascunho(null);
-      setMsg({ sev: 'info', texto: 'Movida para a lixeira. Some de vez em 7 dias; dá para resgatar até lá.' });
-      refresh();
-    } catch (e) {
-      setMsg({ sev: 'error', texto: erroDe(e, 'Falha ao excluir.') });
-    }
-  }
-
-  async function resgatar() {
-    if (!rascunho?.id) return;
-    try {
-      await restoreMemoria(rascunho.id);
-      setRascunho(null); setMsg({ sev: 'success', texto: 'Memória resgatada da lixeira.' });
-      refresh();
-    } catch (e) {
-      setMsg({ sev: 'error', texto: erroDe(e, 'Falha ao resgatar.') });
-    }
-  }
-
-  async function capturar() {
-    if (!url.trim()) return;
-    setOcupado(true); setMsg(null);
-    try {
-      const m = await capturarUrl(url.trim());
-      setUrl(''); setMsg({ sev: 'success', texto: `Página guardada: ${m.titulo}` });
-      refresh();
-    } catch (e) {
-      setMsg({ sev: 'error', texto: erroDe(e, 'Não consegui capturar essa URL.') });
-    } finally {
-      setOcupado(false);
-    }
+  async function buscar(q: string) {
+    setBuscando(true);
+    try { setAchados(await buscarMemorias(q)); } catch (e) { toast.current?.show({ severity: 'error', summary: 'Falha na busca', detail: erroDe(e, 'A API não respondeu.'), life: 5000 }); } finally { setBuscando(false); }
   }
 
   async function importar(ev: ChangeEvent<HTMLInputElement>) {
     const arquivos = Array.from(ev.target.files ?? []);
     ev.target.value = ''; // permite escolher os mesmos arquivos de novo
-    if (arquivos.length === 0) return;
-    setOcupado(true); setMsg(null);
-    try {
-      const notas: { titulo: string; conteudo: string }[] = [];
-      let ignorados = 0;
-      for (const f of arquivos) {
-        if (f.size > MAX_ARQUIVO) { ignorados++; continue; }
-        notas.push({ titulo: f.name.replace(/\.(md|markdown|txt)$/i, '').slice(0, 200) || 'sem título', conteudo: await f.text() });
-      }
-      let importadas = 0;
-      for (let i = 0; i < notas.length; i += 50) importadas += (await importarNotas(notas.slice(i, i + 50))).importadas;
-      setMsg({
-        sev: importadas > 0 ? 'success' : 'info',
-        texto: `${importadas} nota(s) importada(s)${ignorados ? `; ${ignorados} ignorada(s) por passar de 200 KB` : ''}.`,
-      });
-      refresh();
-    } catch (e) {
-      setMsg({ sev: 'error', texto: erroDe(e, 'Falha ao importar.') });
-    } finally {
-      setOcupado(false);
-    }
+    await acoes.importar(arquivos);
   }
 
-  const activeFilters = [
-    escopo && { key: 'e', label: `Escopo: ${escopo}`, onRemove: () => mudar(setEscopo)(undefined) },
-    tag && { key: 't', label: `Tag: ${tag}`, onRemove: () => mudar(setTag)(undefined) },
-  ].filter(Boolean) as { key: string; label: string; onRemove: () => void }[];
+  const menuItens = menuDe ? [
+    { label: 'Abrir ficha', icon: 'pi pi-eye', command: () => abrirDaLista(menuDe.id) },
+    ...(menuDe.excluirEm ? [{ label: 'Resgatar da lixeira', icon: 'pi pi-undo', command: () => acoes.resgatar(menuDe) }] : [
+      { label: 'Editar', icon: 'pi pi-pencil', command: () => acoes.editarPorId(menuDe.id) },
+      { separator: true },
+      { label: 'Mover para a lixeira', icon: 'pi pi-trash', className: 'menu-danger', command: () => acoes.lixeira(menuDe) },
+    ]),
+  ] : [];
 
-  const total = lista.data?.total ?? 0;
+  const activeFilters = [
+    escopo && { key: 'e', label: `Escopo: ${ESCOPO_META[escopo].label}`, onRemove: () => mudar(setEscopo)(undefined) },
+    tag && { key: 't', label: `Tag: #${tag}`, onRemove: () => mudar(setTag)(undefined) },
+    lixeira && { key: 'l', label: 'Lixeira', onRemove: () => mudar(setLixeira)(false) },
+  ];
+  const n = lista.data?.total ?? 0;
 
   return (
     <div>
-      <PageHeader
-        title="Segundo Cérebro"
-        subtitle="Notas, páginas e documentos que você quer lembrar. A busca devolve os trechos certos, com a fonte."
-        actions={
-          <div className="iv-row iv-wrap">
-            <Button label="Nova memória" icon="pi pi-plus" size="small"
-              onClick={() => setRascunho({ titulo: '', conteudo: '', tagsTexto: '', escopo: 'pessoal', excluirEm: null, urlOrigem: null })} />
-            <label className="p-button p-component p-button-outlined p-button-sm" style={{ cursor: 'pointer' }}>
-              <span className="p-button-icon p-button-icon-left pi pi-upload" />
-              <span className="p-button-label">Importar notas (.md / .txt)</span>
-              <input type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" multiple hidden onChange={importar} />
-            </label>
-          </div>
-        }
-      />
+      <Toast ref={toast} />
+      <ConfirmDialog />
+      <Menu model={menuItens} popup ref={menu} />
+      <PageHeader title="Segundo Cérebro"
+        subtitle="Notas, páginas e documentos que você quer lembrar. A busca devolve os trechos certos, com a fonte, e os agentes consultam as memórias pessoais das tags que têm na base."
+        actions={<>
+          <label className="p-button p-component p-button-outlined co-upload">
+            <span className="p-button-icon p-button-icon-left pi pi-upload" aria-hidden="true" />
+            <span className="p-button-label">Importar notas (.md / .txt)</span>
+            <input type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" multiple hidden onChange={importar} />
+          </label>
+          <Button label="Nova memória" icon="pi pi-plus" onClick={acoes.nova} />
+        </>} />
 
-      {lista.isError && (
-        <Message severity="warn" style={{ width: '100%', marginBottom: '1rem' }}
-          text="API ou banco indisponível. O Segundo Cérebro precisa do servidor (apps/api + PostgreSQL)." />
-      )}
-      {msg && <Message severity={msg.sev} style={{ width: '100%', marginBottom: '1rem' }} text={msg.texto} />}
-
-      <StatusStrip tone="ok" icon="pi-database">
-        {lixeira ? `${total} memória(s) na lixeira.` : `${total} memória(s) guardada(s).`}
-        {' '}Material marcado como corporativo não entra no backup para o OneDrive.
-      </StatusStrip>
+      {lista.isError && <StatusStrip tone="crit" icon="pi-exclamation-triangle">API ou banco indisponível: o Segundo Cérebro precisa do servidor (apps/api + PostgreSQL).</StatusStrip>}
 
       <div className="iv-kpis iv-mt">
-        <Kpi label={lixeira ? 'Na lixeira' : 'Memórias'} value={total} />
-        <Kpi label="Só pessoais" value="filtrar" active={escopo === 'pessoal'}
-          onClick={() => mudar(setEscopo)(escopo === 'pessoal' ? undefined : 'pessoal')} />
-        <Kpi label="Só corporativas" value="filtrar" active={escopo === 'corporativo'}
-          onClick={() => mudar(setEscopo)(escopo === 'corporativo' ? undefined : 'corporativo')} />
-        <Kpi label="Lixeira" value={lixeira ? 'aberta' : 'ver'} active={lixeira}
-          onClick={() => mudar(setLixeira)(!lixeira)} />
+        <Kpi label="Memórias" icon="pi-database" value={total ?? '—'} hint="guardadas" />
+        <Kpi label="Pessoais" icon={ESCOPO_META.pessoal.icon} value={total !== undefined && corp !== undefined ? total - corp : '—'} hint="backup e agentes"
+          active={escopo === 'pessoal'} onClick={() => mudar(setEscopo)(escopo === 'pessoal' ? undefined : 'pessoal')} />
+        <Kpi label="Corporativas" icon={ESCOPO_META.corporativo.icon} value={corp ?? '—'} hint="fora do backup e dos agentes"
+          active={escopo === 'corporativo'} onClick={() => mudar(setEscopo)(escopo === 'corporativo' ? undefined : 'corporativo')} />
+        <Kpi label="Na lixeira" icon="pi-trash" value={naLixeira ?? '—'} hint="somem em 7 dias" active={lixeira} onClick={() => mudar(setLixeira)(!lixeira)} />
       </div>
 
-      <div className="iv-card iv-mt">
-        <h4 style={{ margin: '0 0 .6rem' }}>Buscar no cérebro</h4>
-        <div className="iv-row" style={{ gap: '.6rem' }}>
-          <span className="p-input-icon-left" style={{ flex: 1 }}>
-            <i className="pi pi-search" />
-            <InputText value={consulta} onChange={(e) => setConsulta(e.target.value)} style={{ width: '100%' }}
-              placeholder="Ex.: como funciona o kerberoasting?" onKeyDown={(e) => e.key === 'Enter' && buscar()} />
-          </span>
-          <Button label="Buscar" icon={buscando ? 'pi pi-spinner pi-spin' : 'pi pi-search'} onClick={buscar} disabled={buscando} />
-        </div>
-        {achados && (
-          <div className="iv-col iv-mt">
-            {achados.length === 0 && <p className="iv-muted" style={{ margin: 0 }}>Nada encontrado para essa busca.</p>}
-            {achados.map((a, i) => (
-              <div key={`${a.memoriaId}-${i}`} className="iv-card memory-result" role="button" tabIndex={0}
-                onClick={() => abrir(a.memoriaId)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(a.memoriaId); } }}>
-                <div className="iv-row" style={{ justifyContent: 'space-between' }}>
-                  <strong>{a.titulo}</strong>
-                  <div className="iv-row">
-                    {a.escopo === 'corporativo' && <Pill label="corporativo" color="#f59e0b" />}
-                    <span className="iv-muted" style={{ fontSize: '.75rem' }}>relevância {a.score}</span>
-                  </div>
-                </div>
-                <p style={{ margin: '.4rem 0 0', whiteSpace: 'pre-wrap', fontSize: '.88rem' }}>{a.trecho}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="iv-card iv-mt">
-        <h4 style={{ margin: '0 0 .6rem' }}>Guardar uma página da web</h4>
-        <div className="iv-row" style={{ gap: '.6rem' }}>
-          <span className="p-input-icon-left" style={{ flex: 1 }}>
-            <i className="pi pi-link" />
-            <InputText value={url} onChange={(e) => setUrl(e.target.value)} style={{ width: '100%' }}
-              placeholder="https://..." onKeyDown={(e) => e.key === 'Enter' && capturar()} />
-          </span>
-          <Button label="Capturar" icon={ocupado ? 'pi pi-spinner pi-spin' : 'pi pi-download'} onClick={capturar} disabled={ocupado || !url.trim()} />
-        </div>
-        <p className="iv-muted" style={{ fontSize: '.78rem', marginBottom: 0 }}>
-          O servidor busca a página (bloqueando endereços internos) e guarda o texto como dado. Conteúdo da web nunca é tratado como instrução.
-        </p>
+      <div className="co-duo iv-mt">
+        <BuscaCerebro achados={achados} buscando={buscando} onBuscar={buscar} onLimpar={() => { setAchados(null); selBusca.close(); }}
+          onOpen={abrirDaBusca} abertoId={selBusca.item?.memoriaId} />
+        <CapturaPagina ocupado={acoes.ocupado} onCapturar={acoes.capturar} />
       </div>
 
       <div className="iv-card iv-mt">
         <div className="iv-toolbar">
           <span className="p-input-icon-left">
-            <i className="pi pi-tag" />
-            <InputText placeholder="Filtrar por tag (Enter)" onKeyDown={(e) => {
-              if (e.key === 'Enter') mudar(setTag)(e.currentTarget.value.trim().toLowerCase() || undefined);
+            <i className="pi pi-tag" aria-hidden="true" />
+            <InputText placeholder="Outra tag (Enter)" aria-label="Filtrar por tag" onKeyDown={(e) => {
+              if (e.key === 'Enter') { mudar(setTag)(e.currentTarget.value.trim().toLowerCase() || undefined); e.currentTarget.value = ''; }
             }} />
           </span>
-          <Chip label="Pessoal" active={escopo === 'pessoal'} onClick={() => mudar(setEscopo)(escopo === 'pessoal' ? undefined : 'pessoal')} />
-          <Chip label="Corporativo" active={escopo === 'corporativo'} onClick={() => mudar(setEscopo)(escopo === 'corporativo' ? undefined : 'corporativo')} />
+          <span className="iv-toolbar__count">{n} {lixeira ? 'na lixeira' : n === 1 ? 'memória' : 'memórias'}</span>
         </div>
-        <ActiveFiltersBar filters={activeFilters} />
-        <DataTable
-          value={lista.data?.items ?? []} lazy paginator first={page * ROWS} rows={ROWS} totalRecords={total}
-          onPage={(e) => setPage(e.page ?? 0)} dataKey="id"
-          emptyMessage={lixeira ? 'A lixeira está vazia.' : 'Nenhuma memória ainda. Crie uma, capture uma página ou importe notas.'}
-          selectionMode="single" onSelectionChange={(e) => e.value && abrir((e.value as MemoriaResumo).id)}
-        >
-          <Column header="Memória" body={(m: MemoriaResumo) => (
-            <div>
-              <div style={{ fontWeight: 600 }}>{m.titulo}</div>
-              <div className="iv-muted" style={{ fontSize: '.82rem' }}>{m.preview}</div>
-              {m.tags.length > 0 && <div className="iv-row iv-wrap" style={{ marginTop: 4 }}>{m.tags.map((t) => <Pill key={t} label={`#${t}`} color="#64748b" />)}</div>}
-            </div>
+        {tagsBase.length > 0 && (
+          <div className="co-chips" role="group" aria-label="Tags mais usadas">
+            <span className="co-label">Tags:</span>
+            {tagsBase.slice(0, 12).map((t) => <Chip key={t.tag} label={`#${t.tag} (${t.total})`} active={tag === t.tag} onClick={() => toggleTag(t.tag)} />)}
+          </div>
+        )}
+        <ActiveFiltersBar filters={activeFilters} onClearAll={limpar} />
+        <DataTable value={itens} lazy paginator={n > ROWS} first={page * ROWS} rows={ROWS} totalRecords={n} onPage={(e) => setPage(e.page ?? 0)}
+          dataKey="id" loading={lista.isLoading} selectionMode="single" selection={selLista.item ?? null}
+          onSelectionChange={(e) => { const m = e.value as MemoriaResumo | null; if (m) abrirDaLista(m.id); }}
+          emptyMessage={lista.isError ? <EmptyState icon="pi-wifi" title="Sem conexão com a API" text="As memórias aparecem aqui quando o servidor responder." />
+            : lixeira ? <EmptyState icon="pi-trash" title="A lixeira está vazia" />
+            : activeFilters.some(Boolean) ? <EmptyState icon="pi-filter-slash" title="Nenhuma memória com estes filtros" action={<Button label="Limpar filtros" text onClick={limpar} />} />
+              : <EmptyState icon="pi-database" title="Nenhuma memória ainda" text="Crie uma, capture uma página ou importe notas." action={<Button label="Nova memória" icon="pi pi-plus" onClick={acoes.nova} />} />}>
+          <Column header="Memória" body={(m: MemoriaResumo) => {
+            const o = origemMeta(m.origem);
+            return (
+              <div className="iv-maincell">
+                <span className="iv-maincell__icon" title={o.label}><i className={`pi ${o.icon}`} aria-label={o.label} /></span>
+                <span className="co-min0">
+                  <span className="iv-maincell__title">{m.titulo}</span><br />
+                  <span className="iv-maincell__sub co-clamp">{m.preview || 'Sem conteúdo.'}</span>
+                  {m.tags.length > 0 && <span className="co-card__rodape">{m.tags.slice(0, 4).map((t) => <span key={t} className="co-tag">#{t}</span>)}{m.tags.length > 4 && <span className="co-tag">+{m.tags.length - 4}</span>}</span>}
+                </span>
+              </div>
+            );
+          }} />
+          <Column header="Escopo" style={{ width: 140 }} body={(m: MemoriaResumo) => { const e = ESCOPO_META[m.escopo]; return <Pill label={e.label} tone={e.tone} icon={e.icon} />; }} />
+          <Column header={lixeira ? 'Some em' : 'Atualizada'} style={{ width: 150 }} className="iv-hide-sm" headerClassName="iv-hide-sm"
+            body={(m: MemoriaResumo) => <span className="co-nota">{fmtData(lixeira && m.excluirEm ? m.excluirEm : m.atualizadoEm)}</span>} />
+          <Column header="" style={{ width: 56 }} body={(m: MemoriaResumo) => (
+            <Button icon="pi pi-ellipsis-v" text size="small" aria-label={`Ações de ${m.titulo}`} tooltip="Ações"
+              onClick={(e) => { e.stopPropagation(); setMenuDe(m); menu.current?.toggle(e); }} />
           )} />
-          <Column header="Origem" style={{ width: 100 }} field="origem" />
-          <Column header="Escopo" style={{ width: 130 }} body={(m: MemoriaResumo) => (
-            <Pill label={m.escopo} color={m.escopo === 'corporativo' ? '#f59e0b' : '#16a34a'} />
-          )} />
-          <Column header={lixeira ? 'Some em' : 'Atualizada'} style={{ width: 150 }}
-            body={(m: MemoriaResumo) => fmtData(lixeira && m.excluirEm ? m.excluirEm : m.atualizadoEm)} />
         </DataTable>
       </div>
 
-      <Sidebar visible={!!rascunho} position="right" onHide={() => setRascunho(null)} style={{ width: 620 }}>
-        {rascunho && (
-          <div className="iv-col" style={{ gap: '.8rem' }}>
-            <h2 style={{ margin: 0, color: 'var(--alvoar-navy)' }}>{rascunho.id ? 'Memória' : 'Nova memória'}</h2>
-            {rascunho.excluirEm && (
-              <Message severity="warn" style={{ width: '100%' }}
-                text={`Na lixeira: será apagada de vez em ${fmtData(rascunho.excluirEm)}. Resgate para editar.`} />
-            )}
-            {rascunho.urlOrigem && (
-              <a href={rascunho.urlOrigem} target="_blank" rel="noreferrer" style={{ fontSize: '.84rem', wordBreak: 'break-all' }}>{rascunho.urlOrigem}</a>
-            )}
-            <label className="iv-muted" style={{ fontSize: '.8rem' }}>Título</label>
-            <InputText value={rascunho.titulo} disabled={!!rascunho.excluirEm} onChange={(e) => setRascunho({ ...rascunho, titulo: e.target.value })} />
-            <label className="iv-muted" style={{ fontSize: '.8rem' }}>Tags (separadas por vírgula)</label>
-            <InputText value={rascunho.tagsTexto} disabled={!!rascunho.excluirEm} onChange={(e) => setRascunho({ ...rascunho, tagsTexto: e.target.value })} />
-            <label className="iv-muted" style={{ fontSize: '.8rem' }}>Escopo</label>
-            <Dropdown value={rascunho.escopo} options={ESCOPO_OPTS} disabled={!!rascunho.excluirEm}
-              onChange={(e) => setRascunho({ ...rascunho, escopo: e.value })} style={{ width: '100%' }} />
-            <label className="iv-muted" style={{ fontSize: '.8rem' }}>Conteúdo</label>
-            <InputTextarea value={rascunho.conteudo} rows={16} disabled={!!rascunho.excluirEm}
-              onChange={(e) => setRascunho({ ...rascunho, conteudo: e.target.value })} style={{ width: '100%' }} />
-            <div className="iv-row iv-wrap iv-mt">
-              {rascunho.excluirEm
-                ? <Button label="Resgatar" icon="pi pi-undo" onClick={resgatar} />
-                : <Button label="Salvar" icon="pi pi-save" onClick={salvar} disabled={!rascunho.titulo.trim()} />}
-              {rascunho.id && !rascunho.excluirEm && (
-                <Button label="Mover para a lixeira" icon="pi pi-trash" severity="danger" outlined onClick={excluir} />
-              )}
-              <Button label="Fechar" text onClick={() => setRascunho(null)} />
-            </div>
-          </div>
-        )}
-      </Sidebar>
+      {aberto && !acoes.form && (
+        <MemoriaDrawer id={aberto.id} nav={aberto.nav} tagAtiva={tag} onTag={toggleTag} onOpen={abrirAvulso}
+          onEdit={acoes.editar} onLixeira={acoes.lixeira} onResgatar={acoes.resgatar}
+          onCopiado={() => toast.current?.show({ severity: 'success', summary: 'Conteúdo copiado', life: 2000 })} />
+      )}
+      {acoes.form && <MemoriaForm inicial={acoes.form} salvando={acoes.ocupado} onCancel={acoes.fecharForm} onSave={acoes.salvar} />}
     </div>
   );
 }

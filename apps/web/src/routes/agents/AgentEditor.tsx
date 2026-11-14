@@ -16,17 +16,15 @@ import {
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Chip, Pill, StatusStrip } from '@/components/InfraKit';
 import { getAgente, updateAgente, deleteAgente, listTagsBase, erroApi, problemasApi } from '@/services/agentes';
-import { FERRAMENTAS_CATALOGO, RISCO_COR, RISCO_LABEL } from '@/data/agentesFerramentas';
+import { FERRAMENTAS_CATALOGO, RISCO_LABEL } from '@/data/agentesFerramentas';
+import { CANAL_LABEL, RISCO_TONE } from './regras';
+import '@/styles/telas/agents.css';
 import { STATUS_LABEL } from './home/regras';
 
 interface Form { nome: string; resumo: string; status: AgenteStatus; config: AgenteConfig }
 type Secao = Exclude<keyof AgenteConfig, 'ferramentas'>;
 
 const STATUS_OPTS = (Object.keys(STATUS_LABEL) as AgenteStatus[]).map((v) => ({ label: STATUS_LABEL[v], value: v }));
-const CANAL_LABEL: Record<CanalAgente, string> = {
-  chat: 'Conversa', web: 'Aplicação web', api: 'API', slack: 'Slack', discord: 'Discord',
-  telegram: 'Telegram', whatsapp: 'WhatsApp', email: 'E-mail',
-};
 
 function Campo({ rotulo, dica, children }: { rotulo: string; dica?: string; children: ReactNode }) {
   return (
@@ -153,9 +151,9 @@ export function AgentEditor() {
           <div className="iv-row iv-wrap">
             <Button label="Salvar" icon="pi pi-save" onClick={salvar} loading={salvando} />
             {agenteId && form.status !== 'arquivado' && (
-              <Link to="/agents/agente/$agenteId/playground" params={{ agenteId }}>Executar no playground</Link>
+              <Link to="/agents/agente/$agenteId/playground" params={{ agenteId }} search={{}} className="ag-btn"><i className="pi pi-play" aria-hidden="true" /> Executar</Link>
             )}
-            <Link to="/agents">Voltar</Link>
+            <Link to="/agents" className="ag-btn"><i className="pi pi-arrow-left" aria-hidden="true" /> Voltar</Link>
             {form.status === 'arquivado' && <Button label="Excluir definitivamente" icon="pi pi-trash" severity="danger" outlined onClick={excluir} />}
           </div>
         }
@@ -179,7 +177,7 @@ export function AgentEditor() {
           </div>
         </div>
         {form.status === 'ativo' && erros > 0 && (
-          <p style={{ color: 'var(--iv-crit)', fontSize: '.84rem', margin: '.6rem 0 0' }}>
+          <p className="ag-erro" role="alert">
             Há {erros} pendência(s) grave(s): o servidor não deixa salvar como Ativo até resolvê-las (veja a última aba).
           </p>
         )}
@@ -247,7 +245,7 @@ export function AgentEditor() {
                   <div className="iv-row iv-wrap" style={{ justifyContent: 'space-between' }}>
                     <strong>{f.nome}</strong>
                     <div className="iv-row">
-                      {cat && <Pill label={`risco ${RISCO_LABEL[cat.risco].toLowerCase()}`} color={RISCO_COR[cat.risco]} />}
+                      {cat && <Pill label={`risco ${RISCO_LABEL[cat.risco].toLowerCase()}`} tone={RISCO_TONE[cat.risco]} />}
                       <Button icon="pi pi-trash" text severity="danger" aria-label={`Remover ${f.nome}`} onClick={() => setFerramentas(cfg.ferramentas.filter((_, j) => j !== i))} />
                     </div>
                   </div>
@@ -262,7 +260,7 @@ export function AgentEditor() {
                     <InputText style={{ flex: 1, minWidth: 200 }} value={f.observacao} maxLength={300} placeholder="Observação (escopo, limites)" aria-label="Observação"
                       onChange={(e) => alterarFerramenta(i, { observacao: e.target.value })} />
                   </div>
-                  {semAprovacao && <p style={{ color: 'var(--iv-crit)', fontSize: '.82rem', margin: '.5rem 0 0' }}>Escrita sem aprovação humana: o servidor bloqueia o status Ativo.</p>}
+                  {semAprovacao && <p className="ag-erro">Escrita sem aprovação humana: o servidor bloqueia o status Ativo.</p>}
                 </div>
               );
             })}
@@ -376,7 +374,7 @@ export function AgentEditor() {
               <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
                 {revisao.map((r) => (
                   <li key={r.codigo} style={{ marginBottom: '.35rem' }}>
-                    <Pill label={r.nivel === 'erro' ? 'grave' : 'aviso'} color={r.nivel === 'erro' ? '#ef4444' : '#f59e0b'} /> {r.texto}
+                    <Pill label={r.nivel === 'erro' ? 'Grave' : 'Aviso'} tone={r.nivel === 'erro' ? 'danger' : 'warning'} icon={r.nivel === 'erro' ? 'pi-exclamation-circle' : 'pi-info-circle'} /> {r.texto}
                   </li>
                 ))}
               </ul>
@@ -385,7 +383,7 @@ export function AgentEditor() {
               <Button label="Copiar especificação" icon="pi pi-copy" outlined onClick={() => navigator.clipboard?.writeText(markdown)} />
               <Button label="Baixar .md" icon="pi pi-download" outlined onClick={baixar} />
             </div>
-            <pre style={{ whiteSpace: 'pre-wrap', background: '#0d0c2b', color: '#e6e6f0', padding: '14px 16px', borderRadius: 10, fontSize: 13, lineHeight: 1.5, maxHeight: 480, overflow: 'auto', margin: 0 }}>{markdown}</pre>
+            <pre className="agd-code agd-code--alto" tabIndex={0} aria-label="Especificação em Markdown">{markdown}</pre>
           </div>
         </TabPanel>
       </TabView>

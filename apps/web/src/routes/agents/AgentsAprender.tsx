@@ -1,73 +1,83 @@
 import { Link } from '@tanstack/react-router';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Bar, Kpi, Pill, StatusStrip } from '@/components/InfraKit';
+import { ClickCard } from '@/components/ui/ClickCard';
+import { Bar, Kpi, StatusStrip } from '@/components/InfraKit';
+import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import { progressoPorTrilha } from '@/services/catalog';
 import { progressTone } from '@/theme/status';
-import { GLOSSARIO, PILARES, RECURSOS_AGENTES } from '@/data/agentesPilares';
+import { GLOSSARIO, PILARES, RECURSOS_AGENTES, type Pilar } from '@/data/agentesPilares';
+import { PilarFicha } from './ficha/PilarFicha';
+import '@/styles/telas/agents.css';
+
+const idPilar = (p: Pilar) => String(p.numero);
 
 export function AgentsAprender() {
   const p = progressoPorTrilha()['agentes'];
+  const sel = useDrawerSelection(PILARES, idPilar);
 
   return (
     <div>
       <PageHeader
         title="Aprender sobre agentes"
-        subtitle="Os 8 pilares para construir um agente que entrega resultado, com o que checar em cada um e os erros mais comuns."
-        actions={<Link to="/trilhas/$trilhaId" params={{ trilhaId: 'agentes' }}>Abrir a trilha de estudo</Link>}
+        subtitle="Os 8 pilares para construir um agente que entrega resultado. Clique num pilar para ver o que checar e como os seus agentes estão nele."
+        actions={<Link to="/trilhas/$trilhaId" params={{ trilhaId: 'agentes' }} className="ag-btn"><i className="pi pi-book" aria-hidden="true" /> Abrir a trilha</Link>}
       />
 
       <StatusStrip tone="ok" icon="pi-lightbulb">
-        Na prática, autonomia precisa de limites, rastreabilidade e supervisão humana nas decisões críticas. Um agente útil resolve um problema real, com consistência.
+        Autonomia precisa de limites, rastreabilidade e supervisão humana nas decisões críticas. Um agente útil resolve um problema real, com consistência.
       </StatusStrip>
 
-      <div className="iv-kpis iv-mt">
-        <Kpi label="Pilares" value={PILARES.length} />
-        <Kpi label="Tópicos concluídos" value={p ? `${p.concluidos}/${p.total}` : '—'} hint="na trilha Agentes de IA" />
-        <Kpi label="Progresso" value={p ? `${p.pct}%` : '—'} />
-      </div>
-      {p && <div className="iv-mt"><Bar pct={p.pct} tone={progressTone(p.pct)} /></div>}
-
-      <div className="grid-cards iv-mt">
-        {PILARES.map((pi) => (
-          <div key={pi.numero} className="iv-card">
-            <div className="iv-row" style={{ justifyContent: 'space-between' }}>
-              <Pill label={`Pilar ${pi.numero}`} color="#7c3aed" />
-              <i className={`pi ${pi.icone}`} aria-hidden="true" style={{ color: 'var(--alvoar-teal-600)', fontSize: '1.3rem' }} />
-            </div>
-            <h3 style={{ margin: '.6rem 0 .25rem', color: 'var(--alvoar-navy)' }}>{pi.titulo}</h3>
-            <p style={{ margin: '0 0 .6rem', fontSize: '.9rem', fontWeight: 600 }}>{pi.pergunta}</p>
-            <ul style={{ margin: '0 0 .6rem', paddingLeft: '1.1rem', fontSize: '.86rem' }}>
-              {pi.checklist.map((c) => <li key={c}>{c}</li>)}
-            </ul>
-            <p className="iv-muted" style={{ margin: 0, fontSize: '.82rem' }}><strong>Erro comum:</strong> {pi.erroComum}</p>
-            <p className="iv-muted" style={{ margin: '.5rem 0 0', fontSize: '.8rem' }}>Preenchido na aba "{pi.aba}" do editor.</p>
+      {p && (
+        <div className="iv-kpis iv-mt">
+          <Kpi label="Tópicos concluídos" icon="pi-check" value={`${p.concluidos}/${p.total}`} hint="na trilha Agentes de IA" />
+          <div className="iv-kpi ag-kpi-barra">
+            <span className="iv-kpi__label"><i className="pi pi-chart-line" aria-hidden="true" />Progresso</span>
+            <span className="iv-kpi__value">{p.pct}%</span>
+            <Bar pct={p.pct} tone={progressTone(p.pct)} />
           </div>
+        </div>
+      )}
+
+      <h2 className="iv-section-label iv-mt">Os 8 pilares</h2>
+      <div className="ag-cards">
+        {PILARES.map((pi) => (
+          <ClickCard key={pi.numero} onOpen={() => sel.open(idPilar(pi))} label={`Abrir o pilar ${pi.numero}: ${pi.titulo}`} selected={sel.isOpen(idPilar(pi))}>
+            <div className="ag-cardx__topo">
+              <span className="ag-rotulo">Pilar {pi.numero}</span>
+              <i className={`pi ${pi.icone} ag-cardx__icone`} aria-hidden="true" />
+            </div>
+            <h3 className="ag-cardx__titulo">{pi.titulo}</h3>
+            <p className="ag-cardx__texto">{pi.pergunta}</p>
+            <p className="ag-cardx__texto ag-cardx__pe"><span>{pi.checklist.length} itens para checar · aba "{pi.aba}"</span></p>
+          </ClickCard>
         ))}
       </div>
 
-      <div className="iv-card iv-mt">
-        <h4 style={{ margin: '0 0 .6rem' }}>Glossário</h4>
-        <dl style={{ margin: 0 }}>
+      <div className="iv-card iv-mt ag-bloco">
+        <h3>Glossário</h3>
+        <dl className="ag-glossario">
           {GLOSSARIO.map((g) => (
-            <div key={g.termo} style={{ marginBottom: '.5rem' }}>
-              <dt style={{ fontWeight: 700 }}>{g.termo}</dt>
-              <dd style={{ margin: 0 }} className="iv-muted">{g.definicao}</dd>
+            <div key={g.termo}>
+              <dt>{g.termo}</dt>
+              <dd>{g.definicao}</dd>
             </div>
           ))}
         </dl>
       </div>
 
-      <div className="iv-card iv-mt">
-        <h4 style={{ margin: '0 0 .6rem' }}>Para ler</h4>
-        <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+      <div className="iv-card iv-mt ag-bloco">
+        <h3>Para ler</h3>
+        <ul>
           {RECURSOS_AGENTES.map((r) => (
-            <li key={r.url} style={{ marginBottom: '.35rem' }}>
-              <a href={r.url} target="_blank" rel="noreferrer">{r.titulo}</a>
-              <span className="iv-muted"> · {r.nota}</span>
+            <li key={r.url}>
+              <a href={r.url} target="_blank" rel="noreferrer">{r.titulo}<span className="agd-sr"> (abre em nova aba)</span></a>
+              <span className="ag-dica"> · {r.nota}</span>
             </li>
           ))}
         </ul>
       </div>
+
+      {sel.item && <PilarFicha p={sel.item} nav={sel.nav} />}
     </div>
   );
 }

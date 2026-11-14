@@ -4,19 +4,16 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
-import { Sidebar } from 'primereact/sidebar';
 import { Message } from 'primereact/message';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Kpi, StatusStrip, Pill } from '@/components/InfraKit';
-import { DetailLayout, DetailHeader, DetailSection } from '@/components/ui/Detail';
-import { listAgentes, listAuditoria, type AcaoAuditoria } from '@/services/agentes';
-
-const DECISAO_LABEL: Record<AcaoAuditoria['decisao'], string> = {
-  automatica: 'Leitura (automática)', aprovada: 'Escrita aprovada', negada: 'Escrita negada',
-};
-const DECISAO_COR: Record<AcaoAuditoria['decisao'], string> = {
-  automatica: '#64748b', aprovada: '#16a34a', negada: '#ef4444',
-};
+import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
+import { Kpi, Pill, StatusStrip } from '@/components/InfraKit';
+import { useDrawerSelection } from '@/hooks/useDrawerSelection';
+import { listAgentes, listAuditoria } from '@/services/agentes';
+import { DECISAO_META, comIds, duracao, type AcaoComId } from './regras';
+import { MetaPill } from './ficha/comum';
+import { AcaoFicha } from './ficha/AcaoFicha';
+import '@/styles/telas/agents.css';
 
 /**
  * Painel de auditoria dos agentes: toda ação de ferramenta (leitura e escrita), de todas as
@@ -30,81 +27,73 @@ export function AgentsAuditoria() {
   const [agenteId, setAgenteId] = useState<string | undefined>();
   const [somenteEscrita, setSomenteEscrita] = useState(false);
   const [somenteErro, setSomenteErro] = useState(false);
-  const [sel, setSel] = useState<AcaoAuditoria | null>(null);
 
   const filtro = useMemo(() => ({ agenteId, somenteEscrita: somenteEscrita || undefined, somenteErro: somenteErro || undefined, limite: 300 }), [agenteId, somenteEscrita, somenteErro]);
   const auditoria = useQuery({ queryKey: ['agentes-auditoria', filtro], queryFn: () => listAuditoria(filtro) });
 
-  const acoes = auditoria.data?.acoes ?? [];
+  const acoes = useMemo(() => comIds(auditoria.data?.acoes ?? []), [auditoria.data]);
+  const sel = useDrawerSelection(acoes);
   const aprovadas = acoes.filter((a) => a.decisao === 'aprovada').length;
   const negadas = acoes.filter((a) => a.decisao === 'negada').length;
   const erros = acoes.filter((a) => a.erro).length;
+  const nomeAgente = (agentes.data ?? []).find((a) => a.id === agenteId)?.nome;
+  const limpar = () => { setAgenteId(undefined); setSomenteEscrita(false); setSomenteErro(false); };
 
   return (
     <div>
       <PageHeader
         title="Auditoria dos agentes"
-        subtitle="Toda ação que um agente executou de verdade: o que pediu, o que o servidor devolveu, e se foi aprovada por você."
+        subtitle="Toda ação que um agente executou de verdade: o que pediu, o que o servidor devolveu e se foi aprovada por você."
       />
 
-      {auditoria.isError && (
-        <Message severity="warn" style={{ width: '100%', marginBottom: '1rem' }} text="API indisponível." />
-      )}
+      {auditoria.isError && <Message severity="warn" className="ag-largo" text="API indisponível: a auditoria fica no servidor." />}
 
       <StatusStrip tone="warn" icon="pi-exclamation-triangle">
-        Você ainda não tem um SIEM central (Wazuh) recebendo estes eventos. Esta tela — e o endpoint
-        <code> GET /api/agentes/auditoria</code> que a alimenta — é a visão de auditoria por enquanto, documentada em
-        <code> docs/AGENTS.md</code> para que outra IA ou agente também possa consultar pendências aqui.
+        Estes eventos ainda não chegam a um SIEM central. Esta tela e o endpoint <code>GET /api/agentes/auditoria</code> (documentado
+        em <code>docs/AGENTS.md</code>, para outra IA também consultar) são a visão de auditoria por enquanto.
       </StatusStrip>
 
       <div className="iv-kpis iv-mt">
-        <Kpi label="Ações no período" value={auditoria.data?.total ?? 0} />
-        <Kpi label="Escritas aprovadas" value={aprovadas} tone="ok" />
-        <Kpi label="Escritas negadas" value={negadas} />
-        <Kpi label="Com erro" value={erros} tone={erros > 0 ? 'warning' : 'ok'} />
-      </div>
-
-      <div className="iv-row iv-wrap iv-mt" style={{ gap: '.6rem' }}>
-        <Dropdown value={agenteId} options={(agentes.data ?? []).map((a) => ({ label: a.nome, value: a.id }))}
-          onChange={(e) => setAgenteId(e.value)} placeholder="Todos os agentes" showClear style={{ minWidth: 240 }} aria-label="Filtrar por agente" />
-        <label className="iv-row" style={{ gap: '.4rem' }}>
-          <Checkbox checked={somenteEscrita} onChange={(e) => setSomenteEscrita(!!e.checked)} /> Só ações de escrita
-        </label>
-        <label className="iv-row" style={{ gap: '.4rem' }}>
-          <Checkbox checked={somenteErro} onChange={(e) => setSomenteErro(!!e.checked)} /> Só com erro
-        </label>
+        <Kpi label="Ações no período" icon="pi-history" value={auditoria.data?.total ?? '—'} hint={acoes.length < (auditoria.data?.total ?? 0) ? `mostrando as ${acoes.length} mais recentes` : undefined} />
+        <Kpi label="Escritas aprovadas" icon="pi-check" value={aprovadas} />
+        <Kpi label="Escritas negadas" icon="pi-ban" value={negadas} />
+        <Kpi label="Com erro" icon="pi-times-circle" value={erros} tone="danger" active={somenteErro} onClick={() => setSomenteErro(!somenteErro)} />
       </div>
 
       <div className="iv-card iv-mt">
-        <DataTable value={acoes} dataKey="execucaoId" paginator rows={20} rowHover
-          onRowClick={(e) => setSel(e.data as AcaoAuditoria)} emptyMessage="Nenhuma ação registrada ainda.">
-          <Column header="Quando" body={(a: AcaoAuditoria) => a.decididoEm ? new Date(a.decididoEm).toLocaleString('pt-BR') : <span className="iv-muted">—</span>} style={{ width: 170 }} />
-          <Column header="Agente" field="agenteNome" />
-          <Column header="Ferramenta" field="ferramenta" />
-          <Column header="Decisão" body={(a: AcaoAuditoria) => <Pill label={DECISAO_LABEL[a.decisao]} color={DECISAO_COR[a.decisao]} />} />
-          <Column header="Resultado" body={(a: AcaoAuditoria) => a.erro ? <Pill label="Erro" color="#ef4444" /> : <Pill label="OK" color="#16a34a" />} style={{ width: 90 }} />
+        <div className="iv-toolbar">
+          <Dropdown value={agenteId} options={(agentes.data ?? []).map((a) => ({ label: a.nome, value: a.id }))} className="ag-dropdown"
+            onChange={(e) => setAgenteId(e.value ?? undefined)} placeholder="Todos os agentes" showClear aria-label="Filtrar por agente" />
+          <label className="ag-toolbar-check">
+            <Checkbox inputId="aud-escrita" checked={somenteEscrita} onChange={(e) => setSomenteEscrita(!!e.checked)} /> Só escrita
+          </label>
+          <span className="iv-toolbar__count">{acoes.length} {acoes.length === 1 ? 'ação' : 'ações'}</span>
+        </div>
+        <ActiveFiltersBar onClearAll={limpar} filters={[
+          agenteId && { key: 'ag', label: nomeAgente ?? 'Agente', onRemove: () => setAgenteId(undefined) },
+          somenteEscrita && { key: 'esc', label: 'Só escrita', onRemove: () => setSomenteEscrita(false) },
+          somenteErro && { key: 'erro', label: 'Com erro', onRemove: () => setSomenteErro(false) },
+        ]} />
+
+        <DataTable className="ag-tabela" value={acoes} dataKey="id" paginator={acoes.length > 25} rows={25} rowHover loading={auditoria.isLoading}
+          onRowClick={(e) => sel.open((e.data as AcaoComId).id)}
+          rowClassName={(a: AcaoComId) => `${a.erro ? "iv-row-alert tone-danger" : ""}${sel.isOpen(a.id) ? " ag-row-sel" : ""}`}
+          emptyMessage="Nenhuma ação registrada. Quando um agente usar uma ferramenta no playground, ela aparece aqui.">
+          <Column header="Decisão" body={(a: AcaoComId) => <MetaPill m={DECISAO_META[a.decisao]} />} style={{ width: '13rem' }} />
+          <Column header="Ferramenta" body={(a: AcaoComId) => (
+            <div className="iv-maincell">
+              <span className="iv-maincell__icon"><i className="pi pi-wrench" aria-hidden="true" /></span>
+              <div><div className="iv-maincell__title mono">{a.ferramenta}</div><div className="iv-maincell__sub">{a.agenteNome}</div></div>
+            </div>
+          )} />
+          <Column header="Resultado" body={(a: AcaoComId) => (a.erro && a.decisao !== 'negada' ? <Pill label="Erro" tone="danger" icon="pi-times-circle" /> : <span className="ag-dica">ok</span>)} />
+          <Column header="Duração" className="iv-hide-sm tabular" headerClassName="iv-hide-sm" body={(a: AcaoComId) => duracao(a.ms)} />
+          <Column header="Decidido em" className="iv-hide-sm tabular" headerClassName="iv-hide-sm"
+            body={(a: AcaoComId) => (a.decididoEm ? new Date(a.decididoEm).toLocaleString('pt-BR') : <span className="ag-dica">—</span>)} />
         </DataTable>
       </div>
 
-      <Sidebar visible={!!sel} position="right" onHide={() => setSel(null)} style={{ width: 'min(600px, 100vw)' }}>
-        {sel && (
-          <DetailLayout>
-            <DetailHeader title={sel.ferramenta}>
-              <Pill label={DECISAO_LABEL[sel.decisao]} color={DECISAO_COR[sel.decisao]} />
-              {sel.erro && <Pill label="Erro" color="#ef4444" />}
-            </DetailHeader>
-            <p className="iv-muted">Agente: {sel.agenteNome} · execução {sel.execucaoId} · {sel.ms} ms</p>
-            <DetailSection title="Parâmetros (entrada validada)">
-              <pre style={{ background: '#0d0c2b', color: '#e2e8f0', padding: '.7rem', borderRadius: 8, overflow: 'auto', fontSize: '.8rem' }}>
-                {JSON.stringify(sel.entrada, null, 2)}
-              </pre>
-            </DetailSection>
-            <DetailSection title="Resultado devolvido ao modelo">
-              <pre style={{ whiteSpace: 'pre-wrap', fontSize: '.85rem' }}>{sel.saida}</pre>
-            </DetailSection>
-          </DetailLayout>
-        )}
-      </Sidebar>
+      {sel.item && <AcaoFicha a={sel.item} nav={sel.nav} />}
     </div>
   );
 }

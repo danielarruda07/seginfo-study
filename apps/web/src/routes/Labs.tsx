@@ -1,163 +1,128 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Sidebar } from 'primereact/sidebar';
 import { Dropdown } from 'primereact/dropdown';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
-import { Link } from '@tanstack/react-router';
-import { PageHeader } from '@/components/ui/PageHeader';
-import { StatusStrip, Chip, Pill, Kpi } from '@/components/InfraKit';
-import { DetailHeader, DetailLayout, DetailSection } from '@/components/ui/Detail';
-import { listLabs, getAtivo, getProgressoLab, saveProgressoLab, ESTADO_LAB_LABEL, type EstadoLab, type ProgressoLab } from '@/services/inventario';
-import { DOMINIO_LAB } from '@/theme/status';
+import { Toast } from 'primereact/toast';
+import { ConfirmDialog } from 'primereact/confirmdialog';
 import type { Lab } from '@seginfo/shared';
-import { getTopico } from '@/services/catalog';
-import { addPost, listPosts } from '@/services/sessoes';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
+import { EmptyState, Kpi } from '@/components/InfraKit';
+import { useDrawerSelection } from '@/hooks/useDrawerSelection';
+import { useDebounce } from '@/hooks/useDebounce';
 import { useInvalidate } from '@/hooks/useInvalidate';
-import { PurpleExerciseJournal } from './labs/PurpleExerciseJournal';
+import { listLabs, getProgressoLab, saveProgressoLab, type EstadoLab, type ProgressoLab } from '@/services/inventario';
+import { addPost, listPosts } from '@/services/sessoes';
 import { listPurpleExercises } from '@/services/exerciciosPurple';
+import { DOMINIO_LAB } from '@/theme/status';
+import { combina, labPedeAcao, resumoRedBlue } from './pratica/relacoes';
+import { ESTADO_LAB_META } from './labs/estado';
+import { LabCard } from './labs/LabCard';
+import { LabDrawer } from './labs/LabDrawer';
+import '@/styles/telas/pratica.css';
 
 type Dominio = Lab['dominio'];
-const FILTROS: Dominio[] = ['blue', 'red', 'purple', 'infra'];
-const STATUS_OPTS = Object.entries(ESTADO_LAB_LABEL).map(([value, label]) => ({ value, label }));
-
-function DominioPill({ dominio }: { dominio: Dominio }) {
-  return <Pill label={DOMINIO_LAB[dominio].label} color={DOMINIO_LAB[dominio].color} />;
-}
+type FiltroEstado = EstadoLab | 'lacuna';
+const DOMINIO_OPTS = (['blue', 'red', 'purple', 'infra'] as Dominio[]).map((value) => ({ value, label: DOMINIO_LAB[value].label }));
+const FILTRO_LABEL: Record<FiltroEstado, string> = { ...Object.fromEntries(Object.entries(ESTADO_LAB_META).map(([k, v]) => [k, v.label])) as Record<EstadoLab, string>, lacuna: 'Com lacuna de detecção' };
 
 export function Labs() {
-  const { data } = useQuery({ queryKey: ['labs'], queryFn: listLabs });
+  const { data, isLoading } = useQuery({ queryKey: ['labs'], queryFn: listLabs });
+  const todos = data ?? [];
+  const toast = useRef<Toast>(null);
+  const invalidate = useInvalidate();
   const [dominio, setDominio] = useState<Dominio | undefined>();
-  const [status, setStatus] = useState<EstadoLab | undefined>();
-  const [search, setSearch] = useState('');
-  const [sel, setSel] = useState<Lab | null>(null);
+  const [estado, setEstado] = useState<FiltroEstado | undefined>();
+  const [busca, setBusca] = useState('');
+  const search = useDebounce(busca);
+  const [revExercicios, setRevExercicios] = useState(0);
   const [progresso, setProgresso] = useState<Record<string, ProgressoLab>>(() =>
     Object.fromEntries(listLabs().map((lab) => [lab.id, getProgressoLab(lab.id)])),
   );
 
-  const labs = (data ?? []).filter((l) => (!dominio || l.dominio === dominio) && (!status || progresso[l.id]?.status === status) && (!search || `${l.titulo} ${l.objetivo}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())));
-  const exercicios = listPurpleExercises();
-  const executados = exercicios.filter((e) => e.status !== 'planejado');
-  const detectados = executados.filter((e) => e.detection === 'detectado').length;
-  const lacunas = executados.filter((e) => e.detection === 'parcial' || e.detection === 'nao_detectado').length;
-  const retestes = executados.filter((e) => e.retestResult === 'aprovado').length;
-  const invalidate = useInvalidate();
+  // revExercicios força reler o registro local depois de salvar/excluir na ficha
+  const exercicios = useMemo(() => listPurpleExercises(), [revExercicios]);
+  const redBlue = resumoRedBlue(exercicios);
+  const porLab = useMemo(() => {
+    const m = new Map<string, typeof exercicios>();
+    for (const e of exercicios) m.set(e.labId, [...(m.get(e.labId) ?? []), e]);
+    return m;
+  }, [exercicios]);
+  const statusDe = (id: string) => progresso[id]?.status ?? 'nao_iniciado';
+  const conta = (s: EstadoLab) => todos.filter((l) => statusDe(l.id) === s).length;
+  const comLacuna = todos.filter((l) => labPedeAcao(porLab.get(l.id) ?? [])).length;
+
+  const labs = useMemo(() => todos.filter((l) =>
+    (!dominio || l.dominio === dominio) &&
+    (!estado || (estado === 'lacuna' ? labPedeAcao(porLab.get(l.id) ?? []) : statusDe(l.id) === estado)) &&
+    combina(search, l.titulo, l.objetivo, ...(l.mitre ?? []))),
+  [todos, dominio, estado, search, progresso, porLab]);
+  const sel = useDrawerSelection(labs);
+
+  const toggleEstado = (s: FiltroEstado) => setEstado((atual) => (atual === s ? undefined : s));
+  const limpar = () => { setDominio(undefined); setEstado(undefined); setBusca(''); };
+  const filtros = [
+    estado && { key: 'estado', label: FILTRO_LABEL[estado], onRemove: () => setEstado(undefined) },
+    dominio && { key: 'dominio', label: DOMINIO_LAB[dominio].label, onRemove: () => setDominio(undefined) },
+    search && { key: 'busca', label: `“${search}”`, onRemove: () => setBusca('') },
+  ];
 
   function salvar(labId: string, novo: ProgressoLab) {
     saveProgressoLab(labId, novo);
     setProgresso((atual) => ({ ...atual, [labId]: getProgressoLab(labId) }));
   }
 
+  function criarRascunho(lab: Lab) {
+    const titulo = `Lab: ${lab.titulo}`;
+    if (listPosts().some((p) => p.titulo === titulo)) {
+      toast.current?.show({ severity: 'info', summary: 'Rascunho já existe', detail: titulo, life: 3000 });
+      return;
+    }
+    addPost({ titulo, gancho: `Pratiquei: ${lab.titulo}`, corpo: `Objetivo: ${lab.objetivo}\n\nO que fiz:\n${lab.passos.map((x) => `• ${x}`).join('\n')}\n\nResultado esperado: ${lab.resultadoEsperado}\n\nAprendizados: ${getProgressoLab(lab.id).aprendizado || '[Adicione seus aprendizados antes de publicar.]'}`, topicoId: lab.topicoId, publicado: false });
+    invalidate('posts');
+    toast.current?.show({ severity: 'success', summary: 'Rascunho criado no LinkedIn', detail: titulo, life: 3000 });
+  }
+
   return (
     <div>
-      <PageHeader title="Labs Práticos" subtitle="Exercícios de Blue e Red Team amarrados aos ativos reais do seu homelab." />
-      <StatusStrip tone="ok" icon="pi-desktop">
-        {labs.length} labs. Cada um referencia equipamentos que você realmente tem — pratique e documente para o LinkedIn.
-      </StatusStrip>
+      <Toast ref={toast} />
+      <ConfirmDialog />
+      <PageHeader title="Labs Práticos" subtitle="Exercícios de Blue e Red Team amarrados aos ativos reais do seu homelab. Abra um lab para ver passos, alvos, ferramentas e registrar o resultado." />
 
       <div className="iv-kpis iv-mt">
-        <Kpi label="Execuções Red × Blue" value={executados.length} />
-        <Kpi label="Detecções confirmadas" value={detectados} />
-        <Kpi label="Lacunas de detecção" value={lacunas} />
-        <Kpi label="Retestes aprovados" value={retestes} />
+        <Kpi label="Em andamento" icon="pi-clock" value={conta('em_andamento')} active={estado === 'em_andamento'} onClick={() => toggleEstado('em_andamento')} />
+        <Kpi label="Concluídos" icon="pi-check" value={conta('concluido')} hint={`de ${todos.length} labs`} active={estado === 'concluido'} onClick={() => toggleEstado('concluido')} />
+        <Kpi label="Não iniciados" icon="pi-circle" value={conta('nao_iniciado')} active={estado === 'nao_iniciado'} onClick={() => toggleEstado('nao_iniciado')} />
+        <Kpi label="Execuções Red × Blue" icon="pi-sync" value={redBlue.executados} hint={`${redBlue.detectados} detectadas · ${redBlue.retestes} retestes ok`} />
+        <Kpi label="Lacunas de detecção" icon="pi-exclamation-triangle" tone="warning" value={comLacuna} hint="labs sem reteste aprovado"
+          active={estado === 'lacuna'} onClick={() => toggleEstado('lacuna')} />
       </div>
-      <p className="iv-muted" style={{ marginTop: '.4rem' }}>Exercícios medem controles testados; eventos reais do Radar permanecem separados.</p>
+      <p className="pr-nota">Exercícios medem controles testados; eventos reais continuam separados no Radar.</p>
 
-      <div className="iv-row iv-wrap iv-mt">
-        <Chip label="Todos" active={!dominio} onClick={() => setDominio(undefined)} />
-        {FILTROS.map((d) => (
-          <Chip key={d} label={DOMINIO_LAB[d].label} active={dominio === d} onClick={() => setDominio(d)} />
-        ))}
+      <div className="iv-toolbar pr-toolbar iv-mt">
+        <SearchInput value={busca} onChange={setBusca} placeholder="Buscar lab, objetivo ou técnica (T1110)" />
+        <Dropdown value={dominio} options={DOMINIO_OPTS} onChange={(e) => setDominio(e.value)} placeholder="Todos os domínios" showClear aria-label="Domínio" />
+        <span className="iv-toolbar__count">{labs.length} {labs.length === 1 ? 'lab' : 'labs'}</span>
       </div>
+      <ActiveFiltersBar filters={filtros} onClearAll={limpar} />
 
-      <div className="iv-row iv-wrap iv-mt">
-        <InputText value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar lab…" aria-label="Buscar labs" />
-        <Dropdown value={status} options={STATUS_OPTS} onChange={(e) => setStatus(e.value)}
-          placeholder="Todos os status" showClear style={{ minWidth: 210 }} />
-      </div>
-
-      <div className="grid-cards iv-mt">
-        {labs.map((l) => (
-          <div key={l.id} className="iv-card trilha-card lab-card" role="button" tabIndex={0}
-            onClick={() => setSel(l)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSel(l); } }}>
-            <div className="iv-row" style={{ justifyContent: 'space-between' }}>
-              <DominioPill dominio={l.dominio} />
-              <div className="iv-row iv-wrap"><Pill label={l.nivel} /><Pill label={ESTADO_LAB_LABEL[progresso[l.id]?.status ?? 'nao_iniciado']} /></div>
-            </div>
-            <h3 style={{ margin: '.6rem 0 .25rem', color: 'var(--alvoar-navy)' }}>{l.titulo}</h3>
-            <p className="iv-muted" style={{ margin: 0, fontSize: '.88rem' }}>{l.objetivo}</p>
-          </div>
-        ))}
-      </div>
-
-      <Sidebar visible={!!sel} position="right" onHide={() => setSel(null)} style={{ width: 520 }}>
-        {sel && <LabDetalhe lab={sel} progresso={progresso[sel.id] ?? getProgressoLab(sel.id)} onSave={(p) => salvar(sel.id, p)} onDraft={() => {
-          const postTitle = `Lab: ${sel.titulo}`;
-          if (!listPosts().some((p) => p.titulo === postTitle)) {
-            addPost({ titulo: postTitle, gancho: `Pratiquei: ${sel.titulo}`, corpo: `Objetivo: ${sel.objetivo}\n\nO que fiz:\n${sel.passos.map((x) => `• ${x}`).join('\n')}\n\nResultado esperado: ${sel.resultadoEsperado}\n\nAprendizados: ${getProgressoLab(sel.id).aprendizado || '[Adicione seus aprendizados antes de publicar.]'}`, topicoId: sel.topicoId, publicado: false });
-          }
-          invalidate('posts');
-        }} />}
-      </Sidebar>
-    </div>
-  );
-}
-
-function LabDetalhe({ lab, progresso, onSave, onDraft }: { lab: Lab; progresso: ProgressoLab; onSave: (p: ProgressoLab) => void; onDraft: () => void }) {
-  const mitreText = progresso.mitre.join(', ');
-  return (
-    <DetailLayout>
-      <DetailHeader title={lab.titulo}>
-        <DominioPill dominio={lab.dominio} />
-        <Pill label={lab.nivel} />
-      </DetailHeader>
-      <p><strong>Objetivo:</strong> {lab.objetivo}</p>
-      {lab.topicoId && getTopico(lab.topicoId) && <p>Tópico relacionado: <Link to="/trilhas/$trilhaId" params={{ trilhaId: getTopico(lab.topicoId)!.trilhaId }}>{getTopico(lab.topicoId)!.titulo}</Link></p>}
-
-      {(lab.mitre ?? []).length > 0 && (
-        <p>Técnicas ATT&CK: {(lab.mitre ?? []).map((t) => <Link key={t} to="/attack" style={{ fontFamily: 'monospace', marginRight: '.5rem' }}>{t}</Link>)}</p>
+      {labs.length === 0 && !isLoading ? (
+        <div className="iv-card"><EmptyState icon="pi-filter-slash" title="Nenhum lab com estes filtros" action={<Button label="Limpar filtros" text onClick={limpar} />} /></div>
+      ) : (
+        <div className="pr-grid">
+          {labs.map((l) => (
+            <LabCard key={l.id} lab={l} progresso={progresso[l.id] ?? getProgressoLab(l.id)} selected={sel.isOpen(l.id)}
+              exercicios={porLab.get(l.id)?.length ?? 0} lacuna={labPedeAcao(porLab.get(l.id) ?? [])} onOpen={() => sel.open(l.id)} />
+          ))}
+        </div>
       )}
 
-      <DetailSection title="Seu progresso">
-        <label className="iv-col">Status
-          <Dropdown value={progresso.status} options={STATUS_OPTS} onChange={(e) => onSave({ ...progresso, status: e.value as EstadoLab })} />
-        </label>
-        {progresso.concluidoEm && <p className="iv-muted">Concluído em {progresso.concluidoEm}</p>}
-        <label className="iv-col iv-mt">O que você aprendeu
-          <InputTextarea value={progresso.aprendizado} rows={4} autoResize
-            onChange={(e) => onSave({ ...progresso, aprendizado: e.target.value })}
-            placeholder="Anote resultados e próximos passos, sem incluir credenciais ou dados sensíveis." />
-        </label>
-        <label className="iv-col iv-mt">Evidência não sensível (nota ou caminho local)
-          <InputText value={progresso.evidencia} onChange={(e) => onSave({ ...progresso, evidencia: e.target.value })}
-            placeholder="Ex.: relatório local lab-01.md — não cole segredos ou dados corporativos" />
-        </label>
-        <label className="iv-col iv-mt">Técnicas MITRE ATT&CK extras (separadas por vírgula)
-          <InputTextarea value={mitreText} rows={2} autoResize
-            onChange={(e) => onSave({ ...progresso, mitre: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) })}
-            placeholder="Ex.: T1110, T1046" />
-        </label>
-      </DetailSection>
-
-      <DetailSection title="Ativos-alvo (do seu ambiente)">
-        <div className="iv-row iv-wrap">
-          {lab.ativosAlvo.map((id) => {
-            const a = getAtivo(id);
-            return <Pill key={id} label={a ? `${a.nome} (${a.endereco})` : id} />;
-          })}
-        </div>
-      </DetailSection>
-
-      <DetailSection title="Passos">
-        <ol style={{ margin: 0, paddingLeft: '1.2rem' }}>
-          {lab.passos.map((p, i) => <li key={i} style={{ marginBottom: '.35rem' }}>{p}</li>)}
-        </ol>
-      </DetailSection>
-
-      <StatusStrip tone="ok" icon="pi-flag-fill"><strong>Resultado esperado:</strong> {lab.resultadoEsperado}</StatusStrip>
-      <PurpleExerciseJournal lab={lab} />
-      {progresso.status === 'concluido' && <Button className="iv-mt" label="Criar rascunho para LinkedIn" icon="pi pi-linkedin" onClick={onDraft} />}
-    </DetailLayout>
+      {sel.item && (
+        <LabDrawer lab={sel.item} progresso={progresso[sel.item.id] ?? getProgressoLab(sel.item.id)} nav={sel.nav}
+          onSave={(p) => salvar(sel.item!.id, p)} onDraft={() => criarRascunho(sel.item!)}
+          onExerciciosChange={() => setRevExercicios((n) => n + 1)} />
+      )}
+    </div>
   );
 }

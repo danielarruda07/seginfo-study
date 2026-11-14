@@ -19,10 +19,10 @@ export function DetailHeader({ title, children }: { title: ReactNode; children?:
 /** Seção com rótulo em MAIÚSCULAS pequenas. */
 export function DetailSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div>
+    <section>
       <h3 className="iv-section-label">{title}</h3>
       {children}
-    </div>
+    </section>
   );
 }
 

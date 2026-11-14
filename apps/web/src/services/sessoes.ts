@@ -25,6 +25,9 @@ export function listMetas(): Meta[] {
 }
 export const addMeta = metas.add;
 export const removeMeta = metas.remove;
+export function updateMeta(id: string, patch: Partial<Omit<Meta, 'id'>>): void {
+  metas.update(id, (m) => ({ ...m, ...patch }));
+}
 export function toggleMeta(id: string): void {
   metas.update(id, (m) => ({ ...m, concluida: !m.concluida }));
 }

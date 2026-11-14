@@ -24,6 +24,31 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-14-cartoes-ficha',
+    data: '2026-11-14',
+    titulo: 'Todo cartão abre uma ficha lateral',
+    descricao:
+      'Revisão de UX da aplicação inteira com uma regra só: nenhum cartão "morto". Três peças comuns (cartão clicável ' +
+      'acessível, ficha lateral com navegação ↑/↓ e um hook de seleção) e cada tela passou a abrir detalhe útil que ' +
+      'não cabe no cartão: relações entre labs, ferramentas, alvos do range e técnicas ATT&CK; histórico de sessões; ' +
+      'execuções e pendências dos agentes; agentes que consultam cada tag do Segundo Cérebro. No caminho, cores fixas ' +
+      'viraram tokens, indicadores viraram filtros, telas grandes foram quebradas em componentes, a prévia de ' +
+      'artefatos HTML passou a abrir isolada sem scripts e a senha do cofre só aparece com um "Revelar" explícito que ' +
+      'volta a mascarar sozinho. O trabalho foi dividido entre seis agentes em paralelo, cada um com um grupo de telas.',
+    categoria: 'funcionalidade',
+    tags: ['ux', 'acessibilidade', 'agentes', 'segredos'],
+  },
+  {
+    id: 'proj-2026-11-14-menu-recolhido',
+    data: '2026-11-14',
+    titulo: 'Menu lateral sempre recolhido',
+    descricao:
+      'As seções do menu passaram a começar sempre recolhidas e só abrem por clique; a seção da tela atual mostra um ' +
+      'ponto para não perder a orientação.',
+    categoria: 'decisao',
+    tags: ['ux', 'navegacao'],
+  },
+  {
     id: 'proj-2026-11-13-acessos-ficha',
     data: '2026-11-13',
     titulo: 'Acessos e integrações saem do caminho do inventário',

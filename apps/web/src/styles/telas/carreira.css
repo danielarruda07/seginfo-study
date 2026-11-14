@@ -1,0 +1,113 @@
+/*
+ * Carreira e Sistema: LinkedIn (/posts), Portfólio, Armazenamento e Cofre.
+ * Prefixo ca-. Só variáveis de tokens.css (nada de hex). Os estilos antigos
+ * .linkedin-*, .posts-*, .vault-* e .portfolio-* continuam em app.css.
+ */
+
+/* ===== utilitários de texto ===== */
+.ca-small { font-size: .85rem; }
+.ca-h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.ca-h4 { margin: .75rem 0 .35rem; font-size: .875rem; font-weight: 600; }
+.ca-mb { margin-bottom: .75rem; }
+.ca-mb0 { margin-bottom: 0; }
+.ca-w100 { width: 100%; }
+.ca-msg { width: 100%; margin-top: .75rem; }
+.ca-flex1 { flex: 1; min-width: 0; }
+.ca-pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ca-ok { color: var(--tone-ok); }
+.ca-clamp-2, .ca-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+.ca-clamp-2 { -webkit-line-clamp: 2; line-clamp: 2; }
+.ca-clamp-3 { -webkit-line-clamp: 3; line-clamp: 3; }
+.ca-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.ca-campo { display: grid; gap: .25rem; }
+.ca-bullets { margin: 0; padding-left: 1.1rem; font-size: .85rem; display: grid; gap: .2rem; }
+.ca-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; font-size: .875rem; }
+
+/* ===== barras ===== */
+.ca-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem .75rem; }
+.ca-aviso {
+  display: flex; gap: .45rem; align-items: baseline; flex-wrap: wrap;
+  margin: .6rem 0 0; padding: .45rem .7rem;
+  border-left: 3px solid var(--tone-serious); border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--tone-serious) 7%, var(--surface-card));
+  font-size: .85rem;
+}
+.ca-aviso > .pi { color: var(--tone-serious); }
+.ca-link-btn.p-button { padding: 0; font-size: .85rem; }
+.ca-ajuda { margin-top: .6rem; color: var(--text-color-secondary); font-size: .82rem; line-height: 1.5; }
+.ca-ajuda summary { cursor: pointer; width: fit-content; }
+.ca-ajuda summary:focus-visible { outline: 2px solid var(--alvoar-teal-600); outline-offset: 2px; border-radius: 2px; }
+
+/* botão de arquivo: o input fica acessível pelo teclado (não `hidden`) */
+.ca-file { cursor: pointer; position: relative; }
+.ca-file__input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.ca-file:focus-within { outline: 2px solid var(--alvoar-teal-600); outline-offset: 2px; }
+
+/* ===== cartões de item (post, rascunho, marco) ===== */
+.ca-lista-cards { display: grid; gap: .75rem; }
+.ca-lista-cards > .iv-card + .iv-card { margin-top: 0; }
+.ca-post__meta { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; font-size: .82rem; }
+.ca-post__titulo { margin: .5rem 0 .3rem; font-weight: 600; line-height: 1.4; }
+.ca-metricas { display: flex; flex-wrap: wrap; gap: .35rem 1rem; color: var(--text-color-secondary); font-size: .82rem; font-variant-numeric: tabular-nums; }
+.ca-metricas .pi { font-size: .8rem; }
+.posts-drafts > .iv-card + .iv-card { margin-top: 0; }
+
+/* linha do tempo do diário: cada marco é um ClickCard (li) */
+.ca-timeline > li + li { margin-top: 0; }
+.ca-timeline > li.iv-card { padding: .7rem .9rem; box-shadow: none; }
+.ca-marco__titulo { display: block; margin-top: .35rem; }
+.ca-marco__desc { margin: .25rem 0 0; font-size: .875rem; }
+
+/* ===== ficha lateral ===== */
+.ca-texto {
+  padding: .75rem .9rem; border-radius: var(--radius-sm);
+  background: var(--surface-section); border: 1px solid var(--surface-border);
+  white-space: pre-wrap; overflow-wrap: anywhere; font-size: .9rem; line-height: 1.55;
+}
+.iv-drawer .linkedin-checklist { margin-top: 0; }
+.iv-drawer .linkedin-analise__grid { gap: .25rem 1rem; }
+
+@media (max-width: 640px) {
+  .ca-toolbar > * { width: 100%; }
+  .ca-toolbar > .iv-row > .p-button, .ca-toolbar > .iv-row > .ca-file { flex: 1 1 auto; justify-content: center; }
+  .linkedin-ideias li { flex-direction: column; align-items: flex-start; }
+}
+
+/* ===== Cofre ===== */
+.ca-acesso { max-width: 460px; }
+.ca-autolock .p-inputtext { width: 5.5rem; }
+.ca-cred-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: .75rem; align-items: start; }
+.ca-cred-grid > .iv-card + .iv-card { margin-top: 0; }
+.ca-cred__titulo { overflow-wrap: anywhere; }
+.ca-cred__linha { margin-top: .2rem; overflow-wrap: anywhere; }
+.ca-cred__rodape { margin-top: .5rem; }
+.ca-segredo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem .75rem; margin-bottom: .5rem; }
+.ca-segredo__valor {
+  flex: 1 1 14rem; min-width: 0;
+  padding: .5rem .7rem; border-radius: var(--radius-sm);
+  background: var(--surface-section); border: 1px solid var(--surface-border);
+  font-family: ui-monospace, monospace; font-size: .95rem; letter-spacing: .08em;
+  overflow-wrap: anywhere; user-select: none;
+}
+.ca-segredo__valor[data-revelado] { letter-spacing: normal; user-select: all; border-color: var(--tone-serious); }
+
+/* ===== Armazenamento ===== */
+.ca-destino__icone { color: var(--alvoar-teal-600); font-size: 1.1rem; }
+.ca-destino__linha { margin: .4rem 0 .75rem; }
+.ca-tabela-click .p-datatable-tbody > tr { cursor: pointer; }
+
+/* ===== Portfólio ===== */
+.ca-port-titulo { margin: 0 0 .75rem; font-size: 1.05rem; font-weight: 600; }
+.ca-port-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: .65rem; }
+.ca-port-grid--compacta { grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: .5rem; }
+.ca-port-grid > .iv-card + .iv-card { margin-top: 0; }
+.ca-port-grid > .iv-card { box-shadow: none; }
+.ca-port-topico { padding: .55rem .75rem; }
+.ca-mini { font-size: .75rem; }
+.portfolio-toolbar.ca-toolbar { align-items: flex-start; }
+@media print {
+  .portfolio-page .iv-card__hit { display: none; }
+  .ca-port-grid > .iv-card { border: 1px solid var(--surface-border); }
+  .ca-clamp-2, .ca-clamp-3 { -webkit-line-clamp: unset; line-clamp: unset; display: block; }
+}
+.ca-acesso .p-password, .ca-acesso .p-password-input, .iv-form .p-password, .iv-form .p-password-input { width: 100%; }

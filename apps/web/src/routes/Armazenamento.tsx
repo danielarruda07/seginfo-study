@@ -1,29 +1,31 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Kpi, StatusStrip, Pill } from '@/components/InfraKit';
-import {
-  getStorageStatus, getConnectUrl, disconnectOneDrive, runBackup, type BackupItem,
-} from '@/services/armazenamento';
+import { Kpi, StatusStrip } from '@/components/InfraKit';
+import { getStorageStatus, getConnectUrl, disconnectOneDrive, runBackup } from '@/services/armazenamento';
+import { DestinoCard, DestinoDrawer } from './armazenamento/Destino';
+import { Historico } from './armazenamento/Historico';
+import { fmtData, fmtTam, resumoBackups, tomStatus } from './armazenamento/regras';
+import '@/styles/telas/carreira.css';
 
-const fmtData = (iso: string | null) => (iso ? iso.replace('T', ' ').slice(0, 16) + ' UTC' : '—');
-const fmtTam = (b: number) => (b >= 1_048_576 ? `${(b / 1_048_576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
+type Msg = { sev: 'success' | 'error' | 'info'; texto: string };
 
 export function Armazenamento() {
   const qc = useQueryClient();
   const status = useQuery({ queryKey: ['storage-status'], queryFn: getStorageStatus });
   const [ocupado, setOcupado] = useState<'conectar' | 'backup' | 'desconectar' | null>(null);
-  const [msg, setMsg] = useState<{ sev: 'success' | 'error' | 'info'; texto: string } | null>(null);
+  const [msg, setMsg] = useState<Msg | null>(null);
+  const [destinoAberto, setDestinoAberto] = useState(false);
 
   // resultado do retorno da Microsoft (?conectado=1 / ?erro=autorizacao)
   const params = new URLSearchParams(window.location.search);
   const retorno = params.get('conectado') ? 'ok' : params.get('erro') ? 'erro' : null;
 
   const s = status.data;
+  const r = resumoBackups(s?.backups ?? [], s?.retencao ?? 14);
   const refresh = () => qc.invalidateQueries({ queryKey: ['storage-status'] });
 
   async function conectar() {
@@ -53,39 +55,43 @@ export function Armazenamento() {
     }
   }
 
-  async function desconectar() {
-    if (!window.confirm('Desconectar o OneDrive? Os backups já enviados continuam na sua conta.')) return;
-    setOcupado('desconectar'); setMsg(null);
-    try {
-      await disconnectOneDrive();
-      setMsg({ sev: 'info', texto: 'OneDrive desconectado. Para revogar o acesso também na Microsoft, remova o app em account.microsoft.com/consent.' });
-    } catch {
-      setMsg({ sev: 'error', texto: 'Falha ao desconectar.' });
-    } finally {
-      setOcupado(null);
-      refresh();
-    }
+  function desconectar() {
+    confirmDialog({
+      header: 'Desconectar o OneDrive',
+      message: <span>Os backups já enviados continuam na sua conta, mas novos backups param.<br /><small className="iv-muted">Para revogar também na Microsoft, remova o app em account.microsoft.com/consent.</small></span>,
+      icon: 'pi pi-exclamation-triangle', acceptLabel: 'Desconectar', rejectLabel: 'Cancelar', acceptClassName: 'p-button-danger',
+      accept: async () => {
+        setOcupado('desconectar'); setMsg(null);
+        try { await disconnectOneDrive(); setMsg({ sev: 'info', texto: 'OneDrive desconectado.' }); }
+        catch { setMsg({ sev: 'error', texto: 'Falha ao desconectar.' }); }
+        finally { setOcupado(null); refresh(); }
+      },
+    });
   }
 
-  const tone = !s ? 'ok' : !s.configurado ? 'warn' : !s.conectado ? 'warn' : s.ultimoErro ? 'crit' : s.ultimoBackupEm ? 'ok' : 'warn';
+  const acoes = !s?.conectado ? (
+    <Button label="Conectar OneDrive" icon={ocupado === 'conectar' ? 'pi pi-spinner pi-spin' : 'pi pi-link'} onClick={conectar} disabled={!s?.configurado || ocupado !== null} />
+  ) : (
+    <>
+      <Button label="Fazer backup agora" icon={ocupado === 'backup' ? 'pi pi-spinner pi-spin' : 'pi pi-cloud-upload'} onClick={backupAgora} disabled={ocupado !== null} />
+      <Button label="Desconectar" icon="pi pi-times" severity="danger" text onClick={desconectar} disabled={ocupado !== null} />
+    </>
+  );
 
   return (
     <div>
-      <PageHeader
-        title="Armazenamento"
-        subtitle="Cópia cifrada dos seus dados no OneDrive pessoal, fora do lab. Se a VM ou o Proxmox forem perdidos, o backup continua lá."
-      />
+      <ConfirmDialog />
+      <PageHeader title="Armazenamento"
+        subtitle="Cópia cifrada dos seus dados no OneDrive pessoal, fora do lab. Se a VM ou o Proxmox forem perdidos, o backup continua lá." />
 
-      {status.isError && (
-        <Message severity="warn" style={{ width: '100%', marginBottom: '1rem' }}
-          text="API ou banco indisponível. Esta tela precisa do servidor (apps/api + PostgreSQL)." />
-      )}
-      {retorno === 'ok' && <Message severity="success" style={{ width: '100%', marginBottom: '1rem' }} text="OneDrive conectado." />}
-      {retorno === 'erro' && <Message severity="error" style={{ width: '100%', marginBottom: '1rem' }} text="A autorização com a Microsoft não foi concluída. Tente conectar de novo." />}
-      {msg && <Message severity={msg.sev} style={{ width: '100%', marginBottom: '1rem' }} text={msg.texto} />}
+      {status.isError && <Message severity="warn" className="ca-w100 ca-mb" text="API ou banco indisponível. Esta tela precisa do servidor (apps/api + PostgreSQL)." />}
+      {retorno === 'ok' && <Message severity="success" className="ca-w100 ca-mb" text="OneDrive conectado." />}
+      {retorno === 'erro' && <Message severity="error" className="ca-w100 ca-mb" text="A autorização com a Microsoft não foi concluída. Tente conectar de novo." />}
+      {msg && <Message severity={msg.sev} className="ca-w100 ca-mb" text={msg.texto} />}
 
-      <StatusStrip tone={tone} icon="pi-cloud">
-        {!s ? 'Carregando…'
+      <StatusStrip tone={status.isError ? 'warn' : tomStatus(s)} icon="pi-cloud">
+        {status.isLoading ? 'Carregando…'
+          : !s ? 'Sem resposta do servidor.'
           : !s.configurado ? 'Servidor ainda sem a configuração do OneDrive.'
           : !s.conectado ? 'OneDrive não conectado.'
           : s.ultimoErro ? <>Último erro: {s.ultimoErro}</>
@@ -94,54 +100,16 @@ export function Armazenamento() {
       </StatusStrip>
 
       <div className="iv-kpis iv-mt">
-        <Kpi label="Conta" value={s?.conectado ? (s.contaNome ?? 'Conectada') : '—'} hint={s?.conectado ? `desde ${fmtData(s.conectadoEm)}` : 'não conectada'} />
-        <Kpi label="Backup automático" value={s?.automatico ? 'Ligado' : 'Desligado'} hint="a cada 24 h" />
-        <Kpi label="Retenção" value={s?.retencao ?? 14} hint="backups mantidos" />
-        <Kpi label="Enviados" value={s?.backups.filter((b) => b.status === 'ok').length ?? 0} hint="últimos 20 registros" />
+        <Kpi label="Último envio" value={r.ultimoOk ? fmtData(r.ultimoOk.criadoEm).slice(0, 10) : '—'} hint={r.ultimoOk ? fmtData(r.ultimoOk.criadoEm).slice(11) : 'nenhum ainda'} />
+        <Kpi label="Enviados" value={r.enviados} hint={`dos últimos ${s?.backups.length ?? 0} registros`} />
+        <Kpi label="Com erro" value={r.falhas} tone="danger" hint="no histórico" />
+        <Kpi label="Uso estimado" value={r.usoBytes ? fmtTam(r.usoBytes) : '—'} hint={`${s?.retencao ?? 14} cópias mantidas`} />
       </div>
 
-      {s && !s.configurado && (
-        <div className="iv-card iv-mt">
-          <h4 style={{ margin: '0 0 .5rem' }}>Configuração pendente no servidor</h4>
-          <p className="iv-muted" style={{ marginTop: 0, fontSize: '.88rem' }}>
-            Defina estas variáveis no Coolify (guia: <code>docs/ARMAZENAMENTO.md</code>) e faça redeploy:
-          </p>
-          <div className="iv-row iv-wrap">{s.faltando.map((v) => <Pill key={v} label={v} color="#f59e0b" />)}</div>
-        </div>
-      )}
+      <DestinoCard s={s} erro={status.isError} selected={destinoAberto} onOpen={() => setDestinoAberto(true)} acoes={acoes} />
+      {destinoAberto && s && <DestinoDrawer s={s} onClose={() => setDestinoAberto(false)} />}
 
-      <div className="iv-card iv-mt">
-        <div className="iv-row iv-wrap">
-          {!s?.conectado ? (
-            <Button label="Conectar OneDrive" icon={ocupado === 'conectar' ? 'pi pi-spinner pi-spin' : 'pi pi-link'}
-              onClick={conectar} disabled={!s?.configurado || ocupado !== null} />
-          ) : (
-            <>
-              <Button label="Fazer backup agora" icon={ocupado === 'backup' ? 'pi pi-spinner pi-spin' : 'pi pi-cloud-upload'}
-                onClick={backupAgora} disabled={ocupado !== null} />
-              <Button label="Desconectar" icon="pi pi-times" severity="danger" outlined
-                onClick={desconectar} disabled={ocupado !== null} />
-            </>
-          )}
-        </div>
-        <p className="iv-muted" style={{ fontSize: '.8rem', marginBottom: 0 }}>
-          O app só enxerga a própria pasta <code>/Apps</code> do seu OneDrive (permissão <code>Files.ReadWrite.AppFolder</code>).
-          Os arquivos são cifrados antes de sair do servidor, que guarda só a chave pública.
-        </p>
-      </div>
-
-      <div className="iv-card iv-mt">
-        <h4 style={{ margin: '0 0 .6rem' }}>Histórico de backups</h4>
-        <DataTable value={s?.backups ?? []} dataKey="id" emptyMessage="Nenhum backup ainda." paginator rows={10}>
-          <Column header="Quando (UTC)" style={{ width: 180 }} body={(b: BackupItem) => fmtData(b.criadoEm)} />
-          <Column header="Arquivo" body={(b: BackupItem) => <span style={{ fontFamily: 'monospace' }}>{b.nomeArquivo}</span>} />
-          <Column header="Tamanho" style={{ width: 110 }} body={(b: BackupItem) => (b.status === 'ok' ? fmtTam(b.tamanhoBytes) : '—')} />
-          <Column header="Status" style={{ width: 120 }} body={(b: BackupItem) => (
-            <Pill label={b.status === 'ok' ? 'enviado' : 'erro'} color={b.status === 'ok' ? '#16a34a' : '#ef4444'} />
-          )} />
-          <Column header="Detalhe" field="erro" />
-        </DataTable>
-      </div>
+      <Historico backups={s?.backups ?? []} retencao={s?.retencao ?? 14} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Message } from 'primereact/message';
+import { ConfirmDialog } from 'primereact/confirmdialog';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { detectMode } from '@/services/mode';
 import { mensagemErro, migrarDadosLocais } from '@/services/linkedin';
@@ -10,6 +11,7 @@ import { Estudio, type PedidoEstudio } from './linkedin/Estudio';
 import { Publicados, type RascunhoParaPublicar } from './linkedin/Publicados';
 import { Diario } from './linkedin/Diario';
 import { EstrategiaIA } from './linkedin/EstrategiaIA';
+import '@/styles/telas/carreira.css';
 
 /**
  * LinkedIn como ciclo de gestão do conhecimento, com tudo no servidor (API + PostgreSQL no Coolify):
@@ -50,9 +52,12 @@ export function Posts() {
         title="LinkedIn"
         subtitle="Escreva, registre o que publicou e deixe a IA organizar tudo no seu segundo cérebro — cada post vira contexto para o próximo."
       />
-      {migracao && <Message severity={migracao.sev} text={migracao.text} style={{ width: '100%', marginBottom: '1rem' }} />}
-      {!isLoading && modo !== 'servidor' ? (
-        <Message severity="warn" style={{ width: '100%' }}
+      <ConfirmDialog />
+      {migracao && <Message severity={migracao.sev} text={migracao.text} className="ca-w100 ca-mb" />}
+      {isLoading ? (
+        <p className="iv-muted" role="status"><i className="pi pi-spin pi-spinner" aria-hidden="true" /> Verificando o servidor…</p>
+      ) : modo !== 'servidor' ? (
+        <Message severity="warn" className="ca-w100"
           text="O módulo LinkedIn guarda tudo no servidor (API + PostgreSQL no Coolify) e a API não respondeu. Em produção, confira o container seginfo-api; em desenvolvimento, rode npm run dev:api." />
       ) : (
         <TabView activeIndex={aba} onTabChange={(e) => setAba(e.index)} className="linkedin-tabs">

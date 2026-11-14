@@ -7,6 +7,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
 import { MultiSelect } from 'primereact/multiselect';
 import { Link } from '@tanstack/react-router';
+import { confirmDialog } from 'primereact/confirmdialog';
 import type { Lab } from '@seginfo/shared';
 import { DetailSection } from '@/components/ui/Detail';
 import { Pill, StatusStrip } from '@/components/InfraKit';
@@ -17,6 +18,7 @@ import {
   type PurpleExercise,
 } from '@/services/exerciciosPurple';
 import { todayISO } from '@/services/store';
+import type { Tone } from '@/theme/status';
 
 const STATUS_OPTIONS = [
   { label: 'Planejado', value: 'planejado' }, { label: 'Executado', value: 'executado' },
@@ -44,9 +46,12 @@ const RANGES = listRangeAlvos();
 const ASSET_OPTIONS = INV.map((a) => ({ label: `${a.nome}${a.endereco ? ` · ${a.endereco}` : ''}`, value: a.id }));
 const RANGE_OPTIONS = RANGES.map((a) => ({ label: `${a.nome}${a.vlan ? ` · ${a.vlan}` : ''}`, value: a.id }));
 
+/** Cor só onde há ação: reteste que falhou e remediação pendente pedem atenção. */
+const STATUS_TONE: Partial<Record<PurpleExercise['status'], Tone>> = { reteste_falhou: 'danger', remediacao: 'warning', reteste_aprovado: 'ok' };
+
 const LABEL_STATUS: Record<PurpleExercise['status'], string> = Object.fromEntries(STATUS_OPTIONS.map((x) => [x.value, x.label])) as Record<PurpleExercise['status'], string>;
 
-export function PurpleExerciseJournal({ lab }: { lab: Lab }) {
+export function PurpleExerciseJournal({ lab, onChange }: { lab: Lab; onChange?: () => void }) {
   const [revision, setRevision] = useState(0);
   const [draft, setDraft] = useState<(Omit<PurpleExercise, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) | null>(null);
   const [techniqueText, setTechniqueText] = useState('');
@@ -81,14 +86,14 @@ export function PurpleExerciseJournal({ lab }: { lab: Lab }) {
       setError('Registre a ação Red, a detecção esperada e as fontes de log antes de marcar o exercício como executado.'); return;
     }
     savePurpleExercise({ ...draft, title: draft.title.trim(), techniques });
-    setDraft(null); setError(''); setRevision((n) => n + 1);
+    setDraft(null); setError(''); setRevision((n) => n + 1); onChange?.();
   }
 
   return (
     <DetailSection title="Registro de exercício Red × Blue">
       <p className="iv-muted" style={{ marginTop: 0 }}>Planeje o escopo e registre a execução do lado ofensivo, a telemetria defensiva, a correção e o reteste em um único lugar.</p>
       <div className="iv-row iv-wrap">
-        <Button label="Planejar exercício" icon="pi pi-plus" onClick={novo} />
+        <Button label="Planejar exercício" icon="pi pi-plus" outlined onClick={novo} />
         <Link to="/attack" className="iv-row"><i className="pi pi-table" /> Matriz ATT&amp;CK</Link>
         <Link to="/radar" className="iv-row"><i className="pi pi-eye" /> Eventos reais no Radar</Link>
       </div>
@@ -142,7 +147,7 @@ export function PurpleExerciseJournal({ lab }: { lab: Lab }) {
         {records.length === 0 ? <p className="iv-muted">Nenhum exercício registrado para este lab.</p> : records.map((record) => (
           <article className="iv-card purple-exercise-record" key={record.id}>
             <div className="iv-row iv-wrap" style={{ justifyContent: 'space-between' }}>
-              <strong>{record.title}</strong><Pill label={LABEL_STATUS[record.status]} />
+              <strong>{record.title}</strong><Pill label={LABEL_STATUS[record.status]} tone={STATUS_TONE[record.status]} />
             </div>
             <div className="iv-row iv-wrap">
               {record.findingReference && <Pill label={record.findingReference} />}
@@ -162,7 +167,12 @@ export function PurpleExerciseJournal({ lab }: { lab: Lab }) {
             {record.dueDate && <small>Prazo: {new Date(`${record.dueDate}T12:00:00`).toLocaleDateString('pt-BR')}</small>}
             <div className="iv-row iv-wrap">
               <Button label="Editar" icon="pi pi-pencil" text size="small" onClick={() => editar(record)} />
-              <Button label="Excluir" icon="pi pi-trash" text severity="danger" size="small" onClick={() => { deletePurpleExercise(record.id); setRevision((n) => n + 1); }} />
+              <Button label="Excluir" icon="pi pi-trash" text severity="danger" size="small" onClick={() => confirmDialog({
+                header: 'Excluir exercício', icon: 'pi pi-exclamation-triangle',
+                message: <span>Excluir <strong>{record.title}</strong>? O histórico de detecção e reteste deste exercício será perdido.</span>,
+                acceptLabel: 'Excluir', rejectLabel: 'Cancelar', acceptClassName: 'p-button-danger',
+                accept: () => { deletePurpleExercise(record.id); setRevision((n) => n + 1); onChange?.(); },
+              })} />
             </div>
           </article>
         ))}

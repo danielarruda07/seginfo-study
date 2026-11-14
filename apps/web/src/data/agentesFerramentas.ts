@@ -22,7 +22,6 @@ export const CATEGORIA_LABEL: Record<CategoriaFerramenta, string> = {
 };
 
 export const RISCO_LABEL: Record<Risco, string> = { baixo: 'Baixo', medio: 'Médio', alto: 'Alto' };
-export const RISCO_COR: Record<Risco, string> = { baixo: '#16a34a', medio: '#f59e0b', alto: '#ef4444' };
 
 export const FERRAMENTAS_CATALOGO: FerramentaCatalogo[] = [
   {

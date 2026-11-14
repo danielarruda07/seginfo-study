@@ -18,7 +18,7 @@ import { idadeConfirmacao } from '@/lib/confirmacao';
 import { todayISO } from '@/services/store';
 import * as vault from '@/services/vault';
 import { TIPO_ATIVO_LABEL } from '@/theme/status';
-import { ESCOPO_OPTS, ESTADO_META, TIPO_ICON, contarPorTipo, linhaClasse, noEscopo, ordenarAtivos } from './inventario/regras';
+import { CRITICIDADE_META, ESCOPO_OPTS, ESTADO_META, TIPO_ICON, contarPorTipo, linhaClasse, noEscopo, ordenarAtivos } from './inventario/regras';
 import { useInventarioFiltros } from './inventario/useInventarioFiltros';
 import { AtivoForm } from './inventario/AtivoForm';
 import { AtivoDrawer } from './inventario/AtivoDrawer';
@@ -161,7 +161,7 @@ export function Inventario() {
           )} />
           <Column header="Endereço" className="iv-hide-sm" headerClassName="iv-hide-sm" body={(a: Ativo) => a.endereco ? <span className="mono">{a.endereco}</span> : <span className="iv-muted">—</span>} />
           <Column header="Criticidade" className="iv-hide-sm" headerClassName="iv-hide-sm" body={(a: Ativo) => a.criticidade
-            ? <Pill label={{ critica: 'Crítica', alta: 'Alta', media: 'Média', baixa: 'Baixa' }[a.criticidade]} color={{ critica: '#b91c1c', alta: '#c2410c', media: '#a16207', baixa: '#475569' }[a.criticidade]} />
+            ? <Pill label={CRITICIDADE_META[a.criticidade].label} tone={CRITICIDADE_META[a.criticidade].tone} />
             : <span className="iv-muted">—</span>} />
           <Column header="Exposição" className="iv-hide-sm" headerClassName="iv-hide-sm" body={(a: Ativo) => a.exposicao
             ? <Pill label={{ publica: 'Pública', interna: 'Interna', restrita: 'Restrita', isolada: 'Isolada' }[a.exposicao]} />

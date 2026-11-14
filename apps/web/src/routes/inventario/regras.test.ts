@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Ativo } from '@seginfo/shared';
 import { TIPO_ATIVO_LABEL } from '@/theme/status';
-import { GRUPOS_TIPO, campoEndereco, contarPorTipo, linhaClasse, noEscopo, ordenarAtivos, validarAtivo } from './regras';
+import { CRITICIDADE_META, GRUPOS_TIPO, campoEndereco, contarPorTipo, linhaClasse, noEscopo, ordenarAtivos, validarAtivo } from './regras';
 
 const ativo = (p: Partial<Ativo>): Ativo => ({
   id: p.nome ?? 'x', ambiente: 'criecomia', tipo: 'vm', nome: 'x', endereco: '', funcao: '',
@@ -55,5 +55,10 @@ describe('regras do inventário', () => {
     expect(validarAtivo('pve', '[1]').erros.detalhes).toBeTruthy();
     expect(validarAtivo('pve', '{quebrado').erros.detalhes).toBeTruthy();
     expect(validarAtivo('pve', '  ').detalhes).toEqual({});
+  });
+
+  it('criticidade usa tons do guia, sem hex, e baixa fica neutra', () => {
+    expect(CRITICIDADE_META.critica.tone).toBe('danger');
+    expect(CRITICIDADE_META.baixa.tone).toBeUndefined();
   });
 });

@@ -161,3 +161,9 @@ export const erroApi =(e: unknown, padrao: string) => {
 };
 export const problemasApi = (e: unknown): string[] =>
   (e as { response?: { data?: { problemas?: string[] } } }).response?.data?.problemas ?? [];
+
+/** Todos os agentes com o projeto completo (para cruzar ferramentas e pilares nas fichas). */
+export const listAgentesCompletos = async (): Promise<Agente[]> => {
+  const lista = await listAgentes();
+  return Promise.all(lista.map((a) => getAgente(a.id)));
+};

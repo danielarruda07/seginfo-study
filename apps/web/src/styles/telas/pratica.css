@@ -1,0 +1,105 @@
+/* Telas de Prática: Labs, Range Vulnerável e Arsenal de Ferramentas. Prefixo pr-. Só variáveis. */
+
+/* ===== grade de cartões ===== */
+.pr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .85rem; }
+.pr-list { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; }
+/* a grade controla o espaçamento: anula o margin-top de .iv-card + .iv-card */
+.pr-grid > .iv-card, .pr-list > .iv-card { margin: 0; }
+
+/* ===== cartão de item ===== */
+.pr-card { display: flex; flex-direction: column; gap: .45rem; padding: .85rem 1rem; }
+.pr-card__top { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+.pr-card__title { margin: 0; color: var(--text-color); font-size: 1rem; font-weight: 600; line-height: 1.35; }
+.pr-card__desc {
+  margin: 0; color: var(--text-color-secondary); font-size: .875rem; line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.pr-card__meta {
+  display: flex; flex-wrap: wrap; gap: .35rem .9rem; margin: auto 0 0; padding: .5rem 0 0; list-style: none;
+  border-top: 1px solid var(--surface-border); color: var(--text-color-secondary); font-size: .78rem;
+  font-variant-numeric: tabular-nums;
+}
+.pr-card__meta li { display: inline-flex; align-items: center; gap: .3rem; }
+.pr-card__meta .pi { font-size: .8rem; }
+.pr-card__meta .pr-alerta { color: var(--tone-serious); font-weight: 600; }
+
+/* linha de checklist (Range): caixa de seleção + texto + selos */
+.pr-etapa { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: .65rem; padding: .7rem .9rem; }
+.pr-etapa__texto { display: grid; gap: .2rem; }
+.pr-etapa__texto strong { font-weight: 600; }
+.pr-etapa__desc { color: var(--text-color-secondary); font-size: .84rem; }
+.pr-etapa__texto small { color: var(--text-color-secondary); font-size: .78rem; }
+.pr-etapa__selos { display: flex; gap: .35rem; flex-wrap: wrap; justify-content: flex-end; }
+.pr-etapa--feita .pr-etapa__texto strong { color: var(--text-color-secondary); text-decoration: line-through; }
+
+/* ===== cabeçalho de progresso do Range ===== */
+.pr-progresso { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .6rem; }
+.pr-progresso__item {
+  display: grid; gap: .3rem; padding: .65rem .9rem; text-align: left; font: inherit; color: inherit; cursor: pointer;
+  border: 1px solid var(--surface-border); border-radius: var(--radius); background: var(--surface-card);
+}
+.pr-progresso__item:hover { border-color: color-mix(in srgb, var(--alvoar-navy) 25%, var(--surface-border)); }
+.pr-progresso__item:focus-visible { outline: 2px solid var(--alvoar-teal-600); outline-offset: 2px; }
+.pr-progresso__item[aria-current='true'] { border-color: var(--alvoar-teal-600); box-shadow: inset 0 0 0 1px var(--alvoar-teal-600); }
+.pr-progresso__rotulo { color: var(--text-color-secondary); font-size: .78rem; }
+.pr-progresso__valor { display: flex; align-items: baseline; gap: .5rem; font-variant-numeric: tabular-nums; }
+.pr-progresso__valor strong { font-size: 1.25rem; }
+.pr-progresso__valor span { color: var(--text-color-secondary); font-size: .78rem; }
+
+/* ===== ficha lateral ===== */
+.pr-passos { margin: 0; padding-left: 1.25rem; font-size: .875rem; }
+.pr-passos li { margin-bottom: .4rem; }
+.pr-texto { margin: 0; font-size: .875rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pr-vazio { margin: 0; color: var(--text-color-secondary); font-size: .875rem; }
+.pr-rel { display: grid; gap: .4rem; margin: 0; padding: 0; list-style: none; }
+.pr-rel li {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap;
+  padding: .45rem .6rem; border: 1px solid var(--surface-border); border-radius: var(--radius-sm); font-size: .875rem;
+}
+.pr-rel__nome { display: grid; gap: .1rem; min-width: 0; }
+.pr-rel__nome small { color: var(--text-color-secondary); font-size: .75rem; }
+.pr-pills { display: flex; flex-wrap: wrap; gap: .35rem; }
+.pr-destaque {
+  display: flex; gap: .5rem; align-items: flex-start; padding: .6rem .8rem; border-radius: var(--radius-sm); font-size: .875rem;
+  background: color-mix(in srgb, var(--tone, var(--tone-info)) 6%, var(--surface-card));
+  border: 1px solid color-mix(in srgb, var(--tone, var(--tone-info)) 25%, transparent);
+}
+.pr-destaque > .pi { margin-top: .15rem; color: var(--tone, var(--tone-info)); }
+.pr-form { display: grid; gap: .7rem; }
+.pr-form label, .pr-form .pr-campo { display: grid; gap: .3rem; font-size: .84rem; font-weight: 600; }
+.pr-form .p-inputtext, .pr-form .p-inputtextarea, .pr-form .p-dropdown { width: 100%; }
+.pr-form--novo { padding: .85rem; border: 1px solid var(--surface-border); border-radius: var(--radius); background: var(--surface-section); margin-bottom: .75rem; }
+.pr-form__linha { display: grid; grid-template-columns: minmax(120px, .7fr) minmax(0, 1.3fr); gap: .65rem; }
+.pr-check { display: flex !important; align-items: center; gap: .5rem !important; font-weight: 400 !important; }
+
+/* histórico de experiências (Arsenal) */
+.pr-registros { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }
+.pr-registro { display: grid; gap: .35rem; padding: .7rem .8rem; border: 1px solid var(--surface-border); border-radius: var(--radius); background: var(--surface-section); }
+.pr-registro__top { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
+.pr-registro__top h4 { margin: .25rem 0 0; font-size: .9rem; }
+.pr-registro small { color: var(--text-color-secondary); font-size: .75rem; }
+.pr-registro__prox { padding: .45rem .6rem; border-left: 3px solid var(--tone-warning); background: color-mix(in srgb, var(--tone-warning) 6%, var(--surface-card)); font-size: .84rem; }
+.pr-registro__prox p { margin: .1rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* prompt do Range */
+.pr-prompt { width: 100%; font-family: var(--font-mono, ui-monospace, monospace); font-size: .8rem; }
+
+/* ===== Range: nota, barra de progresso da aba, pedidos do prompt ===== */
+.pr-nota { margin: .5rem 0 0; color: var(--text-color-secondary); font-size: .8rem; }
+.pr-barra { display: grid; gap: .35rem; margin-top: .85rem; font-size: .875rem; }
+.pr-pedidos { display: grid; gap: .35rem; margin: 0; padding: .6rem .8rem; border: 1px solid var(--surface-border); border-radius: var(--radius-sm); }
+.pr-pedidos legend { padding: 0 .3rem; color: var(--text-color-secondary); font-size: .78rem; font-weight: 600; }
+.pr-pedidos .pr-check { font-size: .86rem; align-items: flex-start; }
+.pr-ok { color: var(--tone-ok); font-size: .84rem; }
+.pr-upload { cursor: pointer; }
+.pr-status { color: var(--text-color-secondary); font-size: .78rem; }
+
+@media (max-width: 640px) {
+  .pr-toolbar .iv-toolbar__search { min-width: 0; flex-basis: 100%; }
+  .pr-toolbar > .p-dropdown { flex: 1 1 100%; }
+  .pr-toolbar .iv-toolbar__count { margin-left: 0; }
+  .pr-grid { grid-template-columns: minmax(0, 1fr); }
+  .pr-etapa { grid-template-columns: auto minmax(0, 1fr); }
+  .pr-etapa__selos { grid-column: 2; justify-content: flex-start; }
+  .pr-form__linha { grid-template-columns: minmax(0, 1fr); }
+}

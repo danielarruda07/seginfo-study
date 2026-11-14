@@ -1,0 +1,127 @@
+/*
+ * Seção Agents: complementos das telas (os .ag-* da home seguem em app.css).
+ * agd-* = fichas laterais. Só variáveis do tokens.css.
+ */
+
+/* ---------- cartões ---------- */
+.ag-card--arquivado { opacity: .75; }
+.ag-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: .85rem; }
+.ag-cards > .iv-card { margin: 0; min-width: 0; display: flex; flex-direction: column; gap: .5rem; }
+.ag-cards > .iv-card + .iv-card { margin-top: 0; }
+.ag-cardx__topo { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+.ag-cardx__titulo { margin: 0; font-size: .95rem; font-weight: 600; color: var(--text-color); line-height: 1.3; overflow-wrap: anywhere; }
+.ag-cardx__texto { margin: 0; color: var(--text-color-secondary); font-size: .84rem; line-height: 1.45; }
+.ag-cardx__clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ag-cardx__pe { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: auto; }
+.ag-cardx__icone { color: var(--alvoar-teal-600); font-size: 1.15rem; }
+
+/* blocos de texto das telas */
+.ag-bloco h3 { margin: 0 0 .5rem; font-size: .95rem; font-weight: 600; }
+.ag-bloco ul { margin: 0; padding-left: 1.1rem; font-size: .875rem; }
+.ag-bloco li + li { margin-top: .25rem; }
+.ag-bloco p { font-size: .82rem; }
+.ag-dica { color: var(--text-color-secondary); font-size: .8rem; }
+.ag-rotulo { color: var(--text-color-secondary); font-size: .8rem; }
+.ag-form { display: grid; gap: .7rem; }
+.ag-form__linha { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.ag-form__linha > .ag-cresce { flex: 1 1 220px; min-width: 0; }
+.ag-largo { width: 100%; }
+.ag-dropdown { min-width: 260px; }
+.ag-toolbar-check { display: inline-flex; align-items: center; gap: .4rem; font-size: .875rem; }
+
+/* resultados da busca na base */
+.ag-trechos { display: grid; gap: .6rem; margin-top: .75rem; }
+.ag-trechos > .iv-card { margin: 0; padding: .7rem .9rem; }
+.ag-trecho__topo { display: flex; justify-content: space-between; gap: .5rem; }
+.ag-trecho__texto { margin: .35rem 0 0; font-size: .86rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; }
+
+/* glossário */
+.ag-glossario { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .6rem 1.25rem; margin: 0; }
+.ag-glossario dt { font-weight: 600; }
+.ag-glossario dd { margin: .1rem 0 0; color: var(--text-color-secondary); font-size: .84rem; }
+
+/* ---------- playground ---------- */
+.ag-passo-exec { padding: .7rem .9rem; border-left: 3px solid var(--tone, var(--tone-info)); }
+.ag-passo-exec + .ag-passo-exec { margin-top: 0; }
+.ag-passo-exec__topo { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem; }
+.ag-passo-exec__meta { color: var(--text-color-secondary); font-size: .78rem; font-variant-numeric: tabular-nums; }
+.ag-passo-exec details { margin-top: .4rem; }
+.ag-passo-exec summary { cursor: pointer; font-size: .84rem; }
+.ag-voce { padding: .7rem .9rem; background: var(--surface-section); }
+.ag-voce p { margin: .2rem 0 0; white-space: pre-wrap; }
+.ag-aprovacao { padding: 1rem; border: 2px solid var(--tone-serious); }
+.ag-aprovacao__titulo { font-size: 1rem; }
+.ag-historico { display: grid; gap: .1rem; margin: 0; padding: 0; list-style: none; }
+.ag-historico li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem .6rem; padding: .35rem 0; border-top: 1px solid var(--surface-border); }
+.ag-historico li:first-child { border-top: 0; }
+.ag-historico button { flex: 1 1 200px; padding: 0; border: 0; background: none; color: var(--primary-color); font: inherit; text-align: left; cursor: pointer; }
+.ag-historico button:disabled { cursor: default; color: var(--text-color-secondary); }
+.ag-historico button:focus-visible { outline: 2px solid var(--alvoar-teal-600); outline-offset: 2px; }
+.ag-erro { margin: .5rem 0 0; color: var(--tone-danger); font-size: .84rem; }
+
+/* ---------- ficha lateral (agd-*) ---------- */
+.agd-secao__topo { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+.agd-lista { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; }
+.agd-item { display: flex; align-items: flex-start; gap: .5rem; font-size: .875rem; line-height: 1.4; }
+.agd-item__icone { flex: none; margin-top: .15rem; color: var(--tone, var(--alvoar-teal-600)); font-size: .85rem; }
+.agd-item[data-falta='true'] .agd-item__icone { color: var(--tone-warning); }
+.agd-etapas .agd-item[data-falta='true'] .agd-item__icone { color: var(--text-color-secondary); }
+.agd-item__corpo { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.agd-nivel { color: var(--tone); }
+.agd-mudo { color: var(--text-color-secondary); font-size: .8rem; }
+.agd-vazio { margin: 0; color: var(--text-color-secondary); font-size: .875rem; }
+.agd-sub { margin: .9rem 0 .45rem; font-size: .8rem; font-weight: 600; color: var(--text-color); }
+.agd-link { display: inline-flex; align-items: center; gap: .2rem; color: var(--primary-color); font-size: .8rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.agd-link:hover { text-decoration: underline; }
+.agd-link:focus-visible { outline: 2px solid var(--alvoar-teal-600); outline-offset: 2px; }
+.agd-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.agd-exec { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .2rem .6rem; padding: .45rem 0; border-top: 1px solid var(--surface-border); font-size: .85rem; }
+.agd-exec:first-child { border-top: 0; padding-top: 0; }
+.agd-exec__texto { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agd-exec__meta { grid-column: 2 / 3; color: var(--text-color-secondary); font-size: .75rem; }
+.agd-exec .agd-link { grid-column: 3; grid-row: 1 / 3; }
+.agd-placar { margin: 0 0 .4rem; font-size: .875rem; }
+.agd-code {
+  margin: 0; padding: .65rem .8rem; max-height: 22rem; overflow: auto;
+  border: 1px solid var(--surface-border); border-radius: var(--radius-sm);
+  background: var(--surface-section); color: var(--text-color);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: .8rem; line-height: 1.5;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.agd-code:focus-visible { outline: 2px solid var(--alvoar-teal-600); outline-offset: 2px; }
+.agd-code--alto { max-height: 30rem; }
+.agd-texto { margin: 0; font-size: .875rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.agd-checklist { margin: 0; padding-left: 1.1rem; font-size: .875rem; }
+.agd-checklist li + li { margin-top: .2rem; }
+
+@media (max-width: 640px) {
+  .ag-cards { grid-template-columns: minmax(0, 1fr); }
+  .ag-dropdown { min-width: 0; width: 100%; }
+  .agd-exec { grid-template-columns: minmax(0, 1fr) auto; }
+  .agd-exec > .iv-pill { grid-column: 1 / -1; justify-self: start; }
+  .agd-exec__texto, .agd-exec__meta { grid-column: 1; }
+  .agd-exec .agd-link { grid-column: 2; grid-row: 2 / 4; }
+}
+
+.agd-falta { color: var(--tone-serious); }
+.agd-falta .pi { margin-right: .2rem; }
+.p-datatable .p-datatable-tbody > tr.ag-row-sel { background: color-mix(in srgb, var(--alvoar-teal) 10%, var(--surface-card)); }
+.ag-tabela .p-datatable-tbody > tr { cursor: pointer; }
+.ag-largo.p-message { margin-bottom: 1rem; }
+.ag-titulo-card { margin: 0; font-size: .95rem; font-weight: 600; }
+.ag-kpi-barra .iv-bar { margin-top: .35rem; }
+.ag-ferramentas-ativas { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.ag-nota-curta { margin: .5rem 0 0; font-size: .82rem; color: var(--text-color-secondary); }
+.ag-nota-curta.ag-erro { color: var(--tone-danger); }
+.ag-entre { justify-content: space-between; }
+.ag-turnos { gap: 1.2rem; }
+.ag-turnos > .iv-col > .iv-card { margin-top: 0; }
+.ag-historico button[aria-current='true'] { font-weight: 600; color: var(--text-color); }
+.ag-historico button[aria-current='true']::before { content: '▸ '; color: var(--alvoar-teal-600); }
+
+/* o .ag-passo de app.css fixa --tone em info depois do .tone-*; devolve o tom do passo */
+.ag-passo.tone-danger { --tone: var(--tone-danger); }
+.ag-passo.tone-serious { --tone: var(--tone-serious); }
+.ag-passo.tone-warning { --tone: var(--tone-warning); }
+.ag-passo.tone-ok { --tone: var(--tone-ok); }
+.ag-passo.tone-muted { --tone: var(--tone-muted); }

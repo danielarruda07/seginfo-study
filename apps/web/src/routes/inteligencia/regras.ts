@@ -70,9 +70,18 @@ export function tecnicaVisivel(t: CoberturaTecnica, camada: Camada | null, busca
 
 export interface Passo { texto: string; tone?: Tone }
 
-/** Próximo passo sugerido pela progressão observação → alerta → validação → resposta. */
+/**
+ * Próximo passo sugerido pela progressão observação → alerta → validação → resposta
+ * (docs/INTELIGENCIA.md). `praticada` (indicador de estudo/prática, fora do ciclo das
+ * quatro etapas) entra como um segundo critério: sem nenhuma das quatro etapas, mas já
+ * praticada em lab, o próximo passo é gerar o evento/alerta real, não "iniciar do zero".
+ */
 export function proximoPassoTecnica(t: CoberturaTecnica): Passo {
-  if (!t.observada && !t.alerta && !t.detectada && !t.respondida) return { texto: 'Sem registro operacional para esta técnica. Gere um evento controlado em um lab autorizado para iniciar o ciclo.', tone: 'info' };
+  if (!t.observada && !t.alerta && !t.detectada && !t.respondida) {
+    if (t.praticada) return { texto: 'Já praticada em lab, mas sem evento real ou alerta de exercício registrado. Gere o evento no Radar ou registre um alerta no diário Red × Blue para iniciar o ciclo.', tone: 'serious' };
+    if (t.estudada) return { texto: 'Já estudada, mas ainda sem prática registrada. Pratique esta técnica em um lab autorizado para iniciar o ciclo operacional.', tone: 'info' };
+    return { texto: 'Sem registro operacional para esta técnica. Estude-a na base MITRE ATT&CK e gere um evento controlado em um lab autorizado para iniciar o ciclo.', tone: 'info' };
+  }
   if (t.observada && !t.alerta) return { texto: 'Há eventos reais no Radar, mas nenhum alerta foi registrado em exercício ligado a esta técnica. Verifique a telemetria e teste uma regra no lab.', tone: 'danger' };
   if (t.alerta && !t.detectada) return { texto: 'Um exercício gerou sinal. Valide a regra com evidência, confirme se o alerta é correto e registre falsos positivos.', tone: 'serious' };
   if (t.detectada && !t.respondida) return { texto: 'A regra foi validada, mas falta documentar a triagem e a resposta: contenção, recuperação e tempos.', tone: 'warning' };
