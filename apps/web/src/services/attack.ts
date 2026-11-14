@@ -26,6 +26,8 @@ export interface CoberturaTecnica extends Tecnica {
   praticada: boolean;
   detectada: Deteccao | null;
   observada: number;
+  alerta?: boolean;
+  respondida?: boolean;
   topicos: string[];
   labs: string[];
   exercicios: PurpleExercise[];
@@ -75,6 +77,8 @@ export function calcularCobertura(observadas: Record<string, number> = {}): Cobe
       praticada: labs.some((l) => getProgressoLab(l.id).status === 'concluido') || exercicios.length > 0,
       detectada,
       observada: observadas[t.id] ?? 0,
+      alerta: exercicios.some((e) => e.detection === 'detectado' || e.detection === 'parcial'),
+      respondida: exercicios.some((e) => !!e.blueResponse.trim()),
       topicos: topicos.map((tp) => tp.id),
       labs: labs.map((l) => l.id),
       exercicios,
@@ -90,7 +94,8 @@ export function resumoCobertura(c: CoberturaTecnica[]) {
   const detectadas = c.filter((x) => x.detectada).length;
   const observadas = c.filter((x) => x.observada > 0).length;
   // lacuna: técnica vista de verdade (ou já praticada) que você ainda não detecta
-  const lacunas = c.filter((x) => (x.observada > 0 || x.praticada) && !x.detectada);
+  const lacunas = c.filter((x) =>
+    (x.observada > 0 && !x.alerta) || (x.alerta && !x.detectada) || (!!x.detectada && !x.respondida));
   return {
     total, estudadas, praticadas, detectadas, observadas,
     pctEstudadas: pct(estudadas), pctPraticadas: pct(praticadas), pctDetectadas: pct(detectadas),
@@ -100,7 +105,7 @@ export function resumoCobertura(c: CoberturaTecnica[]) {
 
 /** Pontuação 0-4 de uma técnica (uma camada por ponto), usada nas cores e no Navigator. */
 export const pontuacao = (t: CoberturaTecnica) =>
-  Number(t.estudada) + Number(t.praticada) + Number(!!t.detectada) + Number(t.observada > 0);
+  Number(t.observada > 0) + Number(!!t.alerta) + Number(!!t.detectada) + Number(!!t.respondida);
 
 /** Camada no formato do MITRE ATT&CK Navigator (importável em mitre-attack.github.io/attack-navigator). */
 export function camadaNavigator(c: CoberturaTecnica[]) {
@@ -113,16 +118,17 @@ export function camadaNavigator(c: CoberturaTecnica[]) {
     name: 'SegInfo Study: cobertura',
     versions: { layer: '4.5', navigator: '5.1.0' },
     domain: 'enterprise-attack',
-    description: `Exportado em ${todayISO()}. Pontuação: estudada + praticada + detectada + observada (0 a 4).`,
+    description: `Exportado em ${todayISO()}. Ciclo operacional: observada + alerta de teste + validação + resposta (0 a 4).`,
     gradient: { colors: ['#ffffff', '#00d6c8'], minValue: 0, maxValue: 4 },
     techniques: c.filter((t) => pontuacao(t) > 0).map((t) => ({
       techniqueID: t.id,
       tactic: taticaSlug[t.tatica],
       score: pontuacao(t),
       comment: [
-        t.estudada && 'estudada', t.praticada && 'praticada',
-        t.detectada && `detectada (${t.detectada.regra || 'regra não informada'})`,
         t.observada > 0 && `observada no Radar: ${t.observada}`,
+        t.alerta && 'alerta gerado em exercício',
+        t.detectada && `validação: ${t.detectada.regra || 'regra registrada'}`,
+        t.respondida && 'resposta documentada',
       ].filter(Boolean).join('; '),
     })),
   };

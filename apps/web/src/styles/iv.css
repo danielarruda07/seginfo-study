@@ -246,3 +246,17 @@ button.iv-kpi:hover { border-color: color-mix(in srgb, var(--alvoar-navy) 30%, v
   .iv-dl dd { margin-bottom: .45rem; }
   .iv-hide-sm { display: none; }
 }
+
+/* ===== cartão clicável (ClickCard.tsx): botão invisível cobre o cartão ===== */
+.iv-card--click { position: relative; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.iv-card--click:hover { border-color: color-mix(in srgb, var(--alvoar-navy) 25%, var(--surface-border)); box-shadow: 0 6px 18px rgba(13, 12, 85, .08); }
+.iv-card--click[data-alert='true'] { border-left: 4px solid var(--tone); }
+.iv-card--click[data-selected='true'] { border-color: var(--alvoar-teal-600); box-shadow: inset 0 0 0 1px var(--alvoar-teal-600); }
+.iv-card__hit { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; padding: 0; border: 0; border-radius: inherit; background: transparent; cursor: pointer; }
+.iv-card__hit:focus-visible { outline: 2px solid var(--alvoar-teal-600); outline-offset: 2px; }
+/* links, botões e campos dentro do cartão ficam por cima do botão invisível */
+.iv-card--click :is(a, button:not(.iv-card__hit), input, select, textarea, label, .p-button, .p-checkbox, .p-dropdown, .p-inputswitch, details) { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .iv-card--click { transition: none; } }
+
+/* ficha lateral mais larga para conteúdo denso */
+.iv-drawer--wide.p-sidebar { width: min(100vw, 56rem); }
