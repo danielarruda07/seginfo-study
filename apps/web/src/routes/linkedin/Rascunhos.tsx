@@ -62,6 +62,12 @@ export function Rascunhos({ rascunhos, onEditar, onCopiar, onMarcarPublicado, on
             <h3 className="iv-section-label">Texto</h3>
             <div className="ca-texto"><strong>{r.gancho}</strong>{'\n\n'}{r.corpo}</div>
           </section>
+          {(r.direcaoVisual || r.roteiroSlides || r.textoAlternativo) && <section>
+            <h3 className="iv-section-label">Material visual</h3>
+            {r.roteiroSlides && <div className="ca-texto"><strong>Roteiro do carrossel</strong>{'\n'}{r.roteiroSlides}</div>}
+            {r.direcaoVisual && <div className="ca-texto iv-mt"><strong>Direção visual</strong>{'\n'}{r.direcaoVisual}</div>}
+            {r.textoAlternativo && <p className="iv-muted ca-small"><strong>Texto alternativo:</strong> {r.textoAlternativo}</p>}
+          </section>}
           <section>
             <h3 className="iv-section-label">Checklist do post</h3>
             <ul className="linkedin-checklist">

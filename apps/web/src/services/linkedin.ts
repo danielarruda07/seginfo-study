@@ -28,9 +28,9 @@ export type { PostPublicado, Metricas, Estrategia, FormatoPost, AnalisePost, Ras
 // ===================== API =====================
 
 /** Rascunhos do Estúdio (tabela Post do servidor). */
-export interface Rascunho { id: string; titulo: string; gancho: string; corpo: string; topicoId: string | null; publicado: boolean }
+export interface Rascunho { id: string; titulo: string; gancho: string; corpo: string; direcaoVisual: string; textoAlternativo: string; roteiroSlides: string; topicoId: string | null; publicado: boolean }
 export const listRascunhos = () => api.getPosts() as Promise<Rascunho[]>;
-export const criarRascunho = (b: { titulo: string; gancho: string; corpo: string; topicoId?: string }) => api.addPost(b) as Promise<Rascunho>;
+export const criarRascunho = (b: { titulo: string; gancho: string; corpo: string; direcaoVisual?: string; textoAlternativo?: string; roteiroSlides?: string; topicoId?: string }) => api.addPost(b) as Promise<Rascunho>;
 export const editarRascunho = (id: string, b: Partial<Omit<Rascunho, 'id'>>) => api.patchPost(id, b) as Promise<Rascunho>;
 export const removerRascunho = (id: string) => api.delPost(id);
 
@@ -231,10 +231,8 @@ export interface ItemChecklist {
   dica: string;
 }
 
-const CTA_REGEX = /\?|comente|conta (?:aqui|nos coment)|me conta|qual (?:é|foi) a sua|e você/i;
-
 /**
- * Checklist de boas práticas de LinkedIn (o que costuma separar um post lido de um ignorado).
+ * Checklist editorial heurístico. Comprimento e formato dependem da ideia e dos dados do próprio perfil.
  * Heurístico e local — não depende de IA.
  */
 export function checklistPost(gancho: string, corpo: string): ItemChecklist[] {
@@ -243,20 +241,18 @@ export function checklistPost(gancho: string, corpo: string): ItemChecklist[] {
   const hashtags = texto.match(/(^|\s)#[\p{L}\d_]+/gu) ?? [];
   const final = texto.slice(-250);
   return [
-    { id: 'gancho', ok: gancho.trim().length >= 20 && gancho.trim().length <= 200, label: 'Gancho cabe antes do "ver mais"',
-      dica: 'A primeira linha decide o clique. Entre 20 e 200 caracteres, com tensão, número ou contraste.' },
-    { id: 'tamanho', ok: texto.length >= 600 && texto.length <= 2_200, label: `Tamanho (${texto.length} caracteres)`,
-      dica: 'Entre ~600 e ~2.200 caracteres: profundidade sem cansar. O limite do LinkedIn é 3.000.' },
+    { id: 'gancho', ok: gancho.trim().length >= 20, label: 'Abertura específica e clara',
+      dica: 'Comece pela ideia principal ou por um detalhe concreto. A prévia varia por tela; evite clickbait e contexto longo antes do ponto.' },
+    { id: 'tamanho', ok: texto.length > 0 && texto.length <= 3_000, label: `Tamanho (${texto.length} caracteres)`,
+      dica: 'Não existe tamanho ideal universal. Ajuste à ideia, confira o limite atual da plataforma e compare seus próprios resultados.' },
     { id: 'respiro', ok: paragrafos.length >= 3 && paragrafos.every((p) => p.length <= 320), label: 'Parágrafos curtos, texto com respiro',
       dica: 'Blocos de 1–3 linhas, separados por linha em branco. Ninguém lê parede de texto no celular.' },
     { id: 'concreto', ok: /\d/.test(corpo) || /aprendi|errei|descobri|na prática|resultado/i.test(corpo), label: 'Tem algo concreto (número, resultado ou aprendizado)',
       dica: 'Prova > opinião: "reduzi 3 regras any/any" convence mais que "segurança é importante".' },
-    { id: 'cta', ok: CTA_REGEX.test(final), label: 'Termina convidando à conversa',
-      dica: 'Feche com uma pergunta específica. Comentários são o sinal que mais distribui o post.' },
-    { id: 'hashtags', ok: hashtags.length >= 3 && hashtags.length <= 5, label: `Hashtags (${hashtags.length})`,
-      dica: 'De 3 a 5 hashtags relevantes no final. Mais que isso parece spam.' },
-    { id: 'link', ok: !/https?:\/\//i.test(texto), label: 'Sem link externo no corpo',
-      dica: 'Links no texto tendem a reduzir o alcance. Coloque no primeiro comentário.' },
+    { id: 'cta', ok: !/(curta se concorda|comente aqui|compartilhe este post|marque alguém|siga para mais)/i.test(final), label: 'Convite natural, sem pedido artificial',
+      dica: 'Pergunta específica pode abrir conversa, mas não é obrigatória. Evite pedidos artificiais de curtida, comentário ou compartilhamento.' },
+    { id: 'hashtags', ok: hashtags.length <= 3, label: `Hashtags (${hashtags.length})`,
+      dica: 'Hashtags são opcionais. Use poucas e específicas quando realmente ajudarem a situar o tema.' },
   ];
 }
 

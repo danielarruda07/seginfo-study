@@ -1,0 +1,4 @@
+ALTER TABLE "Post"
+ADD COLUMN "direcaoVisual" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "textoAlternativo" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "roteiroSlides" TEXT NOT NULL DEFAULT '';

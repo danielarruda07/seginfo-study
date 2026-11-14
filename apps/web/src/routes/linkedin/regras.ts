@@ -106,7 +106,7 @@ export function briefingDoMarco(e: Pick<EntradaDiario, 'titulo' | 'descricao'>):
   return `Post sobre um marco da construção da SegInfo Study: "${e.titulo}". Contexto: ${e.descricao}`;
 }
 
-/** Tom do selo da nota do checklist (7 itens). */
+/** Tom do selo da nota do checklist (6 itens). */
 export function tomChecklist(nota: number): 'ok' | 'warning' | 'danger' {
-  return nota >= 6 ? 'ok' : nota >= 4 ? 'warning' : 'danger';
+  return nota >= 5 ? 'ok' : nota >= 3 ? 'warning' : 'danger';
 }

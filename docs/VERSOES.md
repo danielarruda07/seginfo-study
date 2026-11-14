@@ -8,6 +8,7 @@ A versão aparece no rodapé do menu lateral (`v0.17.0 · build dd/mm hh:mm`) e 
 
 | Versão | Data | O que entrou |
 |---|---|---|
+| 0.20.0 | 14/11/2026 | Carreira: Estúdio do LinkedIn gera roteiro de carrossel, direção visual e texto alternativo persistidos no servidor; checklist abandona tamanho/hashtags como regras universais; estratégia editorial e orientações oficiais reunidas em `docs/LINKEDIN.md` |
 | 0.19.0 | 14/11/2026 | Carreira: LinkedIn ganhou kit editável de headline e Sobre, checklist de perfil, ritmo editorial e briefings por pilar; modelos usam campos de confirmação e a IA é orientada a não inventar fatos de carreira. Meu Ambiente deixou de iniciar com exemplos e remove itens demonstrativos antigos, preservando ativos reais cadastrados pelo usuário |
 | 0.18.0 | 14/11/2026 | Iscas (honeytokens) no Windows real: arquivo isca com credenciais falsas e conta isca, auditoria de arquivo, regras 100270-100272 do Wazuh (nível 12 a 14); seção "Iscas" no `docs/RANGE.md` com as armadilhas de configuração (filtro 4663 do agente, posição do log após rollback, snapshot limpo) |
 | 0.17.0 | 14/11/2026 | Todas as telas: cartões e linhas abrem uma ficha lateral com detalhe, relações e ações (↑/↓ entre itens); indicadores viram filtros; cores por tokens; menu lateral sempre recolhido; prévia de artefatos HTML isolada; senha do Cofre só com "Revelar" |

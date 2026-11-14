@@ -72,6 +72,9 @@ export const RascunhoIASchema = z.object({
   hashtags: z.array(z.string()),
   porQueFunciona: z.string(),
   dadosParaConfirmar: z.array(z.string()),
+  direcaoVisual: z.string(),
+  textoAlternativo: z.string(),
+  roteiroSlides: z.array(z.string()),
 });
 export type RascunhoIA = z.infer<typeof RascunhoIASchema>;
 

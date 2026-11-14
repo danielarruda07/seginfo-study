@@ -88,6 +88,9 @@ model Post {
   titulo    String
   gancho    String   @default("")
   corpo     String   @default("")
+  direcaoVisual String @default("")
+  textoAlternativo String @default("")
+  roteiroSlides String @default("")
   topicoId  String?
   publicado Boolean  @default(false)
   criadoEm  DateTime @default(now())

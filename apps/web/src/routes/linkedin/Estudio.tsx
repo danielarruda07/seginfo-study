@@ -42,6 +42,9 @@ export function Estudio({ pedido, onPedidoConsumido, onPublicado }: {
   const [titulo, setTitulo] = useState('');
   const [gancho, setGancho] = useState('');
   const [corpo, setCorpo] = useState('');
+  const [direcaoVisual, setDirecaoVisual] = useState('');
+  const [textoAlternativo, setTextoAlternativo] = useState('');
+  const [roteiroSlides, setRoteiroSlides] = useState('');
   const [topicoId, setTopicoId] = useState<string | undefined>();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [erro, setErro] = useState('');
@@ -65,7 +68,7 @@ export function Estudio({ pedido, onPedidoConsumido, onPublicado }: {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [pedido, onPedidoConsumido]);
 
-  function limpar() { setTitulo(''); setGancho(''); setCorpo(''); setTopicoId(undefined); setEditingId(null); setSugestao(null); }
+  function limpar() { setTitulo(''); setGancho(''); setCorpo(''); setDirecaoVisual(''); setTextoAlternativo(''); setRoteiroSlides(''); setTopicoId(undefined); setEditingId(null); setSugestao(null); }
 
   function aplicarTemplate(id: string) {
     const t = POST_TEMPLATES.find((x) => x.id === id);
@@ -76,8 +79,8 @@ export function Estudio({ pedido, onPedidoConsumido, onPublicado }: {
     if (!titulo.trim()) return;
     setErro('');
     try {
-      if (editingId) await editarRascunho(editingId, { titulo, gancho, corpo, topicoId: topicoId ?? null });
-      else await criarRascunho({ titulo, gancho, corpo, topicoId });
+      if (editingId) await editarRascunho(editingId, { titulo, gancho, corpo, direcaoVisual, textoAlternativo, roteiroSlides, topicoId: topicoId ?? null });
+      else await criarRascunho({ titulo, gancho, corpo, direcaoVisual, textoAlternativo, roteiroSlides, topicoId });
       limpar();
       invalidate('linkedin-rascunhos');
     } catch (e) {
@@ -110,7 +113,11 @@ export function Estudio({ pedido, onPedidoConsumido, onPublicado }: {
       setEditingId(null);
       setTitulo(r.titulo);
       setGancho(r.gancho);
-      setCorpo(`${r.corpo.trim()}\n\n${r.hashtags.map((h) => `#${h.replace(/^#/, '')}`).join(' ')}`);
+      const tags = r.hashtags.map((h) => `#${h.replace(/^#/, '')}`).join(' ');
+      setCorpo(`${r.corpo.trim()}${tags ? `\n\n${tags}` : ''}`);
+      setDirecaoVisual(r.direcaoVisual);
+      setTextoAlternativo(r.textoAlternativo);
+      setRoteiroSlides(r.roteiroSlides.join('\n'));
     } catch (e) {
       setErroIA(mensagemErro(e));
     } finally {
@@ -140,7 +147,7 @@ export function Estudio({ pedido, onPedidoConsumido, onPublicado }: {
   }
 
   function editar(p: Rascunho) {
-    setEditingId(p.id); setTitulo(p.titulo); setGancho(p.gancho); setCorpo(p.corpo); setTopicoId(p.topicoId ?? undefined); setSugestao(null);
+    setEditingId(p.id); setTitulo(p.titulo); setGancho(p.gancho); setCorpo(p.corpo); setDirecaoVisual(p.direcaoVisual ?? ''); setTextoAlternativo(p.textoAlternativo ?? ''); setRoteiroSlides(p.roteiroSlides ?? ''); setTopicoId(p.topicoId ?? undefined); setSugestao(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -201,6 +208,22 @@ export function Estudio({ pedido, onPedidoConsumido, onPublicado }: {
           </div>
           <InputText value={gancho} onChange={(e) => setGancho(e.target.value)} placeholder="Gancho (primeira linha, o que prende a atenção)" aria-label="Gancho" />
           <InputTextarea value={corpo} onChange={(e) => setCorpo(e.target.value)} rows={12} autoResize placeholder="Desenvolva a ideia, o que aprendeu e como aplicou..." aria-label="Corpo do post" />
+          <small className={gancho.length + corpo.length > 3_000 ? 'iv-field__error' : 'iv-muted'} aria-live="polite">
+            {gancho.length + corpo.length} / 3.000 caracteres do post. O tamanho abaixo do limite depende da ideia.
+          </small>
+          {(formato === 'imagem' || formato === 'carrossel') && (
+            <section className="iv-card iv-col iv-gap" aria-label="Apoio visual">
+              <h4 className="ca-h4">Direção visual</h4>
+              <p className="iv-muted ca-small ca-mb0">Use a descrição como briefing para criar a arte. Revise termos técnicos e não coloque dados do ambiente ou texto pequeno na imagem.</p>
+              {formato === 'carrossel' && <label className="iv-col iv-gap"><strong>Roteiro dos slides</strong><InputTextarea value={roteiroSlides} onChange={(e) => setRoteiroSlides(e.target.value)} rows={5} autoResize aria-label="Roteiro dos slides" placeholder="Uma ideia por linha: capa, contexto, passos e conclusão." /></label>}
+              <label className="iv-col iv-gap"><strong>Prompt visual</strong><InputTextarea value={direcaoVisual} onChange={(e) => setDirecaoVisual(e.target.value)} rows={4} autoResize aria-label="Direção visual" placeholder="A direção de arte aparecerá aqui após gerar o rascunho." /></label>
+              <div className="iv-row iv-wrap">
+                <Button label="Copiar prompt visual" icon="pi pi-copy" outlined disabled={!direcaoVisual} onClick={() => copyToClipboard(direcaoVisual)} />
+                <Button label="Copiar roteiro" icon="pi pi-copy" outlined disabled={!roteiroSlides} onClick={() => copyToClipboard(roteiroSlides)} />
+              </div>
+              <label className="iv-col iv-gap"><strong>Texto alternativo da imagem</strong><InputTextarea value={textoAlternativo} onChange={(e) => setTextoAlternativo(e.target.value)} rows={2} autoResize aria-label="Texto alternativo" placeholder="Descreva a informação visual para quem usa leitor de tela." /></label>
+            </section>
+          )}
           <div className="iv-row iv-wrap">
             <Button label={editingId ? 'Atualizar rascunho' : 'Salvar rascunho'} icon="pi pi-save" onClick={salvar} disabled={!titulo.trim()} />
             <Button label="Copiar texto" icon="pi pi-copy" outlined onClick={() => copiar(gancho, corpo)} />

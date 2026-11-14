@@ -82,15 +82,15 @@ export async function registerStateRoutes(app: FastifyInstance) {
   // ---------- Posts ----------
   app.get('/api/posts', async (req) => prisma.post.findMany({ where: { usuarioId: uid(req) }, orderBy: { criadoEm: 'desc' } }));
   app.post('/api/posts', async (req, reply) => {
-    const b = z.object({ titulo: z.string(), gancho: z.string().optional(), corpo: z.string().optional(), topicoId: z.string().optional(), publicado: z.boolean().optional() }).safeParse(req.body);
+    const b = z.object({ titulo: z.string(), gancho: z.string().optional(), corpo: z.string().optional(), direcaoVisual: z.string().max(5_000).optional(), textoAlternativo: z.string().max(1_000).optional(), roteiroSlides: z.string().max(10_000).optional(), topicoId: z.string().optional(), publicado: z.boolean().optional() }).safeParse(req.body);
     if (!b.success) return reply.status(400).send({ error: 'payload inválido' });
-    return prisma.post.create({ data: { titulo: b.data.titulo, gancho: b.data.gancho ?? '', corpo: b.data.corpo ?? '', topicoId: b.data.topicoId, publicado: b.data.publicado ?? false, usuarioId: uid(req) } });
+    return prisma.post.create({ data: { titulo: b.data.titulo, gancho: b.data.gancho ?? '', corpo: b.data.corpo ?? '', direcaoVisual: b.data.direcaoVisual ?? '', textoAlternativo: b.data.textoAlternativo ?? '', roteiroSlides: b.data.roteiroSlides ?? '', topicoId: b.data.topicoId, publicado: b.data.publicado ?? false, usuarioId: uid(req) } });
   });
   app.patch('/api/posts/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
     const b = z.object({
       titulo: z.string().max(200).optional(), gancho: z.string().max(2_000).optional(),
-      corpo: z.string().max(50_000).optional(), topicoId: z.string().nullable().optional(), publicado: z.boolean().optional(),
+      corpo: z.string().max(50_000).optional(), direcaoVisual: z.string().max(5_000).optional(), textoAlternativo: z.string().max(1_000).optional(), roteiroSlides: z.string().max(10_000).optional(), topicoId: z.string().nullable().optional(), publicado: z.boolean().optional(),
     }).strict().safeParse(req.body);
     if (!b.success) return reply.status(400).send({ error: 'payload inválido' });
     const r = await prisma.post.updateMany({ where: { id, usuarioId: uid(req) }, data: b.data });
@@ -215,7 +215,7 @@ export async function registerStateRoutes(app: FastifyInstance) {
       progresso: z.array(z.any()).optional(),
       sessoes: z.array(z.object({ id: z.string().min(1).max(100), data: z.string().max(32), minutos: z.number().int().positive(), trilhaId: z.string().optional(), topicoId: z.string().optional(), labId: z.string().optional(), nota: z.string().max(20_000).optional() })).max(10_000).optional(),
       metas: z.array(z.object({ id: z.string().min(1).max(100), titulo: z.string().max(500), prazo: z.string().max(32), trilhaId: z.string().optional(), concluida: z.boolean().optional() })).max(10_000).optional(),
-      posts: z.array(z.object({ id: z.string().min(1).max(100), titulo: z.string().max(500), gancho: z.string().max(2_000).optional(), corpo: z.string().max(50_000).optional(), topicoId: z.string().optional(), publicado: z.boolean().optional() })).max(10_000).optional(),
+      posts: z.array(z.object({ id: z.string().min(1).max(100), titulo: z.string().max(500), gancho: z.string().max(2_000).optional(), corpo: z.string().max(50_000).optional(), direcaoVisual: z.string().max(5_000).optional(), textoAlternativo: z.string().max(1_000).optional(), roteiroSlides: z.string().max(10_000).optional(), topicoId: z.string().optional(), publicado: z.boolean().optional() })).max(10_000).optional(),
       arsenal: z.array(z.object({ id: z.string().min(1).max(100), tipo: z.enum(['prompt', 'skill', 'agente']), nome: z.string().max(500), slug: z.string().optional(), dominio: z.string().optional(), resumo: z.string().optional(), conteudo: z.string().optional(), quandoUsar: z.string().optional(), requisitos: z.array(z.string()).optional(), tags: z.array(z.string()).optional(), artefatos: z.array(z.any()).optional(), favorito: z.boolean().optional() })).max(10_000).optional(),
       biblioteca: z.array(z.object({ id: z.string().min(1).max(100), url: z.string().url(), titulo: z.string().optional(), dominio: z.string().optional(), textoOriginal: z.string().optional(), resumo: z.string().optional(), palavrasChave: z.array(z.string()).optional(), categoria: z.string().optional(), tags: z.array(z.string()).optional(), estado: z.enum(['para_ler', 'lendo', 'lido']).optional(), favorito: z.boolean().optional(), anotacoes: z.string().optional(), topicoId: z.string().optional(), fonteResumo: z.string().optional() })).max(10_000).optional(),
       cofre: z.object({ versao: z.literal(1), salt: z.string(), iv: z.string(), ciphertext: z.string(), autoLockMin: z.number().int().optional() }).nullable().optional(),

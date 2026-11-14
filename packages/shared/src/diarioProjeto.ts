@@ -24,6 +24,17 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-14-linkedin-estudio-visual',
+    data: '2026-11-14',
+    titulo: 'O Estúdio do LinkedIn prepara texto e material visual no mesmo rascunho',
+    descricao:
+      'Rascunhos de imagem e carrossel agora podem guardar direção visual, texto alternativo e roteiro de slides junto do texto no servidor. ' +
+      'O checklist deixa de tratar quantidade fixa de caracteres, hashtags ou link como fórmula de alcance: a orientação é publicar algo útil e original, ' +
+      'e usar os próprios dados para comparar temas e formatos ao longo do tempo.',
+    categoria: 'funcionalidade',
+    tags: ['linkedin', 'carrossel', 'acessibilidade', 'conteudo'],
+  },
+  {
     id: 'proj-2026-11-14-carreira-inventario-real',
     data: '2026-11-14',
     titulo: 'Meu Ambiente só mostra ativos cadastrados; LinkedIn ganha uma central de posicionamento',

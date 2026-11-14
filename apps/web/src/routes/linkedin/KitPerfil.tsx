@@ -55,6 +55,17 @@ export function KitPerfil() {
         <div><strong>Checklist de conversão do perfil</strong><ol className="iv-muted"><li>Headline: função/área + especialidades comprováveis + direção em segurança.</li><li>Sobre: comece pela proposta de valor; feche com o tipo de desafio que quer resolver.</li><li>Em destaque: 2 ou 3 provas — projeto, lab documentado e apresentação técnica.</li><li>Experiências: descreva contexto, ação e resultado verificável; inclua escala só quando puder sustentá-la.</li><li>Competências: priorize infraestrutura, virtualização, DevOps e as competências de segurança que já praticou.</li></ol></div>
         <div><strong>Ritmo editorial sugerido</strong><ul className="iv-muted"><li>1 publicação autoral por semana: aprendizado, decisão técnica ou projeto.</li><li>2 sessões curtas de comentários úteis em publicações de infraestrutura e segurança.</li><li>A cada mês: reveja conversas, visitas ao perfil e contatos relevantes; repita temas que abriram boas conversas.</li><li>Registre impressões e interações após 7 dias. Compare posts do mesmo formato e tema.</li></ul></div>
       </div>
+
+      <section className="iv-mt" aria-labelledby="linkedin-boas-praticas">
+        <h3 id="linkedin-boas-praticas" className="ca-h3">O que tende a tornar seu conteúdo mais útil</h3>
+        <div className="linkedin-kit__grid">
+          <div><strong>Mostre a ponte entre as áreas</strong><p className="iv-muted ca-small">Contexto real → decisão técnica → evidência do que você praticou → aprendizado. Separe experiência profissional, estudo e laboratório.</p></div>
+          <div><strong>Escolha formato pela ideia</strong><p className="iv-muted ca-small">Texto para uma observação; documento/carrossel para uma sequência didática; imagem para apoiar uma ideia; vídeo para demonstração. Não há tamanho universal ideal: o limite do post comum é 3.000 caracteres.</p></div>
+          <div><strong>Use arte visual legível</strong><p className="iv-muted ca-small">Comece em 1080 px de largura, confira proporção entre 3:1 e 4:5 e escreva texto alternativo. Carrosséis devem funcionar mesmo para quem só percorre os títulos.</p></div>
+          <div><strong>Meça conversas e resultados</strong><p className="iv-muted ca-small">Compare tema e formato com impressões, comentários, compartilhamentos, salvamentos e visitas relevantes ao perfil. Não otimize por curtidas isoladas.</p></div>
+        </div>
+        <p className="iv-muted ca-small">Sem pods ou pedidos artificiais de engajamento. Veja as <a href="https://www.linkedin.com/blog/content-recommendations-avoid" target="_blank" rel="noreferrer">recomendações do LinkedIn</a> e os <a href="https://www.linkedin.com/help/linkedin/answer/a527229" target="_blank" rel="noreferrer">requisitos para fotos</a>.</p>
+      </section>
     </section>
   );
 }
