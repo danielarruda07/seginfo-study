@@ -148,6 +148,7 @@ ${p.contexto}
 </minha_jornada>${notas}
 
 Use a jornada para dar contexto real e continuidade (não repita um post que já fiz; evolua a conversa). Prefira fatos do diário e do estudo a generalidades.
+N\u00e3o invente empregadores, dura\u00e7\u00e3o de carreira, responsabilidades, certifica\u00e7\u00f5es aprovadas, resultados, m\u00e9tricas ou experi\u00eancia profissional em seguran\u00e7a. Separe viv\u00eancia profissional de estudo e laborat\u00f3rio. Se faltar um dado necess\u00e1rio, use [CONFIRMAR: dado] e liste-o em dadosParaConfirmar.
 Devolva:
 - titulo: nome interno curto do rascunho.
 - gancho: só a primeira linha.

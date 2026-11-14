@@ -6,6 +6,7 @@ import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import { Pill } from '@/components/InfraKit';
 import { useInvalidate } from '@/hooks/useInvalidate';
+import { KitPerfil } from './KitPerfil';
 import { ESTRATEGIA_PADRAO, getEstrategia, mensagemErro, saveEstrategia, statusIA, type Estrategia } from '@/services/linkedin';
 
 export function EstrategiaIA() {
@@ -30,7 +31,9 @@ export function EstrategiaIA() {
   }
 
   return (
-    <div className="linkedin-estrategia">
+    <>
+      <KitPerfil />
+      <div className="linkedin-estrategia iv-mt">
       <section className="iv-card">
         <h3 className="ca-h3 ca-mb">Posicionamento</h3>
         <p className="iv-muted ca-small">
@@ -108,6 +111,7 @@ export function EstrategiaIA() {
           <li>Notas e sessões que citem IP, nome de servidor ou senha (filtradas antes do envio).</li>
         </ul>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

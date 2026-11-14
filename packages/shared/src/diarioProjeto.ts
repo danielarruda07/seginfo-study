@@ -24,6 +24,17 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-14-carreira-inventario-real',
+    data: '2026-11-14',
+    titulo: 'Meu Ambiente só mostra ativos cadastrados; LinkedIn ganha uma central de posicionamento',
+    descricao:
+      'O inventário deixou de preencher a tela com registros demonstrativos ou inferidos de documentação: agora começa vazio e mantém o que o usuário cadastra ou importa. ' +
+      'Na área de carreira, headline, texto Sobre, checklist do perfil e briefings ajudam a contar a transição entre infraestrutura, DevOps, virtualização e Segurança da Informação com evidências. ' +
+      'Os modelos usam campos de confirmação, e as instruções da IA separam experiência profissional, estudo e laboratório e evitam afirmar certificações ou resultados sem evidência.',
+    categoria: 'funcionalidade',
+    tags: ['linkedin', 'carreira', 'inventario', 'posicionamento'],
+  },
+  {
     id: 'proj-2026-11-14-iscas',
     data: '2026-11-14',
     titulo: 'Isca dentro da rede: quem mexer no arquivo errado se denuncia',

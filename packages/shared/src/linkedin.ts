@@ -52,17 +52,15 @@ export const EstrategiaSchema = z.object({
 export type Estrategia = z.infer<typeof EstrategiaSchema>;
 
 export const ESTRATEGIA_PADRAO: Estrategia = {
-  objetivo: 'Ser reconhecido como profissional de Segurança da Informação com base sólida de infraestrutura.',
-  publico: 'Recrutadores e líderes de segurança; profissionais de infra que querem migrar para segurança.',
-  voz:
-    'Primeira pessoa, direto e prático. Mostro o que fiz, o que deu errado e o que aprendi. ' +
-    'Técnico sem jargão vazio, honesto sobre o que ainda estou aprendendo.',
+  objetivo: "Construir posicionamento para oportunidades em Segurança da Informação, mostrando como a experiência em infraestrutura, DevOps e virtualização se conecta à segurança operacional.",
+  publico: "Recrutadores e lideranças de Segurança da Informação, times de infraestrutura e profissionais que conectam operação e segurança.",
+  voz: "Primeira pessoa, direto e prático. Explico contexto, decisão, prática e aprendizado. Separo claramente experiência profissional, estudo e laboratório. Não invento métricas, anos, escopo ou resultados; quando faltar evidência, deixo um campo para confirmar.",
   pilares: [
-    'Infra → Segurança: a transição',
-    'Homelab como campo de treino',
-    'Blue Team na prática',
-    'Lições de erros e incidentes reais',
-    'Construindo a SegInfo Study em público',
+    "Infraestrutura, DevOps e virtualização aplicados à segurança",
+    "Labs e prática de Segurança da Informação",
+    "Aprendizados de Blue Team e operações seguras",
+    "Transição de carreira com evidências e próximos passos",
+    "Construção da SegInfo Study e decisões técnicas",
   ],
 };
 

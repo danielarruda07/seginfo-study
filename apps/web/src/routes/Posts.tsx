@@ -50,7 +50,7 @@ export function Posts() {
     <div>
       <PageHeader
         title="LinkedIn"
-        subtitle="Escreva, registre o que publicou e deixe a IA organizar tudo no seu segundo cérebro — cada post vira contexto para o próximo."
+        subtitle="Planeje seu posicionamento, transforme experiência e estudos em conteúdo e aprenda com cada conversa."
       />
       <ConfirmDialog />
       {migracao && <Message severity={migracao.sev} text={migracao.text} className="ca-w100 ca-mb" />}
@@ -70,7 +70,7 @@ export function Posts() {
           <TabPanel header="Diário do projeto" leftIcon="pi pi-book mr-2">
             <Diario onGerarPost={abrirEstudio} />
           </TabPanel>
-          <TabPanel header="Estratégia & IA" leftIcon="pi pi-compass mr-2">
+          <TabPanel header="Marca pessoal & IA" leftIcon="pi pi-compass mr-2">
             <EstrategiaIA />
           </TabPanel>
         </TabView>
