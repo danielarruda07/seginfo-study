@@ -16,7 +16,7 @@ Este documento diz onde fica cada informação sensível do laboratório e como 
 Fica no topo de Meu Ambiente (`apps/web/src/routes/inventario/AcessosIntegracoes.tsx`). Mostra:
 
 1. **Onde fica cada dado:** a tabela acima, com a situação atual (quantos ativos têm endereço, se o Cofre está criado e quantas credenciais tem quando destrancado, quantas variáveis do range estão preenchidas, quantas integrações estão prontas).
-2. **Integrações do servidor:** para Proxmox, FortiGate, Catalyst 2960 e Claude API, mostra endereço, identidade usada, tratamento do certificado, estado e as variáveis envolvidas.
+2. **Integrações do servidor:** para Proxmox, FortiGate, Catalyst 2960, Wazuh e Claude API, mostra endereço, identidade usada, tratamento do certificado, estado e as variáveis envolvidas.
 
 Os dados das integrações vêm de `GET /api/integracoes` (`apps/api/src/integracoes.ts`). A rota nunca devolve segredo:
 
@@ -25,6 +25,7 @@ Os dados das integrações vêm de `GET /api/integracoes` (`apps/api/src/integra
 | Proxmox | o identificador do token (`usuario@realm!nome`) | o segredo do token e a CA |
 | FortiGate | "token de API" | o token |
 | Catalyst 2960 | usuário SSH e se usa senha ou chave | a senha e a chave privada |
+| Wazuh | usuário da API | a senha e a CA |
 | Claude API | "chave de API" e o modelo | a chave |
 
 O teste `apps/api/src/integracoes.test.ts` confere que nenhum valor secreto aparece na resposta.
@@ -35,7 +36,7 @@ O teste `apps/api/src/integracoes.test.ts` confere que nenhum valor secreto apar
 2. Edite a variável pela engrenagem. Para segredo: **Literal**, **Runtime** ligado, **Buildtime** desligado.
 3. **Redeploy**. O painel de Meu Ambiente e o indicador de integrações na barra superior refletem a mudança.
 
-Variáveis de cada sistema: ver `docs/AGENTS.md` (seções Proxmox, FortiGate e Catalyst 2960) e `.env.example`.
+Variáveis de cada sistema: ver `docs/AGENTS.md` (seções Proxmox, FortiGate e Catalyst 2960), `docs/WAZUH.md` e `.env.example`.
 
 ## Descoberta do ambiente real
 
