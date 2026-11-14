@@ -60,9 +60,13 @@ describe('cobertura', () => {
 
     const r = resumoCobertura(c);
     expect(r.lacunas.map((t) => t.id)).toContain('T1110');
-    expect(r.lacunas.map((t) => t.id)).not.toContain('T1078');
+    // T1078 foi detectada manualmente, mas sem exercício Purple com resposta documentada:
+    // ainda conta como lacuna (detectada e não respondida), conforme docs/INTELIGENCIA.md.
+    expect(r.lacunas.map((t) => t.id)).toContain('T1078');
 
+    // Pontuação é o ciclo operacional: observada + alerta + detectada + respondida (0 a 4).
+    // T1110 aqui só tem observada>0 (sem exercício Purple), logo score 1.
     const camada = camadaNavigator(c);
-    expect(camada.techniques.find((t) => t.techniqueID === 'T1110')?.score).toBe(2);
+    expect(camada.techniques.find((t) => t.techniqueID === 'T1110')?.score).toBe(1);
   });
 });
