@@ -1,0 +1,46 @@
+/*
+ * Minha exposição (/exposicao). Classes com prefixo ex-. Só variáveis (tokens.css); nada de hex.
+ */
+.ex-incluir { display: flex; flex-direction: column; gap: .4rem; }
+.ex-incluir__linha { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.ex-incluir__campo { flex: 1 1 18rem; min-width: 0; }
+
+.ex-alvos { list-style: none; margin: .5rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: .75rem; }
+.ex-alvos .iv-card { margin: 0; }
+.ex-alvo { display: flex; flex-direction: column; gap: .45rem; min-width: 0; }
+.ex-alvo__topo { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-width: 0; }
+.ex-alvo__nome { all: unset; cursor: pointer; font-weight: 600; font-size: .95rem; overflow-wrap: anywhere; color: var(--text-color); }
+.ex-alvo__nome:hover { text-decoration: underline; }
+.ex-alvo__nome:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+.ex-alvo__sub { margin: 0; font-size: .78rem; color: var(--text-color-secondary); }
+.ex-alvo__erro { margin: 0; font-size: .78rem; color: var(--text-color-secondary); display: flex; gap: .35rem; align-items: baseline; }
+.ex-alvo__acoes { display: flex; gap: .35rem; align-items: center; margin-top: auto; }
+
+.ex-numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(4.5rem, 1fr)); gap: .4rem; margin: 0; }
+.ex-numeros > div { background: var(--surface-section); border-radius: var(--radius-sm); padding: .35rem .5rem; }
+.ex-numeros dt { font-size: .7rem; color: var(--text-color-secondary); }
+.ex-numeros dd { margin: 0; font-size: 1.1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ex-numeros dd[data-alerta] { color: var(--tone-serious); }
+
+.ex-mudancas { list-style: none; margin: .5rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; }
+.ex-mudanca { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: .6rem; row-gap: .1rem; align-items: baseline; font-size: .875rem; }
+.ex-mudanca__texto { overflow-wrap: anywhere; }
+.ex-mudanca__meta { grid-column: 2; font-size: .75rem; color: var(--text-color-secondary); }
+
+/* ficha lateral */
+.ex-ip { padding: .6rem .75rem; border: 1px solid var(--surface-border); border-radius: var(--radius-sm); margin-top: .5rem; }
+.ex-ip__topo { display: flex; gap: .5rem; align-items: center; margin-bottom: .35rem; }
+.ex-dl { margin-top: .4rem; }
+.ex-dl__linha { display: contents; }
+.ex-chips { display: inline-flex; flex-wrap: wrap; gap: .3rem .5rem; }
+.ex-quebra { overflow-wrap: anywhere; }
+.ex-lista { margin: .35rem 0 0; padding-left: 1.1rem; font-size: .85rem; display: flex; flex-direction: column; gap: .25rem; }
+.ex-tabela-wrap { overflow-x: auto; margin-top: .4rem; max-height: 22rem; overflow-y: auto; }
+.ex-tabela { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.ex-tabela th, .ex-tabela td { text-align: left; padding: .3rem .5rem; border-bottom: 1px solid var(--surface-border); }
+.ex-tabela th { position: sticky; top: 0; background: var(--surface-card); color: var(--text-color-secondary); font-weight: 600; }
+.ex-tabela .iv-right { text-align: right; }
+.ex-historico { list-style: none; margin: .4rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; font-size: .82rem; }
+.ex-historico > li { display: flex; flex-wrap: wrap; gap: .25rem .6rem; }
+.ex-historico__quando { font-weight: 600; font-variant-numeric: tabular-nums; }
+.ex-historico__mudancas { list-style: none; margin: 0; padding: 0; flex-basis: 100%; display: flex; flex-direction: column; gap: .2rem; }

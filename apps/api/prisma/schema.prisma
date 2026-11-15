@@ -44,6 +44,7 @@ model Usuario {
   linkedinInspiracoes LinkedinInspiracao[]
   linkedinVoz      LinkedinVoz?
   agentes      Agente[]
+  exposicaoAlvos ExposicaoAlvo[]
 }
 
 // Biblioteca permanente, independente da retenção do Radar e do reset dos alvos.
@@ -611,4 +612,34 @@ model AgenteAvaliacao {
 
   @@index([agenteId, criadoEm])
   @@index([usuarioId])
+}
+
+// Minha exposição: domínios e IPs próprios acompanhados por OSINT passivo (crt.sh, Shodan
+// InternetDB, DNS público). Cada varredura guarda o resultado e o que mudou desde a anterior.
+model ExposicaoAlvo {
+  id         String   @id @default(cuid())
+  usuarioId  String
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tipo       String   // dominio | ip | ip-publico
+  valor      String   @default("") // vazio para ip-publico (o IP de saída do servidor)
+  rotulo     String?
+  ativo      Boolean  @default(true)
+  criadoEm   DateTime @default(now())
+  varreduras ExposicaoVarredura[]
+
+  @@unique([usuarioId, tipo, valor])
+}
+
+model ExposicaoVarredura {
+  id        String        @id @default(cuid())
+  alvoId    String
+  alvo      ExposicaoAlvo @relation(fields: [alvoId], references: [id], onDelete: Cascade)
+  usuarioId String
+  criadoEm  DateTime      @default(now())
+  resultado Json
+  mudancas  Json          @default("[]")
+  erro      String?
+
+  @@index([alvoId, criadoEm])
+  @@index([usuarioId, criadoEm])
 }

@@ -171,6 +171,7 @@ export const GUIAS: Record<TelaAgents, Guia> = {
           'Wazuh: agentes, manager e alertas.',
           'Zabbix: hosts, grupos, templates e problemas; criar host, template e item.',
           'Coolify: aplicações, serviços e deploys; reiniciar e fazer deploy.',
+          'SpiderFoot no homelab: varreduras OSINT com 200+ módulos; a passiva roda direto, as que tocam o alvo pedem clique.',
           'OSINT passivo (sem credencial): subdomínios nos certificados públicos (crt.sh), o que o Shodan vê do seu IP e DNS público com SPF, DMARC e CAA. É o "quanto estou exposto", sem varrer nada.',
         ],
       },
@@ -286,6 +287,8 @@ export const EXEMPLOS_FERRAMENTA: Record<string, string[]> = {
   'zabbix-escrita': ['Crie o host "lab-linux" no grupo Linux servers, com o template do agente Zabbix.'],
   'coolify-leitura': ['Quais aplicações do Coolify não estão saudáveis?'],
   'coolify-escrita': ['Reinicie a aplicação <nome> no Coolify e confirme que voltou a ficar saudável.'],
+  'spiderfoot-leitura': ['Resuma a última varredura do SpiderFoot: o que tem risco alto e quais e-mails apareceram.'],
+  'spiderfoot-escrita': ['Rode uma varredura passiva do SpiderFoot em <meu domínio> e me avise o que achar.'],
   'osint-passivo': [
     'O que a internet sabe sobre mim? Veja o meu IP público e os subdomínios de <meu domínio>.',
     'Quais subdomínios de <domínio> ganharam certificado nos últimos 30 dias?',

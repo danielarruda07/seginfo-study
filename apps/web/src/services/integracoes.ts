@@ -2,7 +2,7 @@ import { http } from './http';
 
 /** Como o servidor se conecta a cada sistema do laboratório (GET /api/integracoes). Nunca traz segredo. */
 export interface Integracao {
-  id: 'proxmox' | 'fortigate' | 'catalyst' | 'wazuh' | 'wazuh-indexador' | 'zabbix' | 'coolify' | 'mcp' | 'claude';
+  id: 'proxmox' | 'fortigate' | 'catalyst' | 'wazuh' | 'wazuh-indexador' | 'zabbix' | 'coolify' | 'spiderfoot' | 'mcp' | 'claude';
   nome: string;
   uso: string;
   configurada: boolean;

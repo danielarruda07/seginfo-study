@@ -24,6 +24,7 @@ const Armazenamento = lazy(async () => ({ default: (await import('@/routes/Armaz
 const Cerebro = lazy(async () => ({ default: (await import('@/routes/Cerebro')).Cerebro }));
 const Attack = lazy(async () => ({ default: (await import('@/routes/Attack')).Attack }));
 const Ameacas = lazy(async () => ({ default: (await import('@/routes/Ameacas')).Ameacas }));
+const Exposicao = lazy(async () => ({ default: (await import('@/routes/Exposicao')).Exposicao }));
 const Portfolio = lazy(async () => ({ default: (await import('@/routes/Portfolio')).Portfolio }));
 
 const AgentsHome = lazy(async () => ({ default: (await import('@/routes/agents/AgentsHome')).AgentsHome }));
@@ -60,6 +61,7 @@ const armazenamentoRoute = createRoute({ getParentRoute: () => rootRoute, path: 
 const cerebroRoute = createRoute({ getParentRoute: () => rootRoute, path: '/cerebro', component: Cerebro });
 const attackRoute = createRoute({ getParentRoute: () => rootRoute, path: '/attack', component: Attack });
 const ameacasRoute = createRoute({ getParentRoute: () => rootRoute, path: '/ameacas', component: Ameacas });
+const exposicaoRoute = createRoute({ getParentRoute: () => rootRoute, path: '/exposicao', component: Exposicao });
 const portfolioRoute = createRoute({ getParentRoute: () => rootRoute, path: '/portfolio', component: Portfolio });
 
 const agentsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/agents', component: AgentsHome });
@@ -110,6 +112,7 @@ const routeTree = rootRoute.addChildren([
   portfolioRoute,
   attackRoute,
   ameacasRoute,
+  exposicaoRoute,
 ]);
 
 export const router = createRouter({ routeTree });

@@ -26,6 +26,19 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-15-minha-exposicao',
+    data: '2026-11-15',
+    titulo: 'Minha exposição: a fotografia vira filme',
+    descricao:
+      'Consultar uma vez o que a internet sabe sobre mim é útil; saber o que MUDOU é o que pega um problema cedo. A tela ' +
+      'Minha exposição guarda cada varredura passiva (certificados, Shodan, DNS público) e compara com a anterior: ' +
+      'subdomínio novo, porta aberta, CVE nova, aviso de DNS. Cada mudança também sai como uma linha JSON no log, pronta ' +
+      'para o Wazuh. Para ir além das três fontes, o SpiderFoot (o "Maltego open source") passou a rodar num container ' +
+      'LXC no Proxmox e virou ferramenta dos agentes: varredura passiva roda direto, as que tocam o alvo pedem clique.',
+    categoria: 'funcionalidade',
+    tags: ['osint', 'exposicao', 'spiderfoot', 'proxmox', 'agentes'],
+  },
+  {
     id: 'proj-2026-11-15-osint-passivo',
     data: '2026-11-15',
     titulo: 'O que a internet já sabe sobre mim',

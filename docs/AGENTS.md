@@ -68,9 +68,26 @@ Só roda o que está no `REGISTRO` (`apps/api/src/agenteFerramentas.ts`) **e** f
 | `zabbix-escrita` | `zabbix_criar_host`, `zabbix_criar_template`, `zabbix_criar_item`, `zabbix_vincular_template_host` | escrita (com aprovação) |
 | `coolify-leitura` | `coolify_listar_recursos`, `coolify_listar_deploys` | leitura |
 | `coolify-escrita` | `coolify_acao_recurso` (start, restart, stop), `coolify_deploy_aplicacao` | escrita (com aprovação) |
+| `spiderfoot-leitura` | `spiderfoot_listar_varreduras`, `spiderfoot_resultado` (tipos de dado, correlações de risco, valores por tipo) | leitura |
+| `spiderfoot-escrita` | `spiderfoot_iniciar_varredura` (passiva leve; pegada/investigar com aprovação), `spiderfoot_parar_varredura` | escrita |
 | `osint-passivo` | `osint_certificados` (crt.sh), `osint_exposicao_ip` (Shodan InternetDB; sem alvo usa o IP público do servidor), `osint_dns` (resolvedores públicos, análise de SPF, DMARC e CAA) | leitura, sem credencial |
 
 As ferramentas de escrita só entram quando o item do projeto está marcado como escrita no editor.
+
+### OSINT, Minha exposição e SpiderFoot
+
+- `osint-passivo` (sem credencial): crt.sh, Shodan InternetDB e DNS público, em `apps/api/src/osint.ts`.
+- Tela **Minha exposição** (`/exposicao`, menu Inteligência): guarda as varreduras dessas três fontes por alvo
+  (domínio, IP ou "meu IP público"), compara com a anterior e mostra "O que mudou". Repete a cada
+  `EXPOSICAO_INTERVALO_HORAS` (padrão 24; 0 desliga). Cada mudança vira uma linha JSON no stdout com
+  `"evento":"seginfo.exposicao.mudanca"`, para o agente Wazuh do host coletar.
+- **SpiderFoot** (`apps/api/src/spiderfoot.ts`): servidor próprio no homelab, acessado pela API web com
+  autenticação HTTP Digest. Variáveis: `SPIDERFOOT_URL` (ex.: `http://IP-DO-CT:5001`), `SPIDERFOOT_USERNAME`,
+  `SPIDERFOOT_PASSWORD` (Secret). Receita usada: container LXC Debian 12 sem privilégios (2 vCPU, 2 GB, 16 GB) na
+  VLAN dos servidores; SpiderFoot 4.0 do GitHub num venv (o PyYAML fixado exige `cython<3` e
+  `--no-build-isolation`); usuário de sistema próprio; serviço systemd `sf.py -l 0.0.0.0:5001`; arquivo
+  `~/.spiderfoot/passwd` com `usuario:senha` liga o Digest. Perfil `passivo` usa os módulos do grupo Passive.
+  Muitos módulos só rendem com chave de API cadastrada nas configurações do próprio SpiderFoot.
 
 Para criar uma ferramenta nova: acrescente uma entrada com `definir({...})` no `REGISTRO`, usando o mesmo `id` do catálogo em `apps/web/src/data/agentesFerramentas.ts`.
 

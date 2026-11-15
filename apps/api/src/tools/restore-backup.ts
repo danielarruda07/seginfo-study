@@ -44,6 +44,8 @@ const LinkedinIdeia = z.object({ id: z.string(), usuarioId: z.string(), titulo: 
 const LinkedinPerfilPro = z.object({ usuarioId: z.string(), dados: z.unknown(), importadoEm: z.coerce.date().nullable().optional(), atualizadoEm: z.coerce.date().optional() }).nullable();
 const LinkedinInspiracao = z.object({ id: z.string(), usuarioId: z.string(), tipo: z.string(), autor: z.string(), url: z.string(), texto: z.string(), motivo: z.string(), aspectos: z.array(z.string()), observacaoVisual: z.string(), frequencia: z.string(), criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional() });
 const LinkedinVoz = z.object({ usuarioId: z.string(), perfil: z.unknown().nullable(), ajustes: z.string(), baseadoEmPosts: z.number().int(), baseadoEmInspiracoes: z.number().int(), modelo: z.string(), geradoEm: z.coerce.date().nullable().optional(), atualizadoEm: z.coerce.date().optional() }).nullable();
+const ExposicaoAlvo = z.object({ id: z.string(), usuarioId: z.string(), tipo: z.string(), valor: z.string(), rotulo: z.string().nullable(), ativo: z.boolean(), criadoEm: z.coerce.date().optional() });
+const ExposicaoVarredura = z.object({ id: z.string(), alvoId: z.string(), usuarioId: z.string(), criadoEm: z.coerce.date().optional(), resultado: z.unknown(), mudancas: z.unknown(), erro: z.string().nullable() });
 const Arsenal = z.object({ id: z.string(), usuarioId: z.string(), tipo: z.string(), nome: z.string(), slug: z.string(), dominio: z.string(), resumo: z.string(), conteudo: z.string(), quandoUsar: z.string(), requisitos: z.array(z.string()), tags: z.array(z.string()), artefatos: z.unknown(), favorito: z.boolean(), criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional() });
 const Biblioteca = z.object({ id: z.string(), usuarioId: z.string(), url: z.string().url(), titulo: z.string(), dominio: z.string(), textoOriginal: z.string(), resumo: z.string(), palavrasChave: z.array(z.string()), categoria: z.string(), tags: z.array(z.string()), estado: z.string(), favorito: z.boolean(), anotacoes: z.string(), topicoId: z.string().nullable(), fonteResumo: z.string(), criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional() });
 const Cofre = z.object({ usuarioId: z.string(), versao: z.number().int(), salt: z.string(), iv: z.string(), ciphertext: z.string(), autoLockMin: z.number().int(), atualizadoEm: z.coerce.date().optional() }).nullable();
@@ -79,6 +81,8 @@ const Exportacao = z.object({
   // Perfil profissional, inspirações e voz do LinkedIn (backups anteriores a 2026-11-15 não têm estas chaves)
   linkedinPerfilPro: LinkedinPerfilPro.default(null), linkedinInspiracoes: z.array(LinkedinInspiracao).default([]),
   linkedinVoz: LinkedinVoz.default(null),
+  // Minha exposição (backups anteriores a 2026-11-15 não têm estas chaves)
+  exposicaoAlvos: z.array(ExposicaoAlvo).default([]), exposicaoVarreduras: z.array(ExposicaoVarredura).default([]),
   artefatosAtaque: z.array(z.object({ id: z.string(), usuarioId: z.string(), chave: z.string(), tipo: z.string(), nome: z.string(), conteudo: z.string(), sha256: z.string().nullable(), formato: z.string(), resumo: z.string(), categoria: z.string(), notas: z.string(), tags: z.array(z.string()), favorito: z.boolean(), amostraBase64: z.string().nullable(), criadoEm: z.coerce.date(), atualizadoEm: z.coerce.date() })).default([]),
   artefatoOcorrencias: z.array(z.object({ id: z.string(), artefatoId: z.string(), chave: z.string(), alvo: z.string().nullable(), origem: z.string(), referencia: z.string(), caminho: z.string().nullable(), ip: z.string().nullable(), sessao: z.string().nullable(), quando: z.coerce.date(), contexto: z.unknown() })).default([]),
   pericias: z.array(z.object({ id: z.string(), usuarioId: z.string(), alvo: z.string(), vmid: z.number().int(), sistema: z.string(), sensor: z.string().nullable(), janelaInicio: z.coerce.date(), janelaFim: z.coerce.date(), resumo: z.unknown(), dados: z.unknown(), criadoEm: z.coerce.date() })).default([]),
@@ -93,7 +97,7 @@ try {
   const rows = [...backup.progresso, ...backup.sessoes, ...backup.metas, ...backup.posts,
     ...backup.arsenal, ...backup.biblioteca, ...backup.ataques, ...backup.memorias,
     ...backup.linkedinPosts, ...backup.diario, ...backup.agentes, ...backup.agenteAvaliacoes, ...backup.agenteExecucoes, ...backup.artefatosAtaque, ...backup.pericias,
-    ...backup.linkedinProjetos, ...backup.linkedinIdeias, ...backup.postVersoes, ...backup.linkedinInspiracoes];
+    ...backup.linkedinProjetos, ...backup.linkedinIdeias, ...backup.postVersoes, ...backup.linkedinInspiracoes, ...backup.exposicaoAlvos];
   const userIds = new Set([
     ...rows.map((r) => r.usuarioId), ...(backup.cofre ? [backup.cofre.usuarioId] : []), ...(backup.linkedinEstrategia ? [backup.linkedinEstrategia.usuarioId] : []),
     ...(backup.linkedinPerfilPro ? [backup.linkedinPerfilPro.usuarioId] : []), ...(backup.linkedinVoz ? [backup.linkedinVoz.usuarioId] : []),
@@ -158,6 +162,16 @@ try {
       ops.push(prisma.linkedinVoz.create({ data: { ...backup.linkedinVoz, perfil: backup.linkedinVoz.perfil === null ? Prisma.DbNull : (backup.linkedinVoz.perfil as Prisma.InputJsonValue) } }));
     }
     if (backup.cofre) ops.push(prisma.cofreBlob.create({ data: backup.cofre }));
+    // alvos antes das varreduras (chave estrangeira alvoId); órfãs são descartadas
+    const alvosRestaurados = new Set(backup.exposicaoAlvos.map((a) => a.id));
+    ops.push(
+      prisma.exposicaoAlvo.createMany({ data: backup.exposicaoAlvos }),
+      prisma.exposicaoVarredura.createMany({
+        data: backup.exposicaoVarreduras.filter((v) => alvosRestaurados.has(v.alvoId)).map((v) => ({
+          ...v, resultado: (v.resultado ?? {}) as Prisma.InputJsonValue, mudancas: (v.mudancas ?? []) as Prisma.InputJsonValue,
+        })),
+      }),
+    );
     // agentes antes das avaliações e execuções (chave estrangeira agenteId); órfãos são descartados
     const agentesRestaurados = new Set(backup.agentes.map((a) => a.id));
     const json = (v: unknown) => (v === null || v === undefined ? Prisma.DbNull : (v as Prisma.InputJsonValue));

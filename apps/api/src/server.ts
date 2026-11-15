@@ -9,6 +9,7 @@ import { iniciarRetencao } from './radar.js';
 import { iniciarBackupAutomatico } from './backup.js';
 import { iniciarLimpezaMemorias } from './memorias.js';
 import { iniciarAgendadorLinkedin } from './linkedinAgendador.js';
+import { iniciarAgendadorExposicao } from './exposicao.js';
 import { requireIdentity } from './auth.js';
 import { VERSAO } from '@seginfo/shared';
 
@@ -46,6 +47,9 @@ iniciarLimpezaMemorias(app);
 
 // LinkedIn: publica na hora marcada os posts aprovados e agendados para sair pela API
 iniciarAgendadorLinkedin(app);
+
+// Minha exposição: repete a varredura de OSINT passivo a cada EXPOSICAO_INTERVALO_HORAS
+iniciarAgendadorExposicao(app);
 
 const ExtractBody = z.object({ url: z.string().url() });
 

@@ -56,6 +56,8 @@ export const MODELOS_AGENTE: ModeloAgente[] = [
         { id: 'coolify-leitura', nome: 'Coolify: aplicações, serviços e deploys', permissao: 'leitura', exigeAprovacao: false, observacao: '' },
         { id: 'coolify-escrita', nome: 'Coolify: reiniciar e fazer deploy', permissao: 'escrita', exigeAprovacao: true, observacao: 'Reiniciar o próprio app interrompe a conversa.' },
         { id: 'osint-passivo', nome: 'OSINT passivo: o que a internet vê', permissao: 'leitura', exigeAprovacao: false, observacao: 'Só domínios e IPs próprios.' },
+        { id: 'spiderfoot-leitura', nome: 'SpiderFoot: resultados', permissao: 'leitura', exigeAprovacao: false, observacao: '' },
+        { id: 'spiderfoot-escrita', nome: 'SpiderFoot: iniciar e parar varreduras', permissao: 'escrita', exigeAprovacao: true, observacao: 'Passiva roda direto; ativa pede aprovação.' },
       ],
       memoria: { trabalho: true, privacidade: 'O estado atual vem das integrações; não guarde credenciais ou inventário sensível em memória.' },
       orquestracao: {

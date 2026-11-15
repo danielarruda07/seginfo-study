@@ -11,6 +11,7 @@ import { catalystExecutar, ultimaImpressaoDigital } from './catalyst.js';
 import { wazuhApi } from './wazuh.js';
 import { wazuhBuscarAlertas, wazuhIndexadorFaltando } from './wazuhIndexador.js';
 import { coolifyChamar, coolifyFaltando } from './coolify.js';
+import { spiderfootChamar, spiderfootFaltando } from './spiderfoot.js';
 import { mcpFaltando } from './mcp.js';
 
 /**
@@ -21,7 +22,7 @@ import { mcpFaltando } from './mcp.js';
  * As rotas herdam a autenticação do Cloudflare Access (registradas dentro das rotas de estado).
  */
 
-export const IDS_INTEGRACAO = ['proxmox', 'fortigate', 'catalyst', 'wazuh', 'wazuh-indexador', 'zabbix', 'coolify', 'mcp', 'claude'] as const;
+export const IDS_INTEGRACAO = ['proxmox', 'fortigate', 'catalyst', 'wazuh', 'wazuh-indexador', 'zabbix', 'coolify', 'spiderfoot', 'mcp', 'claude'] as const;
 export type IdIntegracao = (typeof IDS_INTEGRACAO)[number];
 
 export interface Integracao {
@@ -132,6 +133,15 @@ export function listarIntegracoes(): Integracao[] {
       variaveis: ['COOLIFY_URL', 'COOLIFY_API_TOKEN', 'COOLIFY_TLS_INSEGURO'],
     },
     {
+      id: 'spiderfoot', nome: 'SpiderFoot (OSINT)', uso: 'Varreduras OSINT automatizadas (200+ módulos); passivas rodam sem aprovação.',
+      configurada: spiderfootFaltando().length === 0,
+      endereco: enderecoDe(e.SPIDERFOOT_URL, 5001),
+      identidade: e.SPIDERFOOT_USERNAME ? `usuário ${e.SPIDERFOOT_USERNAME} (HTTP Digest)` : null,
+      tls: e.SPIDERFOOT_URL ? (e.SPIDERFOOT_URL.startsWith('https:') ? tlsDe(e.SPIDERFOOT_TLS_INSEGURO, undefined) : 'HTTP na rede interna') : null,
+      faltando: spiderfootFaltando(),
+      variaveis: ['SPIDERFOOT_URL', 'SPIDERFOOT_USERNAME', 'SPIDERFOOT_PASSWORD', 'SPIDERFOOT_TLS_INSEGURO'],
+    },
+    {
       id: 'mcp', nome: 'Servidor MCP (Claude Code de qualquer computador)', uso: 'Oferece as mesmas ferramentas dos agentes em /api/mcp.',
       configurada: mcpFaltando().length === 0,
       endereco: e.PUBLIC_BASE_URL ? `${e.PUBLIC_BASE_URL.replace(/\/+$/, '')}/api/mcp` : '/api/mcp',
@@ -190,6 +200,10 @@ const TESTES: Partial<Record<IdIntegracao, () => Promise<string>>> = {
   coolify: async () => {
     const apps = await coolifyChamar('GET', '/applications');
     return `Coolify respondeu · ${Array.isArray(apps) ? apps.length : '?'} aplicações`;
+  },
+  spiderfoot: async () => {
+    const r = await spiderfootChamar('GET', '/ping');
+    return `SpiderFoot ${Array.isArray(r) ? String(r[1]) : 'respondeu'}`;
   },
 };
 
