@@ -8,6 +8,7 @@ A versão aparece no rodapé do menu lateral (`v0.17.0 · build dd/mm hh:mm`) e 
 
 | Versão | Data | O que entrou |
 |---|---|---|
+| 0.31.0 | 15/11/2026 | Agents e MCP: OSINT passivo, "o quanto estou exposto" sem credencial: subdomínios vazados por certificados (crt.sh), portas, softwares e CVEs prováveis do seu IP público (Shodan InternetDB) e DNS público com análise de SPF, DMARC e CAA |
 | 0.30.0 | 15/11/2026 | Agents e MCP: guia de uso discreto em todas as telas (para que serve, passo a passo, o que já funciona no servidor, exemplos de pedido, cuidados) e sugestões de melhoria tiradas da auditoria e das avaliações; exemplos de pedido na ficha de cada ferramenta |
 | 0.29.0 | 15/11/2026 | Operador do homelab: modo autônomo (ações leves rodam direto, destrutivas pedem aprovação), consultas e comandos dentro das VMs pelo agente QEMU, alertas do Wazuh pelo indexador, Coolify (listar, reiniciar, deploy), "Testar conexão" em cada integração, enable e chave SSH fixada no switch, limites maiores por pedido e servidor MCP em /api/mcp para o Claude Code de qualquer computador |
 | 0.28.0 | 15/11/2026 | LinkedIn: publicar pela API também imagem (PNG, JPG, GIF até 8 MB) e PDF como documento/carrossel (até 20 MB), anexados no Estúdio e conferidos pelo conteúdo; visibilidade "Público" ou "Só conexões"; "Apagar no LinkedIn" para posts publicados pelo servidor; aviso claro quando a versão da API for desativada (426) |

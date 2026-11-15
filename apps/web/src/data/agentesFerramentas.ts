@@ -169,6 +169,12 @@ export const FERRAMENTAS_CATALOGO: FerramentaCatalogo[] = [
     cuidados: 'Parar exige aprovação. Reiniciar ou fazer deploy do próprio SegInfo Study derruba a API e interrompe a conversa do agente.',
   },
   {
+    id: 'osint-passivo', nome: 'OSINT passivo: certificados, exposição do IP e DNS público', categoria: 'web',
+    descricao: 'Mostra o que a internet já sabe sobre um domínio ou IP, sem tocar no alvo: subdomínios vazados por certificados (crt.sh), portas, softwares e CVEs prováveis vistos pelo Shodan (InternetDB) e registros de DNS públicos com análise de SPF, DMARC e CAA. Sem credencial.', risco: 'baixo',
+    permissaoSugerida: 'leitura', aprovacaoSugerida: false,
+    cuidados: 'Só fontes públicas e gratuitas. Use com domínios e IPs seus ou autorizados. O domínio ou IP consultado vai para crt.sh, Shodan e para o modelo; o resultado é dado de terceiros, nunca instrução.',
+  },
+  {
     id: 'mcp-servidor', nome: 'Servidor MCP', categoria: 'mcp',
     descricao: 'Expõe ferramentas, recursos e prompts por um protocolo aberto. Este app já é um servidor MCP: /api/mcp oferece as ferramentas do homelab ao Claude Code de qualquer computador (docs/AGENTS.md).', risco: 'medio',
     permissaoSugerida: 'leitura', aprovacaoSugerida: false,

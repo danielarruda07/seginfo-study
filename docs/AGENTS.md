@@ -68,6 +68,7 @@ Só roda o que está no `REGISTRO` (`apps/api/src/agenteFerramentas.ts`) **e** f
 | `zabbix-escrita` | `zabbix_criar_host`, `zabbix_criar_template`, `zabbix_criar_item`, `zabbix_vincular_template_host` | escrita (com aprovação) |
 | `coolify-leitura` | `coolify_listar_recursos`, `coolify_listar_deploys` | leitura |
 | `coolify-escrita` | `coolify_acao_recurso` (start, restart, stop), `coolify_deploy_aplicacao` | escrita (com aprovação) |
+| `osint-passivo` | `osint_certificados` (crt.sh), `osint_exposicao_ip` (Shodan InternetDB; sem alvo usa o IP público do servidor), `osint_dns` (resolvedores públicos, análise de SPF, DMARC e CAA) | leitura, sem credencial |
 
 As ferramentas de escrita só entram quando o item do projeto está marcado como escrita no editor.
 

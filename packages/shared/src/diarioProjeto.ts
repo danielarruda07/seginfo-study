@@ -26,6 +26,20 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-15-osint-passivo',
+    data: '2026-11-15',
+    titulo: 'O que a internet já sabe sobre mim',
+    descricao:
+      'Inspirado no Maltego, mas começando pelo básico que mais revela: três consultas passivas que qualquer atacante ' +
+      'faz antes do primeiro pacote. Os logs de Certificate Transparency entregam todo subdomínio que já ganhou ' +
+      'certificado; o Shodan InternetDB mostra as portas e as versões que o mundo vê no IP de casa; o DNS público expõe ' +
+      'SPF, DMARC e CAA mal configurados. Nada varre o alvo nem precisa de credencial, então as ferramentas rodam sem ' +
+      'aprovação, no agente ou pelo MCP. É também a base para acompanhar o honeypot: ver o domínio-isca aparecer no ' +
+      'crt.sh e, logo depois, os ataques chegando.',
+    categoria: 'funcionalidade',
+    tags: ['agentes', 'osint', 'recon', 'exposicao'],
+  },
+  {
     id: 'proj-2026-11-15-guia-agents',
     data: '2026-11-15',
     titulo: 'Um manual que mora na própria tela e aprende com o uso',
