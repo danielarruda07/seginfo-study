@@ -15,6 +15,7 @@ import { DECISAO_META, comIds, duracao, type AcaoComId } from './regras';
 import { MetaPill } from './ficha/comum';
 import { AcaoFicha } from './ficha/AcaoFicha';
 import '@/styles/telas/agents.css';
+import { GuiaDaTela } from './guia/GuiaDaTela';
 
 /**
  * Painel de auditoria dos agentes: toda ação de ferramenta (leitura e escrita), de todas as
@@ -55,6 +56,7 @@ export function AgentsAuditoria() {
         actions={<Button label="Baixar execuções (JSON)" icon="pi pi-download" outlined loading={baixando} onClick={baixar}
           tooltip="Cópia completa de todas as execuções (passos, conversa e aprovações). O backup cifrado no OneDrive também as inclui." />}
       />
+      <GuiaDaTela tela="auditoria" />
       {erroDownload && <Message severity="error" className="ag-largo" text={erroDownload} />}
 
       {auditoria.isError && <Message severity="warn" className="ag-largo" text="API indisponível: a auditoria fica no servidor." />}

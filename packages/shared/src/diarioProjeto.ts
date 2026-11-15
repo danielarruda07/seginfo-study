@@ -26,6 +26,19 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-15-guia-agents',
+    data: '2026-11-15',
+    titulo: 'Um manual que mora na própria tela e aprende com o uso',
+    descricao:
+      'A seção de agentes tinha capacidade demais para ser entendida só olhando. Cada tela ganhou uma barra discreta ' +
+      '"Como usar" que abre o passo a passo, exemplos de pedido, o que já funciona no servidor e o que falta configurar. ' +
+      'A parte mais útil é "Melhorar com o tempo": em vez de dicas genéricas, ela lê a auditoria e as avaliações e aponta ' +
+      'o que mudar, como uma ferramenta que sempre falha com o mesmo erro, uma ação que você nega toda vez ou cliques ' +
+      'que o modo autônomo dispensaria. Regras simples, sem IA, para cada sugestão dizer exatamente de onde veio.',
+    categoria: 'funcionalidade',
+    tags: ['agentes', 'ux', 'documentacao', 'aprendizado'],
+  },
+  {
     id: 'proj-2026-11-15-operador-homelab-mcp',
     data: '2026-11-15',
     titulo: 'Operar o homelab de qualquer lugar, sem aprovar cada clique',

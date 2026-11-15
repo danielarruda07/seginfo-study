@@ -10,6 +10,8 @@ export interface AgenteResumo {
   ferramentas: number;
   ferramentasEscrita: number;
   baseTags: string[];
+  /** como o agente trata ações de escrita leves (opcional: API antiga não manda) */
+  autonomia?: 'aprovar-tudo' | 'leves-automaticas';
   avaliacoes: { total: number; ok: number; parcial: number; falha: number };
   /** última execução no playground; null se nunca rodou (opcional: API antiga não manda) */
   ultimaExecucao?: { status: ExecucaoStatus; criadoEm: string } | null;
@@ -89,6 +91,8 @@ export interface RuntimeInfo {
     id: string; nome: string; permissao: 'leitura' | 'escrita'; descricao: string;
     /** variáveis de ambiente que faltam no servidor para a ferramenta funcionar */
     faltando: string[];
+    /** leve: roda direto no modo autônomo; destrutiva: sempre pede; depende: dos parâmetros (opcional: API antiga) */
+    nivel?: 'leve' | 'destrutiva' | 'depende';
   }[];
 }
 

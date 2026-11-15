@@ -17,6 +17,7 @@ import { MetaPill } from './ficha/comum';
 import { CasoFicha } from './ficha/CasoFicha';
 import { RegistrarCaso } from './avaliacoes/RegistrarCaso';
 import '@/styles/telas/agents.css';
+import { GuiaDaTela } from './guia/GuiaDaTela';
 
 const TIPOS_DE_CASO = [
   ['Comum', 'O pedido típico, o que o agente existe para fazer.'],
@@ -71,6 +72,7 @@ export function AgentsAvaliacoes() {
         subtitle="Rode o agente nos seus casos e registre o resultado. Repita depois de cada mudança de prompt, modelo ou ferramenta."
         actions={atual ? <Link to="/agents/agente/$agenteId" params={{ agenteId: atual }} className="ag-btn"><i className="pi pi-pencil" aria-hidden="true" /> Abrir o projeto</Link> : undefined}
       />
+      <GuiaDaTela tela="avaliacoes" />
 
       {agentes.isError && <Message severity="warn" className="ag-largo" text="API ou banco indisponível. As avaliações ficam no servidor." />}
       {erro && <Message severity="error" className="ag-largo" text={erro} />}

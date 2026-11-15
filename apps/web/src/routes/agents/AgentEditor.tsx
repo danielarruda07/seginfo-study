@@ -21,6 +21,7 @@ import { FERRAMENTAS_CATALOGO, RISCO_LABEL } from '@/data/agentesFerramentas';
 import { CANAL_LABEL, RISCO_TONE } from './regras';
 import '@/styles/telas/agents.css';
 import { STATUS_LABEL } from './home/regras';
+import { GuiaDaTela } from './guia/GuiaDaTela';
 
 interface Form { nome: string; resumo: string; status: AgenteStatus; config: AgenteConfig }
 type Secao = Exclude<keyof AgenteConfig, 'ferramentas'>;
@@ -159,6 +160,7 @@ export function AgentEditor() {
           </div>
         }
       />
+      <GuiaDaTela tela="editor" agenteId={agenteId} />
 
       {msg && (
         <Message severity={msg.sev} style={{ width: '100%', marginBottom: '1rem' }}

@@ -12,6 +12,7 @@ import { tempoRelativo } from './home/regras';
 import { MetaPill } from './ficha/comum';
 import { Turno } from './playground/Turno';
 import '@/styles/telas/agents.css';
+import { GuiaDaTela } from './guia/GuiaDaTela';
 
 export function AgentPlayground() {
   const { agenteId } = useParams({ strict: false }) as { agenteId: string };
@@ -84,6 +85,7 @@ export function AgentPlayground() {
           <Link to="/agents" className="ag-btn"><i className="pi pi-arrow-left" aria-hidden="true" /> Voltar</Link>
         </>}
       />
+      <GuiaDaTela tela="playground" agenteId={agenteId} />
 
       {rt && !rt.configurada && (
         <Message severity="warn" className="ag-largo"

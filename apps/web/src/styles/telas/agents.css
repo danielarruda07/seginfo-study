@@ -128,3 +128,15 @@
 .ag-passo.tone-warning { --tone: var(--tone-warning); }
 .ag-passo.tone-ok { --tone: var(--tone-ok); }
 .ag-passo.tone-muted { --tone: var(--tone-muted); }
+
+/* Guia de uso de cada tela (routes/agents/guia) */
+.ag-guia-barra { margin-top: .25rem; }
+.ag-guia-barra__resumo { flex: 1 1 18rem; }
+.ag-guia-passos, .ag-guia-lista, .ag-guia-exemplos { margin: 0; padding-left: 1.2rem; display: grid; gap: .4rem; font-size: .875rem; line-height: 1.5; }
+.ag-guia-exemplos { list-style: none; padding-left: 0; }
+.ag-guia-exemplos li { padding: .35rem .6rem; border-radius: var(--radius-sm); background: var(--surface-ground); }
+.ag-guia-exemplos q { quotes: none; }
+.ag-guia-sub { margin: 1rem 0 .5rem; font-size: .8rem; font-weight: 600; color: var(--text-color-secondary); }
+.ag-guia-sug--atencao { color: var(--tone-serious); }
+.ag-guia-sug--dica { color: var(--alvoar-teal-600); }
+.ag-guia-telas { display: flex; flex-wrap: wrap; gap: .4rem 1rem; font-size: .875rem; }

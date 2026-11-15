@@ -349,7 +349,7 @@ export async function registerExecucaoRoutes(app: FastifyInstance) {
       limites: LIMITES,
       custoHoje: { execucoes: execucoesUsadas, escritasAprovadas: escritasUsadas },
       ferramentas: REGISTRO.map((f) => ({
-        id: f.id, nome: f.nome, permissao: f.permissao, descricao: f.descricao, faltando: f.faltando?.() ?? [],
+        id: f.id, nome: f.nome, permissao: f.permissao, descricao: f.descricao, faltando: f.faltando?.() ?? [], nivel: f.nivel,
       })),
     };
   });

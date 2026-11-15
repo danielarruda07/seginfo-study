@@ -6,6 +6,7 @@ import { CATEGORIA_LABEL, RISCO_LABEL, type FerramentaCatalogo } from '@/data/ag
 import type { RuntimeInfo } from '@/services/agentes';
 import { ESTADO_SERVIDOR, RISCO_TONE, agentesQueUsam, noServidor } from '../regras';
 import { Linhas, MetaPill, Secao, Vazio, useAgentesCompletos } from './comum';
+import { EXEMPLOS_FERRAMENTA } from '../guia/conteudo';
 
 type Nav = Pick<DetailDrawerProps, 'index' | 'total' | 'onIndex' | 'onClose'>;
 
@@ -31,6 +32,13 @@ export function FerramentaFicha({ f, runtime, nav }: { f: FerramentaCatalogo; ru
           ['Cuidados', f.cuidados],
         ]} />
       </Secao>
+
+      {(EXEMPLOS_FERRAMENTA[f.id]?.length ?? 0) > 0 && (
+        <Secao titulo="Como pedir (exemplos)">
+          <ul className="ag-guia-exemplos">{EXEMPLOS_FERRAMENTA[f.id].map((x) => <li key={x}><q>{x}</q></li>)}</ul>
+          <p className="agd-mudo iv-mt">Ligue a ferramenta no agente (editor, aba Ferramentas) e peça no playground. Pelo MCP, peça igual no Claude Code.</p>
+        </Secao>
+      )}
 
       <Secao titulo="No servidor">
         {!runtime ? <Vazio>API indisponível: não dá para saber se o servidor executa esta ferramenta.</Vazio>

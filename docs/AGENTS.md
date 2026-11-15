@@ -229,6 +229,12 @@ O servidor precisa alcançar o frontend/API do Zabbix. O catálogo permite consu
 Isto NÃO substitui a observação acima sobre auditoria dos agentes: as ações dos agentes de IA
 continuam fora do Wazuh até existir um encaminhamento explícito delas para o manager.
 
+## Guia de uso em cada tela
+
+Toda tela de Agents tem, logo abaixo do título, a barra "Como usar". Ela abre uma ficha com: para que serve, passo a passo, capacidades, exemplos de pedido, o que já funciona no servidor (integrações e limites do dia), cuidados e "Melhorar com o tempo". O texto fica em `apps/web/src/routes/agents/guia/conteudo.ts`: ao mudar o que uma tela faz, atualize o guia dela. A ficha de cada ferramenta também mostra exemplos de pedido (`EXEMPLOS_FERRAMENTA`).
+
+"Melhorar com o tempo" traz sugestões calculadas da auditoria e das avaliações, sem IA (`guia/aprendizado.ts`): ferramenta que falhou 3 vezes ou mais (com o último erro), ação negada 2 vezes ou mais (escreva a restrição), 3 ou mais ações leves aprovadas à mão (ligue o modo autônomo), agente que já rodou sem casos de teste, casos com falha, pendência grave na revisão e agentes com o mesmo nome. Para isso, `GET /api/agentes/runtime` informa o `nivel` de cada ferramenta e `GET /api/agentes` a `autonomia` de cada agente.
+
 ## Testar conexão
 
 Em Meu Ambiente → Acessos e integrações, cada integração tem "Testar conexão" (`POST /api/integracoes/:id/testar`). O servidor faz uma consulta mínima e só leitura (versão do Proxmox e nós, status do FortiGate, `show version` no switch, versão do manager Wazuh, alertas das últimas 24 h, contagem de hosts no Zabbix, aplicações do Coolify) e mostra o erro real quando falha: rede, certificado ou credencial.

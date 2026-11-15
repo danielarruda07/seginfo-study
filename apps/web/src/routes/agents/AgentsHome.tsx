@@ -20,6 +20,7 @@ import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import '@/styles/telas/agents.css';
 import { EM_BRANCO, ModelosGaleria } from './home/ModelosGaleria';
 import { STATUS_LABEL, contarPorStatus, filtrarAgentes, ordenarAgentes, precisaDeVoce, type FiltroStatus } from './home/regras';
+import { GuiaDaTela } from './guia/GuiaDaTela';
 
 export { STATUS_LABEL } from './home/regras';
 
@@ -110,6 +111,7 @@ export function AgentsHome() {
           {!vazioTotal && <Button label="Novo agente" icon="pi pi-plus" onClick={() => setDialogo(true)} disabled={!!criando} />}
         </>}
       />
+      <GuiaDaTela tela="home" />
 
       {!vazioTotal && MODELO_HOMELAB && !homelabCriado && (
         <section className="iv-card iv-mt ag-homelab-cta" aria-label="Criar operador do homelab">

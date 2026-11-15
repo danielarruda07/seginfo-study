@@ -18,6 +18,7 @@ import { ESTADO_SERVIDOR, RISCO_TONE, filtrarFerramentas, noServidor } from './r
 import { MetaPill } from './ficha/comum';
 import { FerramentaFicha } from './ficha/FerramentaFicha';
 import '@/styles/telas/agents.css';
+import { GuiaDaTela } from './guia/GuiaDaTela';
 
 const CATEGORIAS = (Object.keys(CATEGORIA_LABEL) as CategoriaFerramenta[]).map((c) => ({ label: CATEGORIA_LABEL[c], value: c }));
 const RISCOS: Risco[] = ['alto', 'medio', 'baixo'];
@@ -45,6 +46,7 @@ export function AgentsFerramentas() {
         title="Ferramentas e integrações"
         subtitle="O que um agente pode fazer no mundo e o que cuidar em cada caso. Clique numa ferramenta para ver o estado no servidor e quem a usa."
       />
+      <GuiaDaTela tela="ferramentas" />
 
       <StatusStrip tone="warn" icon="pi-shield">
         Cada ferramenta amplia o que o agente alcança e o que um ataque de prompt injection consegue fazer. Comece em leitura e dê escrita só com aprovação humana.

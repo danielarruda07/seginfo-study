@@ -71,6 +71,7 @@ export async function registerAgenteRoutes(app: FastifyInstance) {
         ferramentas: cfg.success ? cfg.data.ferramentas.length : 0,
         ferramentasEscrita: cfg.success ? cfg.data.ferramentas.filter((f) => f.permissao === 'escrita').length : 0,
         baseTags: cfg.success ? cfg.data.conhecimento.tags : [],
+        autonomia: cfg.success ? cfg.data.supervisao.autonomia : 'aprovar-tudo',
         avaliacoes: placar.get(a.id) ?? { total: 0, ok: 0, parcial: 0, falha: 0 },
         ultimaExecucao: ultimaPorAgente.get(a.id) ?? null,
         aguardandoAprovacao: aprovacao.get(a.id) ?? null,

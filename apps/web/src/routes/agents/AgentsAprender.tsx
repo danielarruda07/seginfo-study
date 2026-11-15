@@ -8,6 +8,7 @@ import { progressTone } from '@/theme/status';
 import { GLOSSARIO, PILARES, RECURSOS_AGENTES, type Pilar } from '@/data/agentesPilares';
 import { PilarFicha } from './ficha/PilarFicha';
 import '@/styles/telas/agents.css';
+import { GuiaDaTela } from './guia/GuiaDaTela';
 
 const idPilar = (p: Pilar) => String(p.numero);
 
@@ -22,6 +23,7 @@ export function AgentsAprender() {
         subtitle="Os 8 pilares para construir um agente que entrega resultado. Clique num pilar para ver o que checar e como os seus agentes estão nele."
         actions={<Link to="/trilhas/$trilhaId" params={{ trilhaId: 'agentes' }} className="ag-btn"><i className="pi pi-book" aria-hidden="true" /> Abrir a trilha</Link>}
       />
+      <GuiaDaTela tela="aprender" />
 
       <StatusStrip tone="ok" icon="pi-lightbulb">
         Autonomia precisa de limites, rastreabilidade e supervisão humana nas decisões críticas. Um agente útil resolve um problema real, com consistência.

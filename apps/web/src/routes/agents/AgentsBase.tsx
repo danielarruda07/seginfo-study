@@ -14,6 +14,7 @@ import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import { listAgentes, listTagsBase, buscarNaBaseDoAgente, erroApi, type TrechoBase } from '@/services/agentes';
 import { TagFicha, TrechoFicha, type LinhaTag } from './ficha/BaseFichas';
 import '@/styles/telas/agents.css';
+import { GuiaDaTela } from './guia/GuiaDaTela';
 
 export function AgentsBase() {
   const agentes = useQuery({ queryKey: ['agentes'], queryFn: listAgentes });
@@ -70,6 +71,7 @@ export function AgentsBase() {
         subtitle="O que cada agente pode consultar. A base é feita das suas notas do Segundo Cérebro, escolhidas por tag."
         actions={<Link to="/cerebro" className="ag-btn"><i className="pi pi-external-link" aria-hidden="true" /> Segundo Cérebro</Link>}
       />
+      <GuiaDaTela tela="base" />
 
       {(agentes.isError || tags.isError) && (
         <Message severity="warn" className="ag-largo" text="API ou banco indisponível. A base de conhecimento usa o servidor (Segundo Cérebro e agentes)." />
