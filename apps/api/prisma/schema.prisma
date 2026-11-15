@@ -30,6 +30,7 @@ model Usuario {
   cofreEventos CofreEvento[]
   ataques      AtaqueEvento[]
   pericias     Pericia[]
+  artefatosAtaque ArtefatoAtaque[]
   armazenamento ArmazenamentoConta?
   backups      BackupRegistro[]
   memorias     Memoria[]
@@ -37,6 +38,48 @@ model Usuario {
   diario       DiarioEntrada[]
   linkedinEstrategia LinkedinEstrategia?
   agentes      Agente[]
+}
+
+// Biblioteca permanente, independente da retenção do Radar e do reset dos alvos.
+model ArtefatoAtaque {
+  id String @id @default(cuid())
+  usuarioId String
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  chave String
+  tipo String
+  nome String
+  conteudo String @default("")
+  sha256 String?
+  formato String @default("texto")
+  resumo String @default("")
+  categoria String @default("outro")
+  notas String @default("")
+  tags String[] @default([])
+  favorito Boolean @default(false)
+  amostraBase64 String?
+  ocorrencias ArtefatoOcorrencia[]
+  criadoEm DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  @@unique([usuarioId, chave])
+  @@index([usuarioId, tipo, criadoEm])
+}
+
+model ArtefatoOcorrencia {
+  id String @id @default(cuid())
+  artefatoId String
+  artefato ArtefatoAtaque @relation(fields: [artefatoId], references: [id], onDelete: Cascade)
+  chave String
+  alvo String?
+  origem String
+  referencia String
+  caminho String?
+  ip String?
+  sessao String?
+  quando DateTime
+  contexto Json @default("{}")
+  @@unique([artefatoId, chave])
+  @@index([artefatoId, quando])
+  @@index([alvo, quando])
 }
 
 // Progresso + anotações por tópico (tópico é estático no código)

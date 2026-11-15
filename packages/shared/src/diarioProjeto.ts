@@ -24,6 +24,18 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-14-biblioteca-artefatos',
+    data: '2026-11-14',
+    titulo: 'Uma biblioteca permanente para estudar os rastros dos ataques',
+    descricao:
+      'Arquivos, comandos e trechos dos laudos ganharam armazenamento independente da retenção de eventos. ' +
+      'Cada ocorrência conserva o alvo, o horário e a origem. Amostras são verificadas por SHA-256, exibidas como texto ' +
+      'ou prévia estática e entram no backup cifrado, junto das anotações de estudo. Repetir a importação do histórico ' +
+      'não duplica ocorrências; padrões reconhecidos ajudam a triagem sem afirmar que um ataque teve sucesso.',
+    categoria: 'funcionalidade',
+    tags: ['pericia', 'artefatos', 'estudo', 'backup'],
+  },
+  {
     id: 'proj-2026-11-14-dossies-investigacao',
     data: '2026-11-14',
     titulo: 'Dossiês reúnem a linha do tempo e as evidências dos ataques',

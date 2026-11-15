@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { PericiaInSchema, type PericiaIn } from '@seginfo/shared';
 import { prisma, resolveUsuario } from './db.js';
 import type { AuthedRequest } from './auth.js';
+import { preservarPericia } from './artefatosCaptura.js';
 
 /**
  * Laudos dos alvos reais do honeypot. A VM do Wazuh inspeciona cada alvo pelo agente QEMU
@@ -63,6 +64,7 @@ export async function gravarPericia(email: string, corpo: unknown) {
     create: { usuarioId: usuario.id, alvo: d.alvo, janelaFim, ...base },
     select: { id: true },
   });
+  await preservarPericia(usuario.id, r.id, d);
   return { ok: true as const, id: r.id };
 }
 

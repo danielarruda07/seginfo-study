@@ -8,7 +8,8 @@ A versão aparece no rodapé do menu lateral (`v0.17.0 · build dd/mm hh:mm`) e 
 
 | Versão | Data | O que entrou |
 |---|---|---|
-| 0.23.0 | 14/11/2026 | Investiga??es por janela com filtros, linha do tempo e evid?ncias dos laudos; t?cnicas de persist?ncia na Matriz ATT&CK; integra??o Wazuh preserva consultas bem-sucedidas e identifica o endpoint que falhou |
+| 0.24.0 | 14/11/2026 | Biblioteca de artefatos: arquivos, comandos, persistência e processos preservados no PostgreSQL, importação paginada do histórico, busca por conteúdo e hash, notas/tags/favoritos, amostras com SHA-256 verificado, prévias estáticas e download; coletor envia amostras e reimporta arquivos guardados; backup cifrado inclui a biblioteca e os laudos |
+| 0.23.0 | 14/11/2026 | Investigações por janela com filtros, linha do tempo e evidências dos laudos; técnicas de persistência na Matriz ATT&CK; integração Wazuh preserva consultas bem-sucedidas e identifica o endpoint que falhou |
 | 0.22.1 | 14/11/2026 | Prompt honeypot: regras 100281–100290 passam a ser filhas da 86600 (a regra do Suricata, nível 0, engolia os eventos da isca e nada virava alerta); coletor lê os booleanos e números que o Wazuh entrega como texto |
 | 0.22.0 | 14/11/2026 | Radar aceita a fonte `prompt_honeypot` (isca HTTP com canário semântico no range); regras Wazuh 100281–100290, coleta no agente do honeypot e conversão no coletor (só nomes de campos e indicadores, nunca valores) |
 | 0.21.0 | 14/11/2026 | Agentes criam, clonam e apagam VM no Proxmox (com aprovação, nome conferido, VM desligada e lista PROXMOX_VMS_PROTEGIDAS); Meu Ambiente ganha o botão "Sincronizar com o ambiente" (Proxmox, FortiGate e switch só com leitura, prévia antes de aplicar, sem apagar nada); execuções dos agentes entram no backup cifrado e na restauração, e a Auditoria baixa as execuções em JSON |

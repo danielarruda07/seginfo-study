@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Fastify from 'fastify';
+// Esta suíte exercita o laudo; a preservação independente é coberta em artefatos.test.ts.
+vi.mock('./artefatosCaptura.js', () => ({ preservarPericia: vi.fn(), preservarEventos: vi.fn() }));
 
 const db = vi.hoisted(() => ({ pericias: [] as Record<string, any>[] }));
 vi.mock('./db.js', () => ({

@@ -7,6 +7,8 @@ import { verifyAccessJwt } from './auth.js';
 import { guardarSenhas } from './radar.js';
 import { escopoDoIp } from './radarEscopo.js';
 import { gravarPericia } from './pericia.js';
+import { preservarEventos } from './artefatosCaptura.js';
+import { AmostraSchema, guardarAmostra } from './artefatos.js';
 
 /**
  * Ingestão de eventos de ataque, vinda de COLETORES (sensor honeypot, script Windows).
@@ -83,6 +85,16 @@ async function autenticarColetor(req: FastifyRequest, reply: FastifyReply): Prom
 }
 
 export async function registerIngestRoutes(app: FastifyInstance) {
+  app.post('/api/ingest/amostra', { bodyLimit: 12 * 1_048_576 }, async (req, reply) => {
+    if (!(await autenticarColetor(req, reply))) return reply;
+    const b = AmostraSchema.safeParse(req.body);
+    if (!b.success) return reply.code(400).send({ error: 'Amostra inválida.' });
+    const usuario = await resolveUsuario(process.env.INGEST_OWNER_EMAIL as string);
+    try {
+      const r = await guardarAmostra(usuario.id, b.data.sha256, b.data.base64);
+      return r.count ? { ok: true } : reply.code(404).send({ error: 'Envie o laudo antes da amostra.' });
+    } catch (e) { return reply.code(400).send({ error: e instanceof Error ? e.message : 'Amostra recusada.' }); }
+  });
   app.post('/api/ingest', { bodyLimit: 1_048_576 }, async (req, reply) => {
     if (!(await autenticarColetor(req, reply))) return reply;
 
@@ -123,6 +135,7 @@ export async function registerIngestRoutes(app: FastifyInstance) {
     });
 
     const r = await prisma.ataqueEvento.createMany({ data, skipDuplicates: true });
+    await preservarEventos(data);
     return { ok: true, recebidos: data.length, inseridos: r.count };
   });
 

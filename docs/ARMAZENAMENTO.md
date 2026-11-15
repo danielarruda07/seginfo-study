@@ -139,6 +139,7 @@ npx tsx src/tools/decrypt-backup.ts C:\caminho\seginfo-AAAAMMDD-HHMMSS.sgb C:\ca
 
 Esperado: `OK: ...saida.json`. O JSON traz progresso, sessões, metas, posts, arsenal,
 biblioteca, o blob do Cofre (ainda cifrado), eventos do Radar e memórias pessoais.
+A biblioteca de artefatos dos ataques (incluindo amostras, ocorrências e notas) e os laudos periciais também entram no backup cifrado e na restauração. Veja [Biblioteca de artefatos](ARTEFATOS.md).
 
 ## Ensaio de restauração em banco descartável
 

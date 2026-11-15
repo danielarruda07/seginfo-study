@@ -36,6 +36,7 @@ do ambiente hospedado.
 | Labs e Meu Ambiente | Exercícios ligados ao homelab e inventário |
 | Radar | Análise de eventos recebidos pela API |
 | Matriz ATT&CK | Cobertura por técnica: estudada, praticada, detectada e vista no Radar; exporta para o ATT&CK Navigator |
+| Biblioteca de artefatos | Arquivos, comandos e trechos dos ataques preservados para estudo, com busca, prévias estáticas, amostras verificadas por hash e anotações; veja [o guia](docs/ARTEFATOS.md) |
 | Ameaças (KEV) | Catálogo CISA KEV filtrado pelos produtos acompanhados (requer a API) |
 | Biblioteca e Arsenal IA | Referências salvas, prompts, skills e artefatos |
 | LinkedIn | Estúdio com checklist e rascunhos por IA; registro dos posts publicados (manual ou `Shares.csv`) organizados pela IA e enviados ao Segundo Cérebro; diário de construção do app (`packages/shared/src/diarioProjeto.ts`). Dados no PostgreSQL; IA (Claude) roda na API com `ANTHROPIC_API_KEY` (requer a API) |

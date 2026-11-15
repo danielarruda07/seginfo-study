@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Message } from 'primereact/message';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -97,6 +97,11 @@ export function Investigacoes() {
       || (evidencia === 'rede' && (p.resumo.conexoes > 0 || p.resumo.saidasBloqueadas > 0)))
     && (!busca || `${p.alvo} ${p.sensor ?? ''} ${p.sistema}`.toLocaleLowerCase().includes(busca.toLocaleLowerCase()))), [q.data, sistema, periodo, evidencia, busca]);
   const sel = useDrawerSelection(lista);
+  const open = sel.open;
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('laudo');
+    if (id && lista.some((p) => p.id === id)) open(id);
+  }, [lista, open]);
   return <div>
     <PageHeader title="Investigações de ataques" subtitle="Dossiês por janela: eventos do Radar, arquivos, persistência, processos, conexões e técnicas observadas." />
     <StatusStrip icon="pi-info-circle">A Matriz ATT&amp;CK usa as técnicas registradas nos eventos do Radar. Os laudos ampliam o contexto com evidências do alvo; a correlação temporal não prova, sozinha, que um IP específico criou cada artefato.</StatusStrip>
