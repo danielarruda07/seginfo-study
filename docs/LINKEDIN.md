@@ -78,9 +78,23 @@ Projeto ─► Ideia (backlog) ─► Rascunho ─► Aprovado ─► Agendado �
 - **Visibilidade:** "Público" ou "Só conexões". Use "Só conexões" no primeiro teste real. Mudar a visibilidade também desfaz a aprovação.
 - **Apagar no LinkedIn:** na ficha de um post publicado pela API, o botão apaga o post do perfil (com reações e comentários), tira o registro de Publicados e devolve o rascunho para revisão. Posts publicados à mão continuam sendo apagados direto no LinkedIn.
 
+### Perfil & Voz (a IA aprende quem escreve)
+
+A aba **Perfil & Voz** tem três seções. Tudo fica no servidor e entra no backup (`LinkedinPerfilPro`, `LinkedinInspiracao`, `LinkedinVoz`).
+
+| Seção | O que guarda | Como a IA usa |
+|---|---|---|
+| **Perfil profissional** | Headline e Sobre atuais, competências, certificações (obtida, em andamento ou planejada), cursos, experiência, projetos e vagas-alvo. Importa o PDF do perfil (Mais > Salvar como PDF) ou edita à mão; "Mesclar" só acrescenta o que falta, "Substituir" troca tudo, e nada grava antes de **Salvar**. | Entra no bloco da jornada como fatos. Só o que está *obtida* vira conquista; *em andamento* vira "estudando para"; *planejada* nunca é citada como feita. As vagas-alvo ajustam ênfase e vocabulário, sem inventar experiência. |
+| **Inspirações** | Posts e perfis que você admira, com o que chamou atenção (texto, imagem, frequência, assuntos, carreira). Um print pode ser analisado pela IA, que devolve só a descrição do visual; a imagem não é guardada. | Alimentam o perfil de voz: a IA separa estilo, estrutura e frequência (aproveitar) de conteúdo e opinião (não copiar). |
+| **Minha voz** | Perfil aprendido dos seus posts publicados e das inspirações, mais **Minhas regras** em texto livre. Precisa de 3 posts seus ou 2 inspirações. | Vai num bloco de sistema próprio (com cache) em todo rascunho e refino, junto com até 3 posts seus por inteiro como exemplo. Suas regras valem mais que o perfil aprendido. |
+
+O perfil não tem campo para o **nome do empregador**, e a importação do PDF o descarta. Em experiência use só setor ou porte.
+
+**Filtro anti-genérico.** `detectarGenerico` (`packages/shared/src/linkedinEstilo.ts`) procura clichês, abertura genérica, contraste "não é X, é Y", pergunta retórica com resposta, revelação encenada, pedido artificial de interação, marcação que o LinkedIn não renderiza, travessões e emojis em excesso e sequências de frases curtíssimas. Ele atua em três pontos: o card **Soa genérico?** no Estúdio (ao vivo, sem IA), a ação **Tirar o tom de IA** no refino, e uma segunda passada automática sobre o rascunho recém-gerado (o aviso diz o que foi corrigido). É heurístico: avisa, nunca bloqueia.
+
 ### IA
 
-- **Gerar rascunho** e **planejador da semana** usam o modelo principal; **refinar** (encurtar, mais concreto, 3 ganchos, tom direto, roteiro de carrossel, pedido livre) e **organizar** posts usam o modelo rápido. Variáveis `IA_MODELO` e `IA_MODELO_RAPIDO` trocam os dois.
+- **Gerar rascunho** e **planejador da semana** usam o modelo principal; **refinar** (encurtar, mais concreto, 3 ganchos, tom direto, tirar o tom de IA, roteiro de carrossel, pedido livre) e **organizar** posts usam o modelo rápido. Variáveis `IA_MODELO` e `IA_MODELO_RAPIDO` trocam os dois.
 - As tarefas de IA rodam em segundo plano e a tela consulta o resultado. Uma requisição longa não depende mais do túnel, que corta em cerca de 100 s.
 - O contexto da jornada (estratégia, histórico, projetos, diário, estudo) vai num bloco de sistema com cache, reaproveitado entre pedidos seguidos.
 - **Radar → ideia** usa só números agregados dos eventos da internet (totais, serviços, países, usuários tentados, ações). Nunca IP de origem, alvo, porta ou senha.

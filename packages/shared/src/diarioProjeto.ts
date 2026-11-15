@@ -26,6 +26,19 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-15-linkedin-perfil-voz',
+    data: '2026-11-15',
+    titulo: 'A IA do LinkedIn passou a conhecer quem escreve',
+    descricao:
+      'Os rascunhos saíam corretos e genéricos, porque a IA só tinha uma descrição de voz fixa e nenhum fato verificável ' +
+      'sobre a carreira. Agora há um perfil profissional estruturado (certificação obtida, em andamento ou planejada), ' +
+      'posts e perfis que inspiram, e um perfil de voz aprendido dos próprios posts. O texto gerado passa por um filtro ' +
+      'anti-genérico, e a regra de produto ficou explícita: a IA só afirma como conquista o que está marcado como obtido. ' +
+      'O nome do empregador ficou de fora do modelo de dados de propósito.',
+    categoria: 'decisao',
+    tags: ['linkedin', 'ia', 'voz', 'carreira'],
+  },
+  {
     id: 'proj-2026-11-15-linkedin-conexao',
     data: '2026-11-15',
     titulo: 'Conectar ao LinkedIn sem caça ao tesouro',
