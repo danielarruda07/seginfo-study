@@ -53,6 +53,46 @@ export const DIARIO_PROJETO: EntradaDiario[] = [
     tags: ['agentes', 'ux', 'documentacao', 'aprendizado'],
   },
   {
+    id: 'proj-2026-11-15-linkedin-arte',
+    data: '2026-11-15',
+    titulo: 'Arte de post sem depender de IA de imagem para o texto',
+    descricao:
+      'IA de imagem erra acento e palavra, o que é inaceitável numa capa profissional. A decisão foi separar as tarefas: ' +
+      'a IA de texto projeta os slides, um template em canvas desenha tudo no navegador (sempre com o texto certo e ' +
+      'legível no celular) e a IA de imagem só entra, sob demanda e com limite diário, para uma ilustração de fundo sem ' +
+      'letras. O PDF do carrossel é montado à mão, sem biblioteca, com uma imagem por página. Testar o desenho em um ' +
+      'navegador sem interface achou texto invadindo o rodapé e itens sumindo em formato baixo, que um teste de tipos ' +
+      'não pegaria.',
+    categoria: 'decisao',
+    tags: ['linkedin', 'imagem', 'canvas', 'custo'],
+  },
+  {
+    id: 'proj-2026-11-15-linkedin-perfil-voz',
+    data: '2026-11-15',
+    titulo: 'A IA do LinkedIn passou a conhecer quem escreve',
+    descricao:
+      'Os rascunhos saíam corretos e genéricos, porque a IA só tinha uma descrição de voz fixa e nenhum fato verificável ' +
+      'sobre a carreira. Agora há um perfil profissional estruturado (certificação obtida, em andamento ou planejada), ' +
+      'posts e perfis que inspiram, e um perfil de voz aprendido dos próprios posts. O texto gerado passa por um filtro ' +
+      'anti-genérico, e a regra de produto ficou explícita: a IA só afirma como conquista o que está marcado como obtido. ' +
+      'O nome do empregador ficou de fora do modelo de dados de propósito.',
+    categoria: 'decisao',
+    tags: ['linkedin', 'ia', 'voz', 'carreira'],
+  },
+  {
+    id: 'proj-2026-11-15-linkedin-conexao',
+    data: '2026-11-15',
+    titulo: 'Conectar ao LinkedIn sem caça ao tesouro',
+    descricao:
+      'Um teste de ponta a ponta mostrou que a conexão com o LinkedIn falhava em silêncio: o botão ficava escondido ' +
+      'no fim da aba de marca, e quando o retorno do LinkedIn dava erro, a tela só dizia "não foi possível" sem motivo. ' +
+      'Agora o retorno explica o que aconteceu (recusa, código ausente, estado expirado), o motivo fica salvo na conta ' +
+      'e a tela de publicação avisa quando a conexão está desligada, com atalho direto. Lição: uma integração que depende ' +
+      'de um redirecionamento precisa dizer o motivo quando falha, senão quem testa fica sem nada para investigar.',
+    categoria: 'funcionalidade',
+    tags: ['linkedin', 'oauth', 'ux', 'erro'],
+  },
+  {
     id: 'proj-2026-11-15-operador-homelab-mcp',
     data: '2026-11-15',
     titulo: 'Operar o homelab de qualquer lugar, sem aprovar cada clique',

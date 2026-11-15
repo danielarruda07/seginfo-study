@@ -314,7 +314,7 @@ export const RegistrarPublicacaoInSchema = z.object({
 
 // ===================== Refino com IA =====================
 
-export const ACOES_REFINO = ['encurtar', 'concreto', 'ganchos', 'direto', 'carrossel', 'livre'] as const;
+export const ACOES_REFINO = ['encurtar', 'concreto', 'ganchos', 'direto', 'humanizar', 'carrossel', 'livre'] as const;
 export type AcaoRefino = (typeof ACOES_REFINO)[number];
 
 export const ROTULO_REFINO: Record<AcaoRefino, string> = {
@@ -322,6 +322,7 @@ export const ROTULO_REFINO: Record<AcaoRefino, string> = {
   concreto: 'Mais concreto',
   ganchos: '3 ganchos alternativos',
   direto: 'Tom mais direto',
+  humanizar: 'Tirar o tom de IA',
   carrossel: 'Virar roteiro de carrossel',
   livre: 'Pedido livre',
 };

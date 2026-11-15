@@ -20,11 +20,12 @@ import { RegistrarPublicacaoDialog } from './RegistrarPublicacaoDialog';
 const MODOS = [{ value: 'quadro', label: 'Quadro', icon: 'pi pi-th-large' }, { value: 'calendario', label: 'Calendário', icon: 'pi pi-calendar' }];
 
 /** Pipeline: do rascunho ao publicado, em quadro ou calendário, com lembretes e planejador. */
-export function Pipeline({ onEditar, onNovo, onVerPublicados, onVerIdeias }: {
+export function Pipeline({ onEditar, onNovo, onVerPublicados, onVerIdeias, onVerMarca }: {
   onEditar: (rascunhoId: string) => void;
   onNovo: () => void;
   onVerPublicados: () => void;
   onVerIdeias: () => void;
+  onVerMarca: () => void;
 }) {
   const invalidate = useInvalidate();
   const { data: todos = [], isLoading, error } = useRascunhos();
@@ -72,6 +73,17 @@ export function Pipeline({ onEditar, onNovo, onVerPublicados, onVerIdeias }: {
         {' '}Um post só é agendado ou publicado depois de aprovado por você.
       </StatusStrip>
       {error && <Message severity="error" text={mensagemErro(error)} className="ca-msg" />}
+      {conta && !conta.conectado && (
+        <Message severity="info" className="ca-msg" content={
+          <div className="iv-row iv-wrap" style={{ justifyContent: 'space-between', gap: 8, width: '100%' }}>
+            <span>
+              Publicação pela API desligada: o servidor ainda não está conectado ao LinkedIn. Sem a conexão, você publica
+              à mão a partir do lembrete.{conta.ultimoErro ? ` Último erro: ${conta.ultimoErro}` : ''}
+            </span>
+            <Button label="Conectar em Marca pessoal & IA" icon="pi pi-link" size="small" outlined onClick={onVerMarca} disabled={!conta.configurado} />
+          </div>
+        } />
+      )}
 
       <AvisosPipeline vencidos={naVez} falhados={comFalha} onAbrir={sel.open} onRegistrar={setRegistrar} />
 

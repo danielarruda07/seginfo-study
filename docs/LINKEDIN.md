@@ -18,7 +18,7 @@ Não há uma contagem universal que torne um post melhor. Posts de texto servem 
 
 O limite atual de uma publicação comum é 3.000 caracteres. O checklist do Estúdio mostra esse limite, mas não trata um post conciso como inferior. Compare comprimento e formato dentro do seu próprio histórico, anotando métricas alguns dias depois de publicar.
 
-Para imagens, prefira arquivos nítidos e uma ideia visual simples. O LinkedIn recomenda imagem com ao menos 1080 px de largura e aceita proporções de 3:1 a 4:5; a área visual pode cortar imagens fora dessa faixa. Para documento/carrossel, use PDF, título descritivo e texto de acompanhamento que explique por que abrir o material. O Estúdio prepara roteiro, direção visual e texto alternativo, mas a imagem precisa ser criada e revisada antes do upload.
+Para imagens, prefira arquivos nítidos e uma ideia visual simples. O LinkedIn recomenda imagem com ao menos 1080 px de largura e aceita proporções de 3:1 a 4:5; a área visual pode cortar imagens fora dessa faixa. Para documento/carrossel, use PDF, título descritivo e texto de acompanhamento que explique por que abrir o material. O Estúdio prepara roteiro, direção visual e texto alternativo e também cria a arte (veja "Arte do post"); revise a imagem antes de aprovar.
 
 ## Assuntos para a ponte Infra → Segurança
 
@@ -78,9 +78,49 @@ Projeto ─► Ideia (backlog) ─► Rascunho ─► Aprovado ─► Agendado �
 - **Visibilidade:** "Público" ou "Só conexões". Use "Só conexões" no primeiro teste real. Mudar a visibilidade também desfaz a aprovação.
 - **Apagar no LinkedIn:** na ficha de um post publicado pela API, o botão apaga o post do perfil (com reações e comentários), tira o registro de Publicados e devolve o rascunho para revisão. Posts publicados à mão continuam sendo apagados direto no LinkedIn.
 
+### Arte do post (imagem e carrossel)
+
+No Estúdio, quando o formato é **imagem** ou **carrossel**, o bloco **Criar a arte** monta a peça:
+
+1. A IA projeta os slides a partir do texto do post (título, texto, itens, número em destaque). Usa só fatos que já estão no post, sem IP, domínio nem nome de empresa, e segue a sua voz.
+2. Você ajusta cada slide, vê a prévia ao vivo e escolhe o tamanho e a cor de destaque. O tema é escuro.
+3. O navegador desenha os slides (canvas) e gera **PNG** (imagem) ou **PDF** (carrossel, uma página por slide). **Anexar ao post** envia o arquivo pelo mesmo caminho da mídia já existente, e o post sai pela API. **Baixar** serve para publicar à mão.
+
+Como o texto é desenhado por template, ele sai sempre correto, com acentos certos e legível no celular. Nenhuma etapa gasta crédito de imagem, só a chamada ao Claude que projeta os slides.
+
+**Tamanhos.** O padrão é **retrato 4:5 (1080×1350)**: ocupa mais tela no feed do celular. Quadrado 1:1 (1080×1080) é a alternativa segura, e paisagem 1,91:1 (1200×627) só para imagem única. No carrossel, todas as páginas do PDF têm o mesmo tamanho. Evite texto pequeno: a arte aparece reduzida no celular.
+
+**Ilustração por IA (opcional).** Cada slide pode ter uma ilustração de fundo, gerada pelo Gemini **somente quando você clica em "Gerar ilustração"**, escolhendo o motor na hora:
+
+| Motor | Para que serve | Custo estimado |
+|---|---|---|
+| **Claude SVG** (padrão) | Ilustração geométrica (redes, circuitos, grades, ondas) desenhada em código pela Claude, com a mesma chave `ANTHROPIC_API_KEY`. Não faz foto nem cena realista. | centavos por imagem (só tokens) |
+| Gemini rápido | Maioria dos posts | cerca de US$ 0,04 por imagem |
+| Gemini qualidade | Capas importantes | cerca de US$ 0,13 por imagem |
+
+Os valores são estimativas de 2026; confira no AI Studio. A imagem entra sem texto (o estilo pede fundo escuro e nenhuma letra), com um véu escuro por cima para o título continuar legível. Há um limite diário (`IMAGEM_LIMITE_DIARIO`, padrão 30) e a descrição é recusada se citar IP ou domínio do ambiente.
+
+O SVG da Claude passa por uma lista de permissões no servidor antes de chegar à tela: só formas e degradês são aceitos. Texto, imagem, script, estilo, link, comentário e `url()` externo invalidam o arquivo, e o servidor tenta de novo uma vez antes de devolver erro. Os motores sem chave configurada aparecem desativados no seletor.
+
+Gemini (opcional, só se quiser foto ou arte mais rica). Configuração (uma vez): crie a chave em aistudio.google.com e defina o Secret `GEMINI_API_KEY` na API (Coolify). Gerar imagem pela API exige **faturamento ativo**. Quem tem o plano **Google AI Pro** recebe créditos mensais do Google Developer Program, que se resgatam dentro do AI Studio (Developer Program, vincular faturamento, resgatar). O uso da API pede um pré-pagamento mínimo de US$ 5 para liberar o crédito promocional, e só o titular do plano resgata. Se o plano veio por operadora, confirme no AI Studio se o resgate aparece. Os IDs de modelo mudam com o tempo: se aparecer erro de modelo inexistente, troque `GEMINI_MODELO_RAPIDO` ou `GEMINI_MODELO_QUALIDADE` por um ID de modelo de imagem listado no AI Studio.
+
+### Perfil & Voz (a IA aprende quem escreve)
+
+A aba **Perfil & Voz** tem três seções. Tudo fica no servidor e entra no backup (`LinkedinPerfilPro`, `LinkedinInspiracao`, `LinkedinVoz`).
+
+| Seção | O que guarda | Como a IA usa |
+|---|---|---|
+| **Perfil profissional** | Headline e Sobre atuais, competências, certificações (obtida, em andamento ou planejada), cursos, experiência, projetos e vagas-alvo. Importa o PDF do perfil (Mais > Salvar como PDF) ou edita à mão; "Mesclar" só acrescenta o que falta, "Substituir" troca tudo, e nada grava antes de **Salvar**. | Entra no bloco da jornada como fatos. Só o que está *obtida* vira conquista; *em andamento* vira "estudando para"; *planejada* nunca é citada como feita. As vagas-alvo ajustam ênfase e vocabulário, sem inventar experiência. |
+| **Inspirações** | Posts e perfis que você admira, com o que chamou atenção (texto, imagem, frequência, assuntos, carreira). Um print pode ser analisado pela IA, que devolve só a descrição do visual; a imagem não é guardada. | Alimentam o perfil de voz: a IA separa estilo, estrutura e frequência (aproveitar) de conteúdo e opinião (não copiar). |
+| **Minha voz** | Perfil aprendido dos seus posts publicados e das inspirações, mais **Minhas regras** em texto livre. Precisa de 3 posts seus ou 2 inspirações. | Vai num bloco de sistema próprio (com cache) em todo rascunho e refino, junto com até 3 posts seus por inteiro como exemplo. Suas regras valem mais que o perfil aprendido. |
+
+O perfil não tem campo para o **nome do empregador**, e a importação do PDF o descarta. Em experiência use só setor ou porte.
+
+**Filtro anti-genérico.** `detectarGenerico` (`packages/shared/src/linkedinEstilo.ts`) procura clichês, abertura genérica, contraste "não é X, é Y", pergunta retórica com resposta, revelação encenada, pedido artificial de interação, marcação que o LinkedIn não renderiza, travessões e emojis em excesso e sequências de frases curtíssimas. Ele atua em três pontos: o card **Soa genérico?** no Estúdio (ao vivo, sem IA), a ação **Tirar o tom de IA** no refino, e uma segunda passada automática sobre o rascunho recém-gerado (o aviso diz o que foi corrigido). É heurístico: avisa, nunca bloqueia.
+
 ### IA
 
-- **Gerar rascunho** e **planejador da semana** usam o modelo principal; **refinar** (encurtar, mais concreto, 3 ganchos, tom direto, roteiro de carrossel, pedido livre) e **organizar** posts usam o modelo rápido. Variáveis `IA_MODELO` e `IA_MODELO_RAPIDO` trocam os dois.
+- **Gerar rascunho** e **planejador da semana** usam o modelo principal; **refinar** (encurtar, mais concreto, 3 ganchos, tom direto, tirar o tom de IA, roteiro de carrossel, pedido livre) e **organizar** posts usam o modelo rápido. Variáveis `IA_MODELO` e `IA_MODELO_RAPIDO` trocam os dois.
 - As tarefas de IA rodam em segundo plano e a tela consulta o resultado. Uma requisição longa não depende mais do túnel, que corta em cerca de 100 s.
 - O contexto da jornada (estratégia, histórico, projetos, diário, estudo) vai num bloco de sistema com cache, reaproveitado entre pedidos seguidos.
 - **Radar → ideia** usa só números agregados dos eventos da internet (totais, serviços, países, usuários tentados, ações). Nunca IP de origem, alvo, porta ou senha.

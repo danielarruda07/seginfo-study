@@ -1,5 +1,5 @@
 import type {
-  AcaoRefino, CanalPublicacao, IdeiaIn, IdeiaLinkedin, PostPublicado, ProjetoIn, ProjetoLinkedin, RascunhoIA,
+  AcaoRefino, CanalPublicacao, IdeiaIn, IdeiaLinkedin, PostPublicado, ProjetoIn, ProjetoLinkedin, RascunhoGerado,
   RascunhoLinkedin, RefinoIA, StatusContaLinkedin, SugestaoPauta, TarefaIA, VersaoRascunho, Visibilidade,
 } from '@seginfo/shared';
 import { http } from './http';
@@ -97,7 +97,7 @@ export async function aguardarTarefa<T>(id: string, aCada = 2_000, limite = 240_
 
 export interface PedidoGerar { briefing: string; pilar?: string; formato: string; incluirDiario: boolean; notas: { titulo: string; trecho: string }[]; projetoId?: string | null }
 export const gerarRascunhoIA = async (p: PedidoGerar) =>
-  aguardarTarefa<RascunhoIA>((await iniciar('gerar', { ...p, estudo: contextoDoEstudo() })).tarefaId);
+  aguardarTarefa<RascunhoGerado>((await iniciar('gerar', { ...p, estudo: contextoDoEstudo() })).tarefaId);
 
 export const refinarTexto = async (p: { acao: AcaoRefino; instrucao?: string; gancho: string; corpo: string }) =>
   aguardarTarefa<RefinoIA>((await iniciar('refinar', p)).tarefaId);

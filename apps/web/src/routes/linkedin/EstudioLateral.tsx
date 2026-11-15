@@ -1,4 +1,4 @@
-import { preflightLiberado } from '@seginfo/shared';
+import { detectarGenerico, preflightLiberado } from '@seginfo/shared';
 import { Chip, Pill } from '@/components/InfraKit';
 import { POST_TEMPLATES } from '@/data/postTemplates';
 import { checklistPost, preflightLocal } from '@/services/linkedin';
@@ -13,6 +13,7 @@ export function EstudioLateral({ gancho, corpo, onModelo }: {
   const nota = checklist.filter((c) => c.ok).length;
   const preflight = preflightLocal(gancho, corpo);
   const liberado = preflightLiberado(preflight);
+  const estilo = detectarGenerico(`${gancho}\n\n${corpo}`);
   return (
     <aside className="posts-aside">
       <section className="iv-card">
@@ -36,6 +37,26 @@ export function EstudioLateral({ gancho, corpo, onModelo }: {
         </div>
         <PreflightLista itens={preflight} />
         <p className="iv-muted ca-small ca-mb0">A aprovação acontece no Pipeline, e o servidor refaz esta verificação antes de agendar ou publicar.</p>
+      </section>
+      <section className="iv-card" aria-live="polite">
+        <div className="ca-toolbar">
+          <h3 className="ca-h3">Soa genérico?</h3>
+          <Pill label={estilo.length ? `${estilo.length} ${estilo.length === 1 ? 'alerta' : 'alertas'}` : 'Natural'} tone={estilo.length ? 'serious' : 'ok'}
+            icon={estilo.length ? 'pi-exclamation-triangle' : 'pi-check'} />
+        </div>
+        {estilo.length === 0 ? (
+          <p className="iv-muted ca-small ca-mb0">Nenhum padrão de texto genérico ou de IA encontrado. Use "Tirar o tom de IA" no refino se ainda assim parecer artificial.</p>
+        ) : (
+          <ul className="pv-estilo">
+            {estilo.map((a) => (
+              <li key={a.id} className="pv-estilo__item">
+                <strong><i className="pi pi-exclamation-triangle" aria-hidden="true" />{a.rotulo}</strong>
+                <span className="iv-muted">{a.dica}</span>
+                {a.trechos.map((t) => <p key={t} className="pv-estilo__trecho">{t}</p>)}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
       <section className="iv-card posts-preview" aria-live="polite">
         <div className="ca-toolbar"><h3 className="ca-h3">Prévia</h3><Pill label="LinkedIn" /></div>

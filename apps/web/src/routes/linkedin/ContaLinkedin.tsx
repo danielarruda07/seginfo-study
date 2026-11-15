@@ -71,9 +71,9 @@ export function ContaLinkedin() {
             ['Autorização vale até', conta.expiraEm ? `${dataHoraCurta(conta.expiraEm, fusoDoNavegador())}${conta.diasRestantes !== null ? ` (${Math.max(0, conta.diasRestantes)} ${conta.diasRestantes === 1 ? 'dia' : 'dias'})` : ''}` : ''],
           ]} />
           {expirando && <p className="ca-aviso" role="status"><i className="pi pi-clock" aria-hidden="true" /> {expirado ? 'A autorização venceu.' : `A autorização vence em ${conta.diasRestantes} ${conta.diasRestantes === 1 ? 'dia' : 'dias'}.`} O LinkedIn exige um novo login a cada 60 dias: clique em Reconectar para não perder os agendamentos.</p>}
-          {conta.ultimoErro && <p className="ca-aviso" role="alert"><i className="pi pi-exclamation-triangle" aria-hidden="true" /> Último erro: {conta.ultimoErro}</p>}
         </>
       )}
+      {conta?.ultimoErro && <p className="ca-aviso" role="alert"><i className="pi pi-exclamation-triangle" aria-hidden="true" /> Último erro: {conta.ultimoErro}</p>}
       {conta && !conta.configurado && (
         <Message severity="warn" className="ca-w100" content={
           <div className="ca-small">

@@ -16,6 +16,7 @@ import {
 import { bloqueiosDoServidor, ErroPublicacao, fusoDoLinkedin, publicarPelaApi } from './linkedinAgendador.js';
 import { contextoDaJornada, estrategiaDe, paraDto } from './linkedin.js';
 import { ideiaDoRadar } from './linkedinRadar.js';
+import { contextoDeVoz } from './linkedinPerfilContexto.js';
 
 /**
  * Pipeline do LinkedIn: projetos, backlog de ideias, ciclo de vida do rascunho
@@ -76,7 +77,7 @@ interface Tarefa extends TarefaIA { usuarioId: string; criadaEm: number }
 const tarefas = new Map<string, Tarefa>();
 const VIDA_TAREFA_MS = 20 * 60_000;
 
-function iniciarTarefa(usuarioId: string, trabalho: () => Promise<unknown>): { tarefaId: string } | { erro: string } {
+export function iniciarTarefa(usuarioId: string, trabalho: () => Promise<unknown>): { tarefaId: string } | { erro: string } {
   const agora = Date.now();
   for (const [k, t] of tarefas) if (t.criadaEm < agora - VIDA_TAREFA_MS) tarefas.delete(k);
   const emAndamento = [...tarefas.values()].filter((t) => t.usuarioId === usuarioId && t.status === 'rodando').length;
@@ -475,11 +476,11 @@ export async function registerLinkedinPipelineRoutes(app: FastifyInstance) {
     const u = uid(req);
     return responder(iniciarTarefa(u, async () => {
       const projeto = b.data.projetoId ? await prisma.linkedinProjeto.findFirst({ where: { id: b.data.projetoId, usuarioId: u } }) : null;
-      const contexto = await contextoDaJornada(u, b.data.estudo, b.data.incluirDiario);
+      const [contexto, voz] = await Promise.all([contextoDaJornada(u, b.data.estudo, b.data.incluirDiario), contextoDeVoz(u)]);
       const briefing = projeto
         ? `${b.data.briefing}\n\nEste post faz parte do projeto "${projeto.nome}"${projeto.objetivo ? ` (objetivo: ${projeto.objetivo})` : ''}. Dê continuidade aos posts anteriores do projeto, sem repetir.`
         : b.data.briefing;
-      return gerarRascunho({ briefing, pilar: b.data.pilar ?? projeto?.pilar ?? undefined, formato: b.data.formato, contexto, notas: b.data.notas });
+      return gerarRascunho({ briefing, pilar: b.data.pilar ?? projeto?.pilar ?? undefined, formato: b.data.formato, contexto, voz, notas: b.data.notas });
     }), reply);
   });
 
@@ -488,7 +489,8 @@ export async function registerLinkedinPipelineRoutes(app: FastifyInstance) {
     if (!b.success) return invalido(reply);
     if (b.data.acao === 'livre' && !b.data.instrucao) return reply.status(400).send({ error: 'Diga o que a IA deve mudar.' });
     if (textoDoPost(b.data.gancho, b.data.corpo).length < 40) return reply.status(400).send({ error: 'Escreva um pouco mais antes de pedir um refino.' });
-    return responder(iniciarTarefa(uid(req), () => refinarTexto(b.data)), reply);
+    const u = uid(req);
+    return responder(iniciarTarefa(u, async () => refinarTexto({ ...b.data, voz: await contextoDeVoz(u) })), reply);
   });
 
   const Planejar = z.object({
@@ -544,14 +546,30 @@ export async function registerLinkedinPipelineRoutes(app: FastifyInstance) {
 
   // Passo 2: o LinkedIn devolve o navegador aqui, ainda com a sessão do Access.
   app.get('/api/linkedin/conta/callback', async (req, reply) => {
-    const q = z.object({ code: z.string().optional(), state: z.string().optional(), error: z.string().optional() }).safeParse(req.query);
-    if (!q.success || q.data.error || !q.data.code || !q.data.state) return reply.redirect('/posts?linkedin=erro');
+    const q = z.object({
+      code: z.string().optional(), state: z.string().optional(),
+      error: z.string().optional(), error_description: z.string().optional(),
+    }).safeParse(req.query);
+    // o motivo vai na URL (a tela mostra) e fica em ultimoErro (quando já existe uma conta)
+    const falhar = async (motivo: string) => {
+      const texto = motivo.slice(0, 300);
+      await prisma.linkedinConta.updateMany({ where: { usuarioId: uid(req) }, data: { ultimoErro: texto } }).catch(() => undefined);
+      return reply.redirect(`/posts?linkedin=erro&motivo=${encodeURIComponent(texto)}`);
+    };
+    if (!q.success) return falhar('O retorno do LinkedIn veio em formato inesperado.');
+    if (q.data.error) {
+      return falhar(`O LinkedIn não autorizou a conexão${q.data.error_description ? `: ${q.data.error_description}` : '.'}`);
+    }
+    if (!q.data.code || !q.data.state) return falhar('O retorno do LinkedIn veio sem o código de autorização.');
     try {
       await concluirAutorizacao(q.data.code, q.data.state, uid(req));
       return reply.redirect('/posts?linkedin=conectado');
     } catch (e) {
-      req.log.warn({ err: (e as Error).message }, 'linkedin: falha ao concluir a autorização');
-      return reply.redirect('/posts?linkedin=erro');
+      const msg = e instanceof ErroLinkedin
+        ? e.message
+        : 'Falha inesperada ao concluir a conexão.';
+      req.log.error({ err: (e as Error).message, tipo: e instanceof ErroLinkedin ? e.status : 'inesperado' }, 'linkedin: falha ao concluir a autorização');
+      return falhar(`${msg} Tente de novo; o link de autorização vale 10 minutos.`);
     }
   });
 

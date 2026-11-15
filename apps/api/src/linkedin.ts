@@ -9,6 +9,7 @@ import {
 import { prisma } from './db.js';
 import type { AuthedRequest } from './auth.js';
 import { analisarPost, ErroIA, gerarRascunho, iaConfigurada, MODELO } from './ia.js';
+import { contextoDeVoz, contextoDoPerfil } from './linkedinPerfilContexto.js';
 
 /**
  * Módulo LinkedIn no servidor: posts publicados, organização por IA (Claude) com envio ao
@@ -154,11 +155,12 @@ async function sincronizarCerebro(usuarioId: string, p: PostPublicado, catalogo:
 
 /** Contexto da jornada para rascunhos: estratégia + histórico + diário (do banco) + estudo (do front). */
 export async function contextoDaJornada(usuarioId: string, estudo: string, incluirDiario: boolean): Promise<string> {
-  const [estrategia, linhas, diario, projetos] = await Promise.all([
+  const [estrategia, linhas, diario, projetos, perfilPro] = await Promise.all([
     estrategiaDe(usuarioId),
     prisma.linkedinPost.findMany({ where: { usuarioId }, orderBy: { publicadoEm: 'desc' }, take: 200 }),
     incluirDiario ? prisma.diarioEntrada.findMany({ where: { usuarioId } }) : Promise.resolve([]),
     prisma.linkedinProjeto.findMany({ where: { usuarioId, status: 'ativo' }, orderBy: { criadoEm: 'asc' } }),
+    contextoDoPerfil(usuarioId),
   ]);
   const posts = linhas.map(paraDto);
   const comAnalise = posts.filter((p) => p.analise);
@@ -169,6 +171,7 @@ export async function contextoDaJornada(usuarioId: string, estudo: string, inclu
 
   const partes = [
     `## Estratégia\nObjetivo: ${estrategia.objetivo}\nPúblico: ${estrategia.publico}\nVoz: ${estrategia.voz}\nPilares: ${estrategia.pilares.join(' | ')}`,
+    ...(perfilPro ? [perfilPro] : []),
     `## Estudo\n${estudo}`,
     `## Histórico no LinkedIn\n${posts.length} posts registrados. Posts por pilar: ${[...porPilar].map(([p, n]) => `${p}: ${n}`).join('; ') || 'sem análises ainda'}.\n` +
       comAnalise.slice(0, 12).map((p) => `- ${p.publicadoEm} [${p.analise!.pilar}] ${p.analise!.resumo} (gancho: ${p.analise!.tipoGancho})`).join('\n') +
@@ -305,7 +308,8 @@ export async function registerLinkedinRoutes(app: FastifyInstance) {
     if (!b.success) return reply.status(400).send({ error: 'payload inválido' });
     try {
       const contexto = await contextoDaJornada(uid(req), b.data.estudo, b.data.incluirDiario);
-      return await gerarRascunho({ briefing: b.data.briefing, pilar: b.data.pilar, formato: b.data.formato, contexto, notas: b.data.notas });
+      const voz = await contextoDeVoz(uid(req));
+      return await gerarRascunho({ briefing: b.data.briefing, pilar: b.data.pilar, formato: b.data.formato, contexto, voz, notas: b.data.notas });
     } catch (e) {
       return responderErroIA(e, reply);
     }

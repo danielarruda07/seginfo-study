@@ -13,7 +13,7 @@ import { apagarItem, enviarBackup, listarBackups, obterAccessToken } from './one
 const PADRAO_NOME = /^seginfo-\d{8}-\d{6}\.sgb$/;
 
 async function exportarDados(usuarioId: string) {
-  const [usuario, progresso, sessoes, metas, posts, arsenal, biblioteca, cofre, ataques, memorias, linkedinPosts, diario, linkedinEstrategia, agentes, agenteAvaliacoes, agenteExecucoes, artefatosAtaque, artefatoOcorrencias, pericias, linkedinProjetos, linkedinIdeias, postVersoes] = await Promise.all([
+  const [usuario, progresso, sessoes, metas, posts, arsenal, biblioteca, cofre, ataques, memorias, linkedinPosts, diario, linkedinEstrategia, agentes, agenteAvaliacoes, agenteExecucoes, artefatosAtaque, artefatoOcorrencias, pericias, linkedinProjetos, linkedinIdeias, postVersoes, linkedinPerfilPro, linkedinInspiracoes, linkedinVoz] = await Promise.all([
     prisma.usuario.findUnique({ where: { id: usuarioId }, select: { id: true, email: true } }),
     prisma.progresso.findMany({ where: { usuarioId } }),
     prisma.sessao.findMany({ where: { usuarioId } }),
@@ -40,6 +40,10 @@ async function exportarDados(usuarioId: string) {
     prisma.linkedinProjeto.findMany({ where: { usuarioId } }),
     prisma.linkedinIdeia.findMany({ where: { usuarioId } }),
     prisma.postVersao.findMany({ where: { usuarioId }, orderBy: { criadoEm: 'asc' } }),
+    // perfil profissional, inspirações e voz do LinkedIn (sem empregador nem credencial)
+    prisma.linkedinPerfilPro.findUnique({ where: { usuarioId } }),
+    prisma.linkedinInspiracao.findMany({ where: { usuarioId } }),
+    prisma.linkedinVoz.findUnique({ where: { usuarioId } }),
   ]);
   if (!usuario) throw new Error('Usuário do backup não encontrado.');
   return {
@@ -50,7 +54,7 @@ async function exportarDados(usuarioId: string) {
     progresso, sessoes, metas, posts, arsenal, biblioteca, cofre, ataques, memorias,
     linkedinPosts, diario, linkedinEstrategia, agentes, agenteAvaliacoes, agenteExecucoes,
     artefatosAtaque, artefatoOcorrencias, pericias,
-    linkedinProjetos, linkedinIdeias, postVersoes,
+    linkedinProjetos, linkedinIdeias, postVersoes, linkedinPerfilPro, linkedinInspiracoes, linkedinVoz,
   };
 }
 

@@ -14,10 +14,12 @@ import { Projetos } from './linkedin/Projetos';
 import { Publicados } from './linkedin/Publicados';
 import { Diario } from './linkedin/Diario';
 import { EstrategiaIA } from './linkedin/EstrategiaIA';
+import { PerfilVoz } from './linkedin/PerfilVoz';
 import '@/styles/telas/carreira.css';
+import '@/styles/telas/linkedin-perfil.css';
 import '@/styles/telas/linkedin-pipeline.css';
 
-const ABA = { pipeline: 0, estudio: 1, ideias: 2, projetos: 3, publicados: 4, diario: 5, marca: 6 } as const;
+const ABA = { pipeline: 0, estudio: 1, ideias: 2, projetos: 3, publicados: 4, diario: 5, perfil: 6, marca: 7 } as const;
 type Aviso = { sev: 'success' | 'error'; text: string };
 
 /** Volta do OAuth do LinkedIn: `?linkedin=conectado` ou `?linkedin=erro`. Lê e limpa o parâmetro da URL. */
@@ -25,12 +27,14 @@ function retornoDoOAuth(): Aviso | null {
   const params = new URLSearchParams(window.location.search);
   const valor = params.get('linkedin');
   if (!valor) return null;
+  const motivo = params.get('motivo');
   params.delete('linkedin');
+  params.delete('motivo');
   const resto = params.toString();
   window.history.replaceState(window.history.state, '', `${window.location.pathname}${resto ? `?${resto}` : ''}${window.location.hash}`);
   return valor === 'conectado'
     ? { sev: 'success', text: 'LinkedIn conectado. O servidor já pode publicar os posts de texto que você aprovar.' }
-    : { sev: 'error', text: 'Não foi possível concluir a conexão com o LinkedIn. Tente de novo; se repetir, confira a URL de redirecionamento no app do LinkedIn.' };
+    : { sev: 'error', text: motivo ? `Não consegui conectar ao LinkedIn. ${motivo}` : 'Não consegui conectar ao LinkedIn. Tente de novo; se repetir, confira a URL de redirecionamento no app do LinkedIn.' };
 }
 
 /**
@@ -88,7 +92,7 @@ export function Posts() {
       ) : (
         <TabView activeIndex={aba} onTabChange={(e) => setAba(e.index)} className="linkedin-tabs" scrollable renderActiveOnly={false}>
           <TabPanel header="Pipeline" leftIcon="pi pi-send mr-2">
-            <Pipeline onEditar={editarRascunho} onNovo={() => abrirEstudio({})} onVerPublicados={irPara('publicados')} onVerIdeias={irPara('ideias')} />
+            <Pipeline onEditar={editarRascunho} onNovo={() => abrirEstudio({})} onVerPublicados={irPara('publicados')} onVerIdeias={irPara('ideias')} onVerMarca={irPara('marca')} />
           </TabPanel>
           <TabPanel header="Estúdio" leftIcon="pi pi-pencil mr-2">
             <Estudio pedido={pedidoEstudio} onPedidoConsumido={limparPedido} onVerPipeline={irPara('pipeline')} />
@@ -104,6 +108,9 @@ export function Posts() {
           </TabPanel>
           <TabPanel header="Diário do projeto" leftIcon="pi pi-book mr-2">
             <Diario onGerarPost={abrirEstudio} />
+          </TabPanel>
+          <TabPanel header="Perfil & Voz" leftIcon="pi pi-id-card mr-2">
+            <PerfilVoz />
           </TabPanel>
           <TabPanel header="Marca pessoal & IA" leftIcon="pi pi-compass mr-2">
             <EstrategiaIA />

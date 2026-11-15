@@ -1,0 +1,31 @@
+/*
+ * LinkedIn: aba Perfil & Voz e filtro anti-genérico. Prefixo pv-.
+ * Só variáveis de tokens.css (nada de hex). Utilitários ca-* e iv-* continuam valendo.
+ */
+.pv-secao.iv-card { display: grid; gap: .75rem; margin: 0; }
+.pv-itens { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.pv-item {
+  display: grid; gap: .5rem; padding: .7rem .8rem; min-width: 0;
+  border: 1px solid var(--surface-border); border-radius: var(--radius-sm); background: var(--surface-section);
+}
+.pv-item__cabeca { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35rem .75rem; }
+.pv-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .6rem .75rem; }
+.pv-grade__larga { grid-column: 1 / -1; }
+.pv-barra {
+  position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: .5rem; padding: .6rem .75rem;
+  border: 1px solid var(--surface-border); border-radius: var(--radius-sm); background: var(--surface-card);
+}
+.pv-voz { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: .25rem 1.5rem; }
+.pv-voz .ca-h4 { margin-top: .5rem; }
+
+/* ===== arte do post (Estúdio) ===== */
+.pv-slide { grid-template-columns: minmax(140px, 220px) minmax(0, 1fr); align-items: start; }
+.pv-previa { width: 100%; height: auto; border-radius: var(--radius-sm); border: 1px solid var(--surface-border); background: var(--surface-section); }
+@media (max-width: 720px) { .pv-slide { grid-template-columns: 1fr; } .pv-previa { max-width: 260px; } }
+
+/* ===== filtro anti-genérico (coluna lateral do Estúdio) ===== */
+.pv-estilo { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.pv-estilo__item { display: grid; gap: .15rem; font-size: .85rem; }
+.pv-estilo__item > strong { display: flex; gap: .4rem; align-items: baseline; }
+.pv-estilo__item > strong > .pi { color: var(--tone-serious); }
+.pv-estilo__trecho { margin: 0; padding-left: .6rem; border-left: 2px solid var(--surface-border); color: var(--text-color-secondary); overflow-wrap: anywhere; }
