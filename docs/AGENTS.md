@@ -88,6 +88,34 @@ As ferramentas de escrita só entram quando o item do projeto está marcado como
   `--no-build-isolation`); usuário de sistema próprio; serviço systemd `sf.py -l 0.0.0.0:5001`; arquivo
   `~/.spiderfoot/passwd` com `usuario:senha` liga o Digest. Perfil `passivo` usa os módulos do grupo Passive.
   Muitos módulos só rendem com chave de API cadastrada nas configurações do próprio SpiderFoot.
+- **Fontes extras da Minha exposição** (`apps/api/src/exposicaoFontes/`): cada arquivo exporta `fontes` com
+  `coletar`, `comparar` e um resultado genérico (`destaques`, `secoes`, `conjuntos`) que a tela desenha sem
+  conhecer a fonte. Para criar outra, siga `tipos.ts` e registre em `index.ts`. Fontes e chaves (todas opcionais;
+  sem a chave a fonte aparece como "desligada"):
+
+  | Fonte | Alvos | Chave |
+  |---|---|---|
+  | Esperada (VIPs do FortiGate) × vista (Shodan) | IP, IP público | variáveis do FortiGate |
+  | Listas de bloqueio (DNSBL, resolvedor do sistema) | IP, domínio | — |
+  | AbuseIPDB | IP, domínio | `ABUSEIPDB_API_KEY` |
+  | GreyNoise Community | IP, domínio | `GREYNOISE_API_KEY` (opcional) |
+  | TLS, cabeçalhos de segurança, Mozilla Observatory | domínio | — |
+  | Shodan API (banners, títulos, certificados) | IP, domínio | `SHODAN_API_KEY` |
+  | Censys | IP, domínio | `CENSYS_API_TOKEN` ou `CENSYS_API_ID` + `CENSYS_API_SECRET` |
+  | Domínios parecidos (typosquatting) | domínio | — |
+  | URLs antigas (Wayback CDX) | domínio | — |
+  | urlscan.io | domínio | `URLSCAN_API_KEY` (opcional) |
+  | VirusTotal | IP, domínio | `VT_API_KEY` |
+  | Vazamentos (XposedOrNot; HIBP) | e-mail | — ; `HIBP_API_KEY` |
+  | Código no GitHub | domínio, e-mail | `GITHUB_TOKEN` |
+
+- **Alertas** (`apps/api/src/exposicaoAlertas.ts`): com `WAZUH_SYSLOG_HOST` (e `WAZUH_SYSLOG_PORT`, padrão 514) cada
+  mudança vai por syslog UDP como `seginfo-exposicao: {json}`; no manager, decoder `seginfo_exposicao_decoders.xml`
+  e regras 100300-100303 (alta 10, média 7, info 3; grupo `seginfo,exposicao`), e o IP do host do app precisa
+  estar em `allowed-ips` do bloco syslog. Com `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`, uma mensagem por varredura
+  com as mudanças a partir de `EXPOSICAO_TELEGRAM_MIN` (`alta` padrão, ou `media`).
+- **GreyNoise no Radar** (`apps/api/src/greynoise.ts`): botão "Classificar com GreyNoise" nos IPs mais ativos e na
+  ficha do IP; cache de 24 h e uma consulta a cada 1,5 s para respeitar a cota comunitária.
 
 Para criar uma ferramenta nova: acrescente uma entrada com `definir({...})` no `REGISTRO`, usando o mesmo `id` do catálogo em `apps/web/src/data/agentesFerramentas.ts`.
 

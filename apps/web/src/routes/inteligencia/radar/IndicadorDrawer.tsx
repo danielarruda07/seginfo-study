@@ -1,9 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from 'primereact/button';
 import { DetailDrawer, type DetailDrawerProps } from '@/components/ui/DetailDrawer';
 import { Pill } from '@/components/InfraKit';
 import { copyToClipboard } from '@/lib/clipboard';
-import { getRadarEventos, type RadarEventosFiltro } from '@/services/radar';
+import { getGreynoise, getRadarEventos, type RadarEventosFiltro } from '@/services/radar';
+import { EXPLICACAO_GREYNOISE, SeloGreynoise } from './Greynoise';
 import { ExtLink } from '../ExtLink';
 import { acaoMeta, formatarUtc } from '../regras';
 import type { TopItem } from './TopList';
@@ -34,6 +35,7 @@ export function IndicadorDrawer({ dim, item, totalPeriodo, periodo, nav, onFiltr
     queryKey: ['radar-eventos', 'indicador', dim, item.rotulo],
     queryFn: () => getRadarEventos({ ...filtroDe(dim, item.rotulo), page: 0, limit: 8 }),
   });
+  const gn = useMutation({ mutationFn: getGreynoise });
   const pct = totalPeriodo ? Math.round((item.total / totalPeriodo) * 100) : 0;
 
   return (
@@ -82,6 +84,14 @@ export function IndicadorDrawer({ dim, item, totalPeriodo, periodo, nav, onFiltr
           <div className="iv-row iv-wrap">
             <ExtLink href={`https://www.abuseipdb.com/check/${encodeURIComponent(item.rotulo)}`}>Reputação no AbuseIPDB</ExtLink>
             <ExtLink href={`https://rdap.org/ip/${encodeURIComponent(item.rotulo)}`}>Dono do bloco (RDAP)</ExtLink>
+            <ExtLink href={`https://viz.greynoise.io/ip/${encodeURIComponent(item.rotulo)}`}>GreyNoise</ExtLink>
+          </div>
+          <p className="in-prose iv-mt">{EXPLICACAO_GREYNOISE}</p>
+          <div className="iv-row iv-wrap">
+            <Button label="Classificar com GreyNoise" icon="pi pi-filter" size="small" outlined loading={gn.isPending}
+              disabled={gn.data?.ip === item.rotulo} onClick={() => gn.mutate(item.rotulo)} />
+            {gn.data?.ip === item.rotulo && <SeloGreynoise c={gn.data} />}
+            {gn.isError && <span className="iv-muted">GreyNoise indisponível (IP privado ou sem resposta).</span>}
           </div>
         </section>
       )}

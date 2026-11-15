@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from 'primereact/button';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { AmbienteSelector } from '@/components/ui/AmbienteSelector';
@@ -8,7 +8,7 @@ import { useAmbiente } from '@/services/ambiente';
 import { Kpi, StatusStrip, Chip, EmptyState } from '@/components/InfraKit';
 import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import { useDebounce } from '@/hooks/useDebounce';
-import { getRadarResumo, getRadarEventos, type RadarEscopo, type RadarResumo, type RadarEventosFiltro } from '@/services/radar';
+import { getRadarResumo, getRadarEventos, classificarGreynoise, type ClassificacaoGreynoise, type RadarEscopo, type RadarResumo, type RadarEventosFiltro } from '@/services/radar';
 import { calcularCobertura } from '@/services/attack';
 import { FONTE_LABEL, acaoMeta } from './inteligencia/regras';
 import { TopList, type TopItem } from './inteligencia/radar/TopList';
@@ -17,6 +17,7 @@ import { EventoDrawer } from './inteligencia/radar/EventoDrawer';
 import { IndicadorDrawer, type Dimensao } from './inteligencia/radar/IndicadorDrawer';
 import { TecnicaDrawer } from './inteligencia/TecnicaDrawer';
 import { Timeline } from './inteligencia/radar/Timeline';
+import { EXPLICACAO_GREYNOISE, SeloGreynoise } from './inteligencia/radar/Greynoise';
 import '@/styles/telas/inteligencia.css';
 
 const DIAS_OPTS = [1, 7, 30];
@@ -49,6 +50,12 @@ export function Radar() {
   const [qRaw, setQRaw] = useState('');
   const q = useDebounce(qRaw, 300);
   const [page, setPage] = useState(0);
+  // GreyNoise sob demanda: a cota comunitária é pequena, então só classifica quando pedido
+  const [greynoise, setGreynoise] = useState<Record<string, ClassificacaoGreynoise>>({});
+  const classificar = useMutation({
+    mutationFn: classificarGreynoise,
+    onSuccess: (r) => setGreynoise((g) => ({ ...g, ...Object.fromEntries(r.itens.map((c) => [c.ip, c])) })),
+  });
 
   const resumo = useQuery({ queryKey: ['radar-resumo', dias, escopo, ambiente], queryFn: () => getRadarResumo(dias, escopo, ambiente), retry: false, refetchInterval: ATUALIZAR_MS });
   const filtros = useMemo(() => ({ ip, servico, acao, fonte: fonte as RadarEventosFiltro['fonte'], pais, escopo, ambiente, q: q || undefined, page, limit: ROWS }), [ip, servico, acao, fonte, pais, escopo, ambiente, q, page]);
@@ -140,7 +147,15 @@ export function Radar() {
         </div>
 
         <div className="in-tops iv-mt">
-          <TopList titulo="IPs mais ativos" itens={indicadores(r, 'ip')} onOpen={abrirIndicador('ip')} selId={indSel.selId} />
+          <TopList titulo="IPs mais ativos" itens={indicadores(r, 'ip')} onOpen={abrirIndicador('ip')} selId={indSel.selId}
+            selo={(i) => (greynoise[i.rotulo] ? <SeloGreynoise c={greynoise[i.rotulo]} /> : null)}
+            acao={(r?.topIps.length ?? 0) > 0 && (
+              <Button label="Classificar com GreyNoise" icon="pi pi-filter" size="small" text loading={classificar.isPending}
+                tooltip={EXPLICACAO_GREYNOISE} tooltipOptions={{ position: 'top' }}
+                onClick={() => classificar.mutate((r?.topIps ?? []).map((i) => i.ip).filter((x) => !greynoise[x]).slice(0, 20))}
+                disabled={(r?.topIps ?? []).every((i) => greynoise[i.ip])} />
+            )} />
+          {classificar.isError && <p className="in-muted-p">GreyNoise indisponível agora. Tente de novo mais tarde.</p>}
           <TopList titulo="Serviços visados" itens={indicadores(r, 'servico')} onOpen={abrirIndicador('servico')} selId={indSel.selId} />
           <TopList titulo="Usuários tentados" itens={indicadores(r, 'usuario')} onOpen={abrirIndicador('usuario')} selId={indSel.selId} />
           {escopo !== 'interno' && <TopList titulo="Países de origem" itens={indicadores(r, 'pais')} onOpen={abrirIndicador('pais')} selId={indSel.selId} />}

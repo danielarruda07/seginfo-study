@@ -22,7 +22,7 @@ import { mcpFaltando } from './mcp.js';
  * As rotas herdam a autenticação do Cloudflare Access (registradas dentro das rotas de estado).
  */
 
-export const IDS_INTEGRACAO = ['proxmox', 'fortigate', 'catalyst', 'wazuh', 'wazuh-indexador', 'zabbix', 'coolify', 'spiderfoot', 'mcp', 'claude'] as const;
+export const IDS_INTEGRACAO = ['proxmox', 'fortigate', 'catalyst', 'wazuh', 'wazuh-indexador', 'zabbix', 'coolify', 'spiderfoot', 'osint', 'alertas-exposicao', 'mcp', 'claude'] as const;
 export type IdIntegracao = (typeof IDS_INTEGRACAO)[number];
 
 export interface Integracao {
@@ -140,6 +140,30 @@ export function listarIntegracoes(): Integracao[] {
       tls: e.SPIDERFOOT_URL ? (e.SPIDERFOOT_URL.startsWith('https:') ? tlsDe(e.SPIDERFOOT_TLS_INSEGURO, undefined) : 'HTTP na rede interna') : null,
       faltando: spiderfootFaltando(),
       variaveis: ['SPIDERFOOT_URL', 'SPIDERFOOT_USERNAME', 'SPIDERFOOT_PASSWORD', 'SPIDERFOOT_TLS_INSEGURO'],
+    },
+    {
+      // chaves opcionais: cada uma liga uma fonte da Minha exposição; sem nenhuma, as fontes gratuitas continuam
+      id: 'osint', nome: 'Fontes OSINT (chaves opcionais)', uso: 'Minha exposição: Shodan, Censys, AbuseIPDB, GreyNoise, VirusTotal, urlscan, GitHub e HIBP.',
+      configurada: true,
+      endereco: null,
+      identidade: (() => {
+        const ligadas = ([['Shodan', ['SHODAN_API_KEY']], ['Censys', ['CENSYS_API_TOKEN']], ['Censys v2', ['CENSYS_API_ID', 'CENSYS_API_SECRET']],
+          ['AbuseIPDB', ['ABUSEIPDB_API_KEY']], ['GreyNoise', ['GREYNOISE_API_KEY']], ['VirusTotal', ['VT_API_KEY']], ['urlscan', ['URLSCAN_API_KEY']],
+          ['GitHub', ['GITHUB_TOKEN']], ['HIBP', ['HIBP_API_KEY']]] as const).filter(([, vs]) => vs.every((v) => e[v])).map(([n]) => n);
+        return ligadas.length ? `com chave: ${ligadas.join(', ')}` : 'só fontes gratuitas (nenhuma chave)';
+      })(),
+      tls: null,
+      faltando: [],
+      variaveis: ['SHODAN_API_KEY', 'CENSYS_API_TOKEN', 'CENSYS_API_ID', 'CENSYS_API_SECRET', 'ABUSEIPDB_API_KEY', 'GREYNOISE_API_KEY', 'VT_API_KEY', 'URLSCAN_API_KEY', 'GITHUB_TOKEN', 'HIBP_API_KEY'],
+    },
+    {
+      id: 'alertas-exposicao', nome: 'Alertas da Minha exposição', uso: 'Envia as mudanças para o Wazuh (syslog) e as graves para o Telegram.',
+      configurada: !!e.WAZUH_SYSLOG_HOST || !!(e.TELEGRAM_BOT_TOKEN && e.TELEGRAM_CHAT_ID),
+      endereco: e.WAZUH_SYSLOG_HOST ? `${e.WAZUH_SYSLOG_HOST}:${e.WAZUH_SYSLOG_PORT || 514}/udp` : null,
+      identidade: [e.WAZUH_SYSLOG_HOST ? 'Wazuh (syslog)' : null, e.TELEGRAM_BOT_TOKEN && e.TELEGRAM_CHAT_ID ? `Telegram (a partir de ${e.EXPOSICAO_TELEGRAM_MIN || 'alta'})` : null].filter(Boolean).join(' + ') || null,
+      tls: null,
+      faltando: !e.WAZUH_SYSLOG_HOST && !(e.TELEGRAM_BOT_TOKEN && e.TELEGRAM_CHAT_ID) ? ['WAZUH_SYSLOG_HOST', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID'] : [],
+      variaveis: ['WAZUH_SYSLOG_HOST', 'WAZUH_SYSLOG_PORT', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID', 'EXPOSICAO_TELEGRAM_MIN'],
     },
     {
       id: 'mcp', nome: 'Servidor MCP (Claude Code de qualquer computador)', uso: 'Oferece as mesmas ferramentas dos agentes em /api/mcp.',

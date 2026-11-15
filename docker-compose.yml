@@ -111,6 +111,22 @@ services:
       - SPIDERFOOT_PASSWORD=${SPIDERFOOT_PASSWORD:-}
       - SPIDERFOOT_TLS_INSEGURO=${SPIDERFOOT_TLS_INSEGURO:-false}
       - EXPOSICAO_INTERVALO_HORAS=${EXPOSICAO_INTERVALO_HORAS:-24}
+      # Minha exposição: chaves opcionais das fontes extras e destinos dos alertas
+      - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY:-}
+      - GREYNOISE_API_KEY=${GREYNOISE_API_KEY:-}
+      - SHODAN_API_KEY=${SHODAN_API_KEY:-}
+      - CENSYS_API_ID=${CENSYS_API_ID:-}
+      - CENSYS_API_SECRET=${CENSYS_API_SECRET:-}
+      - CENSYS_API_TOKEN=${CENSYS_API_TOKEN:-}
+      - HIBP_API_KEY=${HIBP_API_KEY:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - URLSCAN_API_KEY=${URLSCAN_API_KEY:-}
+      - VT_API_KEY=${VT_API_KEY:-}
+      - WAZUH_SYSLOG_HOST=${WAZUH_SYSLOG_HOST:-}
+      - WAZUH_SYSLOG_PORT=${WAZUH_SYSLOG_PORT:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - EXPOSICAO_TELEGRAM_MIN=${EXPOSICAO_TELEGRAM_MIN:-}
       # MCP do homelab (/api/mcp): token próprio + aplicação Access só do caminho, com Service Token.
       # MCP_DESTRUTIVAS=bloquear desliga pelo MCP as ações destrutivas (apagar, reverter, desligar à força).
       - MCP_TOKEN=${MCP_TOKEN:-}

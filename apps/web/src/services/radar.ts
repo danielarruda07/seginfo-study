@@ -68,3 +68,24 @@ export const getRadarEventos = (f: RadarEventosFiltro) =>
 /** Todos os eventos de uma sessão do honeypot (mesmo detalhes.sessao), em ordem cronológica. */
 export const getRadarSessao = (id: string, ip: string) =>
   http.get<{ sessao: string; truncado: boolean; items: RadarEvento[] }>('/radar/sessao', { params: { id, ip, ambiente: getAmbiente() } }).then((r) => r.data);
+
+/** GreyNoise: o IP é ruído de fundo da internet ou algo que só aparece aqui? */
+export type EstadoGreynoise = 'ruido' | 'malicioso' | 'benigno' | 'nao-visto' | 'limite' | 'erro';
+export interface ClassificacaoGreynoise {
+  ip: string;
+  estado: EstadoGreynoise;
+  noise: boolean;
+  riot: boolean;
+  classification: string | null;
+  name: string | null;
+  link: string;
+  last_seen: string | null;
+  mensagem?: string;
+}
+
+export const getGreynoise = (ip: string) =>
+  http.get<ClassificacaoGreynoise>(`/radar/greynoise/${encodeURIComponent(ip)}`, { timeout: 30_000 }).then((r) => r.data);
+
+/** Até 20 IPs; a API consulta um por vez (cota pequena), então o prazo é maior. */
+export const classificarGreynoise = (ips: string[]) =>
+  http.post<{ itens: ClassificacaoGreynoise[]; ignorados: number }>('/radar/greynoise', { ips: ips.slice(0, 20) }, { timeout: 90_000 }).then((r) => r.data);

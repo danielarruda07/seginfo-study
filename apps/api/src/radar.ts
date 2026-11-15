@@ -4,6 +4,9 @@ import { z } from 'zod';
 import { AtaqueFonte, AmbienteFiltroSchema, type AmbienteFiltro } from '@seginfo/shared';
 import { prisma } from './db.js';
 import type { AuthedRequest } from './auth.js';
+import { isIP } from 'node:net';
+import { classificarIp, deCache, type ClassificacaoGreynoise } from './greynoise.js';
+import { ipNaoPublico } from './osint.js';
 
 /**
  * Análise dos eventos de ataque. Registrada DENTRO do plugin de rotas de estado
@@ -332,5 +335,39 @@ export async function registerRadarRoutes(app: FastifyInstance) {
       },
     });
     return { sessao: q.data.id, truncado: items.length === LIMITE_SESSAO, items };
+  });
+
+  // GreyNoise: separa o ruído de fundo da internet (scanners conhecidos) dos atacantes que só
+  // aparecem aqui. Sob demanda: a cota da API comunitária é pequena.
+  const ipValido = (ip: string) => isIP(ip) !== 0 && !ipNaoPublico(ip);
+
+  app.get('/api/radar/greynoise/:ip', async (req, reply) => {
+    const ip = String((req.params as { ip?: string }).ip ?? '').trim();
+    if (!ipValido(ip)) return reply.status(400).send({ error: 'informe um IP público' });
+    return classificarIp(ip);
+  });
+
+  const LoteGreynoise = z.object({ ips: z.array(z.string().trim().max(45)).min(1).max(20) });
+  app.post('/api/radar/greynoise', async (req, reply) => {
+    const b = LoteGreynoise.safeParse(req.body);
+    if (!b.success) return reply.status(400).send({ error: 'envie { ips: [...] } com 1 a 20 IPs' });
+    const ips = [...new Set(b.data.ips)].filter(ipValido);
+    const itens: ClassificacaoGreynoise[] = [];
+    // primeiro o que já está em cache; depois um por vez (a fila do módulo garante o intervalo)
+    const faltam: string[] = [];
+    for (const ip of ips) {
+      const c = deCache(ip);
+      if (c) itens.push(c); else faltam.push(ip);
+    }
+    for (const ip of faltam) {
+      const v = await classificarIp(ip);
+      itens.push(v);
+      if (v.estado === 'limite') {
+        // sem cota: os demais voltam como limite sem gastar chamadas
+        for (const resto of faltam.slice(faltam.indexOf(ip) + 1)) itens.push({ ...v, ip: resto, link: `https://viz.greynoise.io/ip/${encodeURIComponent(resto)}` });
+        break;
+      }
+    }
+    return { itens, ignorados: b.data.ips.length - ips.length };
   });
 }

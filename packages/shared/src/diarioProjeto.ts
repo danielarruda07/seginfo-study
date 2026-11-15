@@ -26,6 +26,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-15-exposicao-fontes',
+    data: '2026-11-15',
+    titulo: 'O que eu publiquei de propósito × o que a internet realmente vê',
+    descricao:
+      'A pergunta mais útil sobre exposição não é "o que está aberto", é "o que está aberto SEM eu ter decidido". ' +
+      'A Minha exposição passou a ler as VIPs do FortiGate e comparar com o que o Shodan enxerga: porta vista e não ' +
+      'publicada vira alerta alto. Em volta disso entraram fontes plugáveis (cada uma um arquivo com coleta, comparação ' +
+      'e exibição genérica): listas de bloqueio, AbuseIPDB e GreyNoise para a reputação do IP do honeypot, TLS, ' +
+      'cabeçalhos e Observatory para o site, domínios parecidos registrados, URLs antigas do Wayback, urlscan, ' +
+      'VirusTotal, vazamentos de e-mail e código no GitHub. As mudanças chegam ao Wazuh por syslog com regras próprias ' +
+      'e as graves ao Telegram; no Radar, o GreyNoise separa robô que varre a internet inteira de ataque direcionado.',
+    categoria: 'funcionalidade',
+    tags: ['osint', 'exposicao', 'wazuh', 'fortigate', 'greynoise', 'threat-intel'],
+  },
+  {
     id: 'proj-2026-11-15-minha-exposicao',
     data: '2026-11-15',
     titulo: 'Minha exposição: a fotografia vira filme',

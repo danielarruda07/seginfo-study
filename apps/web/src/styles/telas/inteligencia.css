@@ -118,3 +118,8 @@ button.in-top__item:focus-visible { outline: 2px solid var(--alvoar-teal-600); o
 .in-quebra { overflow-wrap: anywhere; word-break: break-all; }
 .in-lista-simples { display: grid; gap: .35rem; margin: 0 0 .5rem; padding: 0; list-style: none; font-size: .875rem; }
 .in-atualizado { margin: .35rem 0 0; color: var(--text-color-secondary); font-size: .75rem; text-align: right; }
+
+/* GreyNoise no Radar */
+.in-top__cabeca { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+.in-top__cabeca .iv-section-label { margin: 0; }
+.in-gn { display: inline-flex; align-self: flex-start; }

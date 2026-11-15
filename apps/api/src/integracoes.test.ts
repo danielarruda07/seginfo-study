@@ -35,7 +35,9 @@ describe('listarIntegracoes', () => {
   it('aponta o que falta quando nada está configurado', () => {
     for (const k of ['PROXMOX_URL', 'PROXMOX_TOKEN', 'FORTIGATE_URL', 'FORTIGATE_TOKEN', 'CATALYST_HOST', 'CATALYST_USER', 'CATALYST_PASSWORD', 'CATALYST_PRIVATE_KEY_B64', 'ANTHROPIC_API_KEY']) vi.stubEnv(k, '');
     const lista = listarIntegracoes();
-    expect(lista.every((i) => !i.configurada)).toBe(true);
+    // 'osint' fica pronta sempre: as fontes gratuitas não precisam de chave
+    expect(lista.filter((i) => i.id !== 'osint').every((i) => !i.configurada)).toBe(true);
+    expect(lista.find((i) => i.id === 'osint')?.configurada).toBe(true);
     expect(lista.find((i) => i.id === 'proxmox')?.faltando).toEqual(['PROXMOX_URL', 'PROXMOX_TOKEN']);
   });
 });
