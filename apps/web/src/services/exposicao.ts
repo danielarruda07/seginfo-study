@@ -2,13 +2,24 @@ import { http } from './http';
 
 /** Minha exposição: o que a internet vê dos domínios e IPs próprios (OSINT passivo, só pela API). */
 
-export type TipoAlvo = 'dominio' | 'ip' | 'ip-publico';
+export type TipoAlvo = 'dominio' | 'ip' | 'ip-publico' | 'email';
 export type Severidade = 'alta' | 'media' | 'info';
 
 export interface Mudanca {
   tipo: string;
   severidade: Severidade;
   texto: string;
+  fonte?: string;
+}
+
+/** Resultado genérico de uma fonte extra: a tela só desenha destaques e seções. */
+export type Tom = 'alta' | 'media' | 'info' | 'ok';
+export interface ResultadoFonte {
+  fonte: string;
+  nome: string;
+  observacao?: string;
+  destaques: { rotulo: string; valor: string | number; tom?: Tom }[];
+  secoes: { titulo: string; itens: { texto: string; tom?: Tom; link?: string; detalhe?: string }[]; vazio?: string }[];
 }
 
 export interface NomeCertificado { nome: string; primeiro: string; ultimo: string; certificados: number; curinga: boolean }
@@ -39,7 +50,9 @@ export interface ResultadoExposicao {
     avisos: string[];
   } | null;
   ip: { origem: string; resultados: ResultadoIp[] } | null;
-  erros: { fonte: 'certificados' | 'dns' | 'ip'; mensagem: string }[];
+  erros: { fonte: string; mensagem: string }[];
+  extras?: ResultadoFonte[];
+  desligadas?: { fonte: string; nome: string; faltando: string[] }[];
 }
 
 export interface ResumoExposicao { portas: number; subdominios: number | null; cves: number; avisosDns: number | null; ips: string[] }
@@ -95,4 +108,4 @@ export const ordenarMudancas = <T extends { severidade: Severidade; criadoEm: st
   [...xs].sort((a, b) => PESO[a.severidade] - PESO[b.severidade] || b.criadoEm.localeCompare(a.criadoEm));
 
 /** Diferencia "domínio" de "IP" pelo que o usuário digitou (a API valida de novo). */
-export const tipoDoTexto = (s: string): TipoAlvo => (/^[\d.]+$|:/.test(s.trim()) ? 'ip' : 'dominio');
+export const tipoDoTexto = (s: string): TipoAlvo => (s.includes('@') ? 'email' : /^[\d.]+$|:/.test(s.trim()) ? 'ip' : 'dominio');

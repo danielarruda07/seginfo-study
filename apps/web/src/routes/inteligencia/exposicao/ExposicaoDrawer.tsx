@@ -4,8 +4,9 @@ import { DetailDrawer } from '@/components/ui/DetailDrawer';
 import { Pill } from '@/components/InfraKit';
 import { historicoAlvo, nomeDoAlvo, type AlvoExposicao } from '@/services/exposicao';
 import { quando, SEVERIDADE } from './comum';
+import { FontesExtras } from './FontesExtras';
 
-const FONTE = { certificados: 'Certificados (crt.sh)', dns: 'DNS público', ip: 'Shodan InternetDB' } as const;
+const FONTE: Record<string, string> = { certificados: 'Certificados (crt.sh)', dns: 'DNS público', ip: 'Shodan InternetDB' };
 
 /** Ficha completa de um alvo: portas e CVEs por IP, subdomínios, DNS, falhas e histórico. */
 export function ExposicaoDrawer({ alvo, varrendo, onVarrer, onClose }: {
@@ -26,7 +27,7 @@ export function ExposicaoDrawer({ alvo, varrendo, onVarrer, onClose }: {
             <section>
               <h3 className="iv-section-label">Fontes sem resposta</h3>
               <ul className="ex-lista">
-                {r.erros.map((e) => <li key={e.fonte}><strong>{FONTE[e.fonte]}:</strong> {e.mensagem}</li>)}
+                {r.erros.map((e) => <li key={e.fonte}><strong>{FONTE[e.fonte] ?? e.fonte}:</strong> {e.mensagem}</li>)}
               </ul>
             </section>
           )}
@@ -111,6 +112,8 @@ export function ExposicaoDrawer({ alvo, varrendo, onVarrer, onClose }: {
               </dl>
             </section>
           )}
+
+          <FontesExtras resultado={r} />
         </>
       )}
 

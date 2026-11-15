@@ -5,6 +5,11 @@ import { z } from 'zod';
 import type { AuthedRequest } from './auth.js';
 import { prisma } from './db.js';
 import { ipNaoPublico, normalizarDominio, osintCertificados, osintDns, osintExposicaoIp } from './osint.js';
+import { notificarMudancas } from './exposicaoAlertas.js';
+import { FONTES, fontePorId } from './exposicaoFontes/index.js';
+import type { BaseColetada, ContextoFonte, Mudanca, ResultadoFonte, Severidade, TipoAlvo } from './exposicaoFontes/tipos.js';
+
+export type { Mudanca, Severidade, TipoAlvo };
 
 /**
  * Minha exposição: acompanha, ao longo do tempo, o que a internet vê dos domínios e IPs do
@@ -14,16 +19,6 @@ import { ipNaoPublico, normalizarDominio, osintCertificados, osintDns, osintExpo
  * stdout ({"evento":"seginfo.exposicao.mudanca",...}) para o agente Wazuh do host poder coletar.
  */
 
-export type TipoAlvo = 'dominio' | 'ip' | 'ip-publico';
-export type Severidade = 'alta' | 'media' | 'info';
-
-export interface Mudanca {
-  tipo:
-    | 'subdominio-novo' | 'subdominio-sumiu' | 'porta-aberta' | 'porta-fechada' | 'cve-nova' | 'cve-resolvida'
-    | 'aviso-dns-novo' | 'aviso-dns-resolvido' | 'dns-registro' | 'ip-publico';
-  severidade: Severidade;
-  texto: string;
-}
 
 type Certificados = Awaited<ReturnType<typeof osintCertificados>>;
 type Dns = Awaited<ReturnType<typeof osintDns>>;
@@ -36,7 +31,12 @@ export interface ResultadoExposicao {
   certificados: Certificados | null;
   dns: Dns | null;
   ip: ExposicaoIp | null;
-  erros: { fonte: 'certificados' | 'dns' | 'ip'; mensagem: string }[];
+  /** fontes básicas e extras que falharam (a varredura segue com as outras) */
+  erros: { fonte: string; mensagem: string }[];
+  /** fontes extras (exposicaoFontes/) que responderam */
+  extras?: ResultadoFonte[];
+  /** fontes extras desligadas por falta de chave opcional */
+  desligadas?: { fonte: string; nome: string; faltando: string[] }[];
 }
 
 export interface ResumoExposicao {
@@ -134,7 +134,28 @@ export function compararExposicao(anterior: ResultadoExposicao | null, atual: Re
     }
   }
 
+  // fontes extras: cada uma compara o seu próprio resultado, só se respondeu nas duas varreduras
+  const extrasAntes = new Map((anterior.extras ?? []).map((e) => [e.fonte, e]));
+  const ctx = contextoDe(atual);
+  for (const e of atual.extras ?? []) {
+    const antes = extrasAntes.get(e.fonte);
+    const fonte = fontePorId(e.fonte);
+    if (!antes || !fonte?.comparar) continue;
+    try { out.push(...fonte.comparar(antes, e, ctx).map((m) => ({ ...m, fonte: e.fonte }))); }
+    catch { /* uma fonte com defeito não derruba a comparação das outras */ }
+  }
+
   return out.sort((x, y) => ORDEM[x.severidade] - ORDEM[y.severidade]);
+}
+
+/** O que as fontes básicas descobriram, no formato que as fontes extras recebem. */
+export function contextoDe(r: ResultadoExposicao): ContextoFonte {
+  const base: BaseColetada = { ips: [], portasPorIp: {} };
+  for (const x of resultadosIp(r)) {
+    base.ips.push(x.ip);
+    base.portasPorIp[x.ip] = x.portas ?? [];
+  }
+  return { alvo: { tipo: r.tipo, valor: r.valor }, base };
 }
 
 // ---------- varredura ----------
@@ -148,11 +169,34 @@ export async function varrerAlvo(alvo: { tipo: TipoAlvo; valor: string }): Promi
     if (cert.status === 'fulfilled') r.certificados = cert.value; else r.erros.push({ fonte: 'certificados', mensagem: mensagemDe(cert.reason) });
     if (dns.status === 'fulfilled') r.dns = dns.value; else r.erros.push({ fonte: 'dns', mensagem: mensagemDe(dns.reason) });
     if (ip.status === 'fulfilled') r.ip = ip.value; else r.erros.push({ fonte: 'ip', mensagem: mensagemDe(ip.reason) });
-  } else {
+  } else if (alvo.tipo !== 'email') {
     try { r.ip = await osintExposicaoIp(alvo.tipo === 'ip' ? alvo.valor : undefined); }
     catch (e) { r.erros.push({ fonte: 'ip', mensagem: mensagemDe(e) }); }
   }
+  await coletarExtras(r);
   return r;
+}
+
+const PRAZO_FONTE_MS = 90_000;
+
+async function coletarExtras(r: ResultadoExposicao) {
+  const ctx = contextoDe(r);
+  const aplicaveis = FONTES.filter((f) => f.aplicaA.includes(r.tipo));
+  r.extras = [];
+  r.desligadas = [];
+  const ativas = aplicaveis.filter((f) => {
+    const faltando = f.faltando?.() ?? [];
+    if (faltando.length) r.desligadas!.push({ fonte: f.id, nome: f.nome, faltando });
+    return faltando.length === 0;
+  });
+  const resultados = await Promise.allSettled(ativas.map((f) => Promise.race([
+    f.coletar(ctx),
+    new Promise<never>((_, nao) => setTimeout(() => nao(new Error('não respondeu a tempo')), PRAZO_FONTE_MS).unref()),
+  ])));
+  resultados.forEach((res, i) => {
+    if (res.status === 'fulfilled') { if (res.value) r.extras!.push(res.value); }
+    else r.erros.push({ fonte: ativas[i].nome, mensagem: mensagemDe(res.reason) });
+  });
 }
 
 const rotuloDoAlvo = (a: { tipo: string; valor: string }) => (a.tipo === 'ip-publico' ? 'IP público do servidor' : a.valor);
@@ -162,7 +206,7 @@ export async function executarVarredura(alvo: { id: string; usuarioId: string; t
   const anterior = await prisma.exposicaoVarredura.findFirst({ where: { alvoId: alvo.id }, orderBy: { criadoEm: 'desc' } });
   const resultado = await varrerAlvo({ tipo: alvo.tipo as TipoAlvo, valor: alvo.valor });
   const mudancas = compararExposicao((anterior?.resultado as ResultadoExposicao | undefined) ?? null, resultado);
-  const todasFalharam = !resultado.certificados && !resultado.dns && !resultado.ip;
+  const todasFalharam = !resultado.certificados && !resultado.dns && !resultado.ip && !resultado.extras?.length;
   const salvo = await prisma.exposicaoVarredura.create({
     data: {
       alvoId: alvo.id, usuarioId: alvo.usuarioId,
@@ -171,10 +215,9 @@ export async function executarVarredura(alvo: { id: string; usuarioId: string; t
       erro: todasFalharam ? resultado.erros.map((e) => `${e.fonte}: ${e.mensagem}`).join(' | ').slice(0, 500) : null,
     },
   });
-  const quando = salvo.criadoEm.toISOString();
-  for (const m of mudancas) {
-    process.stdout.write(`${JSON.stringify({ evento: 'seginfo.exposicao.mudanca', quando, alvo: rotuloDoAlvo(alvo), tipoAlvo: alvo.tipo, ...m })}\n`);
-  }
+  try {
+    await notificarMudancas({ alvo: rotuloDoAlvo(alvo), tipoAlvo: alvo.tipo, quando: salvo.criadoEm.toISOString(), mudancas });
+  } catch { /* aviso é melhor-esforço: a varredura já foi gravada */ }
   return salvo;
 }
 
@@ -230,7 +273,7 @@ const ESPERA_ENTRE_VARREDURAS_MS = 2 * 60_000;
 const emVarredura = new Set<string>();
 
 const NovoAlvo = z.object({
-  tipo: z.enum(['dominio', 'ip', 'ip-publico']),
+  tipo: z.enum(['dominio', 'ip', 'ip-publico', 'email']),
   valor: z.string().trim().max(253).optional(),
   rotulo: z.string().trim().max(60).optional(),
 });
@@ -238,6 +281,12 @@ const NovoAlvo = z.object({
 /** Valida e normaliza o valor do alvo; devolve a mensagem de erro quando não serve. */
 export function validarAlvo(tipo: TipoAlvo, valor = ''): { valor: string } | { erro: string } {
   if (tipo === 'ip-publico') return { valor: '' };
+  if (tipo === 'email') {
+    const e = valor.trim().toLowerCase();
+    const [local, dominio] = e.split('@');
+    return e.length <= 254 && local && /^[a-z0-9._%+-]{1,64}$/.test(local) && dominio && normalizarDominio(dominio) === dominio && e.split('@').length === 2
+      ? { valor: e } : { erro: 'E-mail inválido.' };
+  }
   if (tipo === 'dominio') {
     const d = normalizarDominio(valor);
     return d ? { valor: d } : { erro: 'Domínio inválido (ex.: exemplo.com.br).' };

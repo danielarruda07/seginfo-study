@@ -10,6 +10,7 @@ import {
   type AlvoExposicao,
 } from '@/services/exposicao';
 import { quando, SEVERIDADE } from './inteligencia/exposicao/comum';
+import { DestaquesExtras } from './inteligencia/exposicao/FontesExtras';
 import { ExposicaoDrawer } from './inteligencia/exposicao/ExposicaoDrawer';
 import '@/styles/telas/inteligencia.css';
 import '@/styles/telas/exposicao.css';
@@ -17,7 +18,7 @@ import '@/styles/telas/exposicao.css';
 const erroDe = (e: unknown, padrao: string) =>
   (e as { response?: { data?: { error?: string } } }).response?.data?.error ?? padrao;
 
-const TIPO_ROTULO = { dominio: 'Domínio', ip: 'IP', 'ip-publico': 'IP público' } as const;
+const TIPO_ROTULO = { dominio: 'Domínio', ip: 'IP', 'ip-publico': 'IP público', email: 'E-mail' } as const;
 
 export function Exposicao() {
   const qc = useQueryClient();
@@ -98,7 +99,7 @@ export function Exposicao() {
       <form className="ex-incluir iv-card" onSubmit={(e) => { e.preventDefault(); incluirTexto(); }}>
         <label htmlFor="ex-alvo" className="iv-section-label">Acompanhar</label>
         <div className="ex-incluir__linha">
-          <InputText id="ex-alvo" value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="seu domínio ou IP público (ex.: exemplo.com.br)"
+          <InputText id="ex-alvo" value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="domínio, IP público ou e-mail (ex.: exemplo.com.br)"
             maxLength={253} className="ex-incluir__campo" aria-describedby="ex-fontes" />
           <Button type="submit" label="Acompanhar" icon="pi pi-plus" disabled={!texto.trim()} loading={adicionar.isPending} />
           <Button type="button" label="Meu IP público" icon="pi pi-globe" outlined disabled={temIpPublico || adicionar.isPending}
@@ -192,11 +193,12 @@ function AlvoCard({ a, varrendo, onAbrir, onVarrer, onRemover }: {
       {u?.erro ? <p className="ex-alvo__erro"><i className="pi pi-exclamation-triangle" aria-hidden="true" /> Nenhuma fonte respondeu: {u.erro}</p>
         : falhas.length > 0 && <p className="ex-alvo__erro"><i className="pi pi-info-circle" aria-hidden="true" /> Sem resposta de: {falhas.map((f) => f.fonte).join(', ')}. O resto foi salvo.</p>}
       <dl className="ex-numeros">
-        <div><dt>Portas</dt><dd data-alerta={(r?.portas ?? 0) > 0 || undefined}>{num(r?.portas)}</dd></div>
+        {a.tipo !== 'email' && <div><dt>Portas</dt><dd data-alerta={(r?.portas ?? 0) > 0 || undefined}>{num(r?.portas)}</dd></div>}
         {a.tipo === 'dominio' && <div><dt>Subdomínios</dt><dd>{num(r?.subdominios)}</dd></div>}
-        <div><dt>CVEs</dt><dd data-alerta={(r?.cves ?? 0) > 0 || undefined}>{num(r?.cves)}</dd></div>
+        {a.tipo !== 'email' && <div><dt>CVEs</dt><dd data-alerta={(r?.cves ?? 0) > 0 || undefined}>{num(r?.cves)}</dd></div>}
         {a.tipo === 'dominio' && <div><dt>Avisos DNS</dt><dd data-alerta={(r?.avisosDns ?? 0) > 0 || undefined}>{num(r?.avisosDns)}</dd></div>}
       </dl>
+      <DestaquesExtras resultado={u?.resultado} />
       <div className="ex-alvo__acoes">
         <Button label="Detalhes" icon="pi pi-list" size="small" text onClick={onAbrir} disabled={!u} />
         <Button label="Varrer agora" icon="pi pi-refresh" size="small" outlined loading={varrendo} onClick={onVarrer} />

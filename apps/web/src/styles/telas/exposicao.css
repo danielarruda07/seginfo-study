@@ -44,3 +44,9 @@
 .ex-historico > li { display: flex; flex-wrap: wrap; gap: .25rem .6rem; }
 .ex-historico__quando { font-weight: 600; font-variant-numeric: tabular-nums; }
 .ex-historico__mudancas { list-style: none; margin: 0; padding: 0; flex-basis: 100%; display: flex; flex-direction: column; gap: .2rem; }
+
+/* fontes extras (genéricas) */
+.ex-destaques { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .3rem; }
+.ex-fonte-secao { margin-top: .5rem; }
+.ex-fonte-secao__titulo { margin: 0; font-size: .8rem; font-weight: 600; color: var(--text-color-secondary); }
+.ex-lista--fonte li[data-tom="alta"] { color: var(--tone-serious); }
