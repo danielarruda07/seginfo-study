@@ -23,6 +23,30 @@ export const proxmoxFaltando = (): string[] => VARIAVEIS.filter((k) => !process.
 
 export const proxmoxGet = (caminho: string): Promise<unknown> => pedir('GET', caminho);
 
+/** POST com corpo já codificado (o exec do agente QEMU repete o campo `command`, o que um objeto não expressa). */
+export const proxmoxPostBruto = (caminho: string, corpo: string): Promise<unknown> => pedir('POST', caminho, corpo);
+
+/**
+ * Roda um programa dentro de uma VM pelo agente QEMU (qemu-guest-agent) e espera terminar.
+ * Não usa rede nem senha da VM: passa pelo Proxmox. Devolve código de saída e saída (stdout+stderr).
+ */
+export async function proxmoxExecutarNoConvidado(
+  no: string, vmid: number, argv: string[], limiteSegundos = 60,
+): Promise<{ codigo: number | null; saida: string; terminou: boolean }> {
+  const corpo = argv.map((a) => `command=${encodeURIComponent(a)}`).join('&');
+  const r = (await proxmoxPostBruto(`/nodes/${no}/qemu/${vmid}/agent/exec`, corpo)) as { pid?: number };
+  if (typeof r?.pid !== 'number') throw new Error('O agente QEMU não devolveu um processo. Confira se o qemu-guest-agent está instalado e rodando na VM.');
+  const fim = Date.now() + limiteSegundos * 1000;
+  while (Date.now() < fim) {
+    await new Promise((res) => setTimeout(res, 1500));
+    const st = (await pedir('GET', `/nodes/${no}/qemu/${vmid}/agent/exec-status?pid=${r.pid}`)) as {
+      exited?: number | boolean; exitcode?: number; 'out-data'?: string; 'err-data'?: string;
+    };
+    if (st?.exited) return { codigo: st.exitcode ?? null, saida: `${st['out-data'] ?? ''}${st['err-data'] ?? ''}`, terminou: true };
+  }
+  return { codigo: null, saida: '', terminou: false };
+}
+
 /**
  * Altera algo no Proxmox e espera a tarefa terminar. Só é chamada pelas ferramentas de escrita,
  * e essas só rodam depois da aprovação na tela (ver agenteRuntime.ts).

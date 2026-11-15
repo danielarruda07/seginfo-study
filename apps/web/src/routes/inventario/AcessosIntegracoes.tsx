@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Sidebar } from 'primereact/sidebar';
 import { Button } from 'primereact/button';
 import { Pill } from '@/components/InfraKit';
-import { listIntegracoes, type Integracao } from '@/services/integracoes';
+import { listIntegracoes, testarIntegracao, type Integracao } from '@/services/integracoes';
 import * as vault from '@/services/vault';
 import { getLabVars } from '@/services/range';
 import { LAB_VARS } from '@/data/rangeLab';
@@ -63,6 +63,8 @@ function useAcessos(ativosComEndereco: number) {
 
 function CartaoIntegracao({ i }: { i: Integracao }) {
   const semVerificacao = i.tls?.startsWith('Sem verificação');
+  const teste = useMutation({ mutationFn: () => testarIntegracao(i.id) });
+  const testavel = i.id !== 'claude' && i.id !== 'mcp';
   return (
     <article className="ac-integ" data-pendente={!i.configurada || undefined}>
       <header className="ac-integ__topo">
@@ -92,6 +94,20 @@ function CartaoIntegracao({ i }: { i: Integracao }) {
           ))}
         </dd>
       </dl>
+      {testavel && (
+        <div className="ac-integ__teste">
+          <Button label={teste.isPending ? 'Testando…' : 'Testar conexão'} icon="pi pi-bolt" size="small" outlined
+            disabled={!i.configurada || teste.isPending} onClick={() => teste.mutate()}
+            tooltip={!i.configurada ? 'Configure as variáveis que faltam antes' : 'Faz uma consulta só de leitura no sistema'} tooltipOptions={{ showOnDisabled: true }} />
+          {teste.data && (
+            <p className={`ac-integ__resultado ${teste.data.ok ? 'tone-ok' : 'tone-danger'}`} role="status">
+              <i className={`pi ${teste.data.ok ? 'pi-check-circle' : 'pi-times-circle'}`} aria-hidden="true" />
+              {teste.data.detalhe} <small className="iv-muted">({teste.data.ms} ms)</small>
+            </p>
+          )}
+          {teste.isError && <p className="ac-integ__resultado tone-danger" role="status">A API não respondeu ao teste.</p>}
+        </div>
+      )}
     </article>
   );
 }

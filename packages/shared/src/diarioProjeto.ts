@@ -26,6 +26,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-15-operador-homelab-mcp',
+    data: '2026-11-15',
+    titulo: 'Operar o homelab de qualquer lugar, sem aprovar cada clique',
+    descricao:
+      'A central de operações ganhou autonomia com limite claro. Ações leves e reversíveis, como ligar uma VM, criar ' +
+      'snapshot ou criar uma VLAN, passaram a rodar direto; apagar, reverter, desligar à força e comando livre dentro ' +
+      'de uma VM continuam pedindo um clique. A decisão de onde traçar essa linha veio de um detalhe: o login com ' +
+      'código no e-mail protege quem entra no app, mas os honeypots e os alertas trazem texto escrito por atacantes, ' +
+      'e é isso que chega ao modelo. Também entraram consultas dentro das VMs pelo agente QEMU, sem senha nem rede, ' +
+      'alertas do Wazuh, o Coolify, um botão que testa cada conexão de verdade e um servidor MCP que leva as mesmas ' +
+      'ferramentas ao Claude Code em qualquer computador.',
+    categoria: 'funcionalidade',
+    tags: ['agentes', 'mcp', 'homelab', 'automacao', 'seguranca'],
+  },
+  {
     id: 'proj-2026-11-15-linkedin-midia',
     data: '2026-11-15',
     titulo: 'Imagem, PDF e um "desfazer" de verdade na publicação automática',

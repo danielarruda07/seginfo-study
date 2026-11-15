@@ -7,10 +7,11 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
+import { SelectButton } from 'primereact/selectbutton';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import {
-  CANAIS_AGENTE, CANAIS_ENTRADA_DE_TERCEIROS, especificacaoMarkdown, revisarAgente,
+  AUTONOMIAS, CANAIS_AGENTE, CANAIS_ENTRADA_DE_TERCEIROS, especificacaoMarkdown, revisarAgente, ROTULO_AUTONOMIA,
   type AgenteConfig, type AgenteFerramenta, type AgenteStatus, type CanalAgente,
 } from '@seginfo/shared';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -356,6 +357,10 @@ export function AgentEditor() {
           <div className="iv-col" style={{ gap: '1rem' }}>
             <Campo rotulo="Decisões que exigem um humano" dica="Autonomia precisa de limites. Liste o que nunca acontece sem aprovação.">
               <InputTextarea rows={4} style={area} value={cfg.supervisao.decisoesCriticas} onChange={(e) => secao('supervisao', { decisoesCriticas: e.target.value })} />
+            </Campo>
+            <Campo rotulo="Autonomia nas ações de escrita" dica="Quem decide o que é leve é o servidor, pelos parâmetros de cada ação. Apagar, reverter snapshot, desligar à força, ativar policy e comandos livres dentro das VMs sempre pedem aprovação.">
+              <SelectButton value={cfg.supervisao.autonomia} options={AUTONOMIAS.map((v) => ({ label: ROTULO_AUTONOMIA[v], value: v }))}
+                onChange={(e) => e.value && secao('supervisao', { autonomia: e.value })} aria-label="Autonomia nas ações de escrita" />
             </Campo>
             <label className="iv-row" style={{ gap: '.6rem' }}>
               <Checkbox checked={cfg.supervisao.registroAuditoria} onChange={(e) => secao('supervisao', { registroAuditoria: !!e.checked })} />

@@ -86,9 +86,33 @@ services:
       - CATALYST_USER=${CATALYST_USER}
       - CATALYST_PASSWORD=${CATALYST_PASSWORD}
       - CATALYST_PRIVATE_KEY_B64=${CATALYST_PRIVATE_KEY_B64}
+      # senha de "enable" (se o usuário não entra direto em modo privilegiado) e a impressão digital
+      # SHA256 da chave SSH do switch (o "Testar conexão" mostra o valor a fixar)
+      - CATALYST_ENABLE_PASSWORD=${CATALYST_ENABLE_PASSWORD:-}
+      - CATALYST_HOST_KEY_SHA256=${CATALYST_HOST_KEY_SHA256:-}
+      # Wazuh: indexador (alertas, porta 9200). Usuário com leitura em wazuh-alerts-*.
+      - WAZUH_INDEXER_URL=${WAZUH_INDEXER_URL:-}
+      - WAZUH_INDEXER_USERNAME=${WAZUH_INDEXER_USERNAME:-}
+      - WAZUH_INDEXER_PASSWORD=${WAZUH_INDEXER_PASSWORD:-}
+      - WAZUH_INDEXER_CA_B64=${WAZUH_INDEXER_CA_B64:-}
+      - WAZUH_INDEXER_TLS_INSEGURO=${WAZUH_INDEXER_TLS_INSEGURO:-false}
+      # Coolify: listar, reiniciar e fazer deploy pelos agentes. URL vista de dentro do container.
+      - COOLIFY_URL=${COOLIFY_URL:-}
+      - COOLIFY_API_TOKEN=${COOLIFY_API_TOKEN:-}
+      - COOLIFY_TLS_INSEGURO=${COOLIFY_TLS_INSEGURO:-false}
+      # MCP do homelab (/api/mcp): token próprio + aplicação Access só do caminho, com Service Token.
+      # MCP_DESTRUTIVAS=bloquear desliga pelo MCP as ações destrutivas (apagar, reverter, desligar à força).
+      - MCP_TOKEN=${MCP_TOKEN:-}
+      - MCP_OWNER_EMAIL=${MCP_OWNER_EMAIL:-}
+      - CF_ACCESS_MCP_AUD=${CF_ACCESS_MCP_AUD:-}
+      - CF_ACCESS_MCP_CLIENT_ID=${CF_ACCESS_MCP_CLIENT_ID:-}
+      - MCP_DESTRUTIVAS=${MCP_DESTRUTIVAS:-permitir}
       # Agents: controle de custo diário (docs/AGENTS.md). Opcional; sem definir, usa os padrões (60 e 30).
       - AGENTES_LIMITE_DIARIO_EXECUCOES=${AGENTES_LIMITE_DIARIO_EXECUCOES:-60}
       - AGENTES_LIMITE_DIARIO_ESCRITAS=${AGENTES_LIMITE_DIARIO_ESCRITAS:-30}
+      # chamadas ao modelo e tokens de saída por pedido (tarefas que cruzam vários sistemas)
+      - AGENTES_LIMITE_VOLTAS=${AGENTES_LIMITE_VOLTAS:-24}
+      - AGENTES_LIMITE_TOKENS_SAIDA=${AGENTES_LIMITE_TOKENS_SAIDA:-100000}
     expose:
       - "3001"
     # `default`: rede privada do compose (web -> api).

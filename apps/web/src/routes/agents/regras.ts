@@ -32,6 +32,7 @@ export const DECISAO_META: Record<AcaoAuditoria['decisao'], Meta> = {
   automatica: { rotulo: 'Leitura (automática)', tone: 'muted', icon: 'pi-eye' },
   aprovada: { rotulo: 'Escrita aprovada', tone: 'info', icon: 'pi-check' },
   negada: { rotulo: 'Escrita negada', tone: 'muted', icon: 'pi-ban' },
+  autonoma: { rotulo: 'Escrita leve (autônoma)', tone: 'info', icon: 'pi-bolt' },
 };
 
 export const CANAL_LABEL: Record<CanalAgente, string> = {

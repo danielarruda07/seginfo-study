@@ -24,6 +24,12 @@ export function catalystFaltando(): string[] {
   return base;
 }
 
+/**
+ * Impressão digital (SHA256, base64 sem "=") da chave do switch na última conexão. O teste de
+ * conexão mostra este valor para você fixar em CATALYST_HOST_KEY_SHA256.
+ */
+export let ultimaImpressaoDigital: string | null = null;
+
 /** Marcador de fim de saída: um prompt IOS termina em #, >, ou (config...)# . */
 const PROMPT_RE = /[\r\n][\w.-]+[>#]\s*$|[\r\n][\w.-]+\([\w-]*\)#\s*$/;
 
@@ -59,7 +65,10 @@ export function catalystExecutar(comandos: string[]): Promise<string> {
       conn.shell({ term: 'vt100' }, (err, stream) => {
         if (err) { clearTimeout(timeoutGeral); conn.end(); return reject(new Error(`Falha ao abrir o shell SSH: ${err.message}`)); }
 
-        let fila = [...comandos];
+        // Sem paginação ("--More--"), e entra no modo privilegiado se houver senha de enable.
+        const enable = process.env.CATALYST_ENABLE_PASSWORD;
+        const fila = [...(enable ? ['enable'] : []), 'terminal length 0', ...comandos];
+        let senhaEnviada = false;
         const enviarProximo = () => {
           const cmd = fila.shift();
           if (cmd === undefined) { clearTimeout(timeoutGeral); stream.end('exit\n'); return; }
@@ -68,6 +77,11 @@ export function catalystExecutar(comandos: string[]): Promise<string> {
 
         stream.on('data', (chunk: Buffer) => {
           saida += chunk.toString('utf8');
+          if (enable && !senhaEnviada && /[\r\n]Password:\s*$/i.test(saida)) {
+            senhaEnviada = true;
+            stream.write(`${enable}\n`);
+            return;
+          }
           if (PROMPT_RE.test(saida)) enviarProximo();
         });
         stream.on('close', () => { clearTimeout(timeoutGeral); conn.end(); resolve(saida); });
@@ -79,11 +93,21 @@ export function catalystExecutar(comandos: string[]): Promise<string> {
     conn.on('error', (err: Error & { level?: string }) => {
       clearTimeout(timeoutGeral);
       if (err.level === 'client-authentication') return reject(new Error('O Catalyst recusou as credenciais SSH (usuário/senha ou chave incorretos, ou "line vty" sem "login local").'));
+      if (/verification failed/i.test(err.message)) {
+        return reject(new Error(`A chave SSH do switch (SHA256:${ultimaImpressaoDigital ?? '?'}) não confere com CATALYST_HOST_KEY_SHA256. Nada foi enviado. Se o switch foi trocado ou reinstalado, atualize a variável.`));
+      }
       reject(new Error(`Falha de conexão SSH com o Catalyst: ${err.message}`));
     });
+    const fixada = process.env.CATALYST_HOST_KEY_SHA256?.trim().replace(/^SHA256:/, '').replace(/=+$/, '');
     conn.connect({
       host, port, username, password, privateKey,
       readyTimeout: 10_000,
+      // Com a impressão digital configurada, só conversa com o switch certo (evita interceptação).
+      hostHash: 'sha256',
+      hostVerifier: (hash: string) => {
+        ultimaImpressaoDigital = Buffer.from(hash, 'hex').toString('base64').replace(/=+$/, '');
+        return !fixada || fixada === ultimaImpressaoDigital;
+      },
       algorithms: {
         // IOS antigos (comum em 2960) só oferecem cifras/chaves que o ssh2 não habilita mais por
         // padrão; sem isto a conexão falha mesmo com credenciais corretas.

@@ -123,7 +123,7 @@ export interface AcaoAuditoria {
   entrada: unknown;
   saida: string;
   erro: boolean;
-  decisao: 'aprovada' | 'negada' | 'automatica';
+  decisao: 'aprovada' | 'negada' | 'autonoma' | 'automatica';
   decididoEm: string | null;
   ms: number;
 }

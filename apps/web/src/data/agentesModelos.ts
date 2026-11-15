@@ -33,7 +33,7 @@ export const MODELOS_AGENTE: ModeloAgente[] = [
         casoDeUso: 'Investigar e operar a infraestrutura do homelab em linguagem natural: rede, firewall, virtualização, monitoramento e SIEM.',
         usuarios: 'Eu, administrador do homelab.',
         criteriosSucesso: 'Antes de mudar algo, consultar o estado atual, explicar escopo/impacto e pedir aprovação; depois, conferir o estado e relatar exatamente o resultado.',
-        restricoes: 'Não executar ações fora do pedido. Não usar comandos livres, não adivinhar ativos/IDs e não continuar depois de erro ou resultado inesperado. O roteador da operadora ainda não está integrado.',
+        restricoes: 'Não executar ações fora do pedido. Não adivinhar ativos/IDs e não continuar depois de erro ou resultado inesperado. Para ver algo dentro de uma VM, prefira as consultas prontas; comando livre só quando a consulta pronta não resolve. O roteador da operadora e o NAS ainda não estão integrados.',
       },
       instrucoes: {
         papel: 'Engenheiro de operações de infraestrutura e segurança, com experiência em Proxmox, redes, FortiGate, Wazuh e Zabbix.',
@@ -53,6 +53,8 @@ export const MODELOS_AGENTE: ModeloAgente[] = [
         { id: 'wazuh-escrita', nome: 'Wazuh: reiniciar agentes/manager', permissao: 'escrita', exigeAprovacao: true, observacao: 'Reinícios interrompem coleta temporariamente.' },
         { id: 'zabbix-leitura', nome: 'Zabbix: hosts, grupos, templates e problemas', permissao: 'leitura', exigeAprovacao: false, observacao: '' },
         { id: 'zabbix-escrita', nome: 'Zabbix: criar hosts, templates e itens', permissao: 'escrita', exigeAprovacao: true, observacao: '' },
+        { id: 'coolify-leitura', nome: 'Coolify: aplicações, serviços e deploys', permissao: 'leitura', exigeAprovacao: false, observacao: '' },
+        { id: 'coolify-escrita', nome: 'Coolify: reiniciar e fazer deploy', permissao: 'escrita', exigeAprovacao: true, observacao: 'Reiniciar o próprio app interrompe a conversa.' },
       ],
       memoria: { trabalho: true, privacidade: 'O estado atual vem das integrações; não guarde credenciais ou inventário sensível em memória.' },
       orquestracao: {
@@ -61,7 +63,11 @@ export const MODELOS_AGENTE: ModeloAgente[] = [
         tratamentoErros: 'Parar no primeiro erro, consultar estado quando possível e não improvisar. Limite de chamadas do runtime permanece ativo.',
       },
       interface: { canais: ['chat'] },
-      supervisao: { decisoesCriticas: 'Toda escrita exige aprovação humana no Playground. Aprovar uma ação não autoriza ações adicionais fora dos parâmetros apresentados.', registroAuditoria: true },
+      supervisao: {
+        decisoesCriticas: 'Ações leves (ligar/reiniciar VM, snapshot, criar VM, criar VLAN, criar host no Zabbix...) rodam direto. Apagar, reverter snapshot, desligar à força, ativar policy, mudar porta, parar serviço e comando livre dentro de VM pedem aprovação no Playground. Aprovar uma ação não autoriza outras fora dos parâmetros apresentados.',
+        registroAuditoria: true,
+        autonomia: 'leves-automaticas',
+      },
     }),
   },
   {

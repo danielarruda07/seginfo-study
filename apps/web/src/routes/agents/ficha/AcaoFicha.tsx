@@ -32,7 +32,7 @@ export function AcaoFicha({ a, nav }: { a: AcaoComId; nav: Nav }) {
 
       <Secao titulo="Resumo">
         <DetailFields items={[
-          ['Decisão', a.decisao === 'automatica' ? 'Leitura: executada sem pedir aprovação' : a.decisao === 'aprovada' ? 'Você aprovou; o servidor executou' : 'Você negou; nada foi executado'],
+          ['Decisão', a.decisao === 'automatica' ? 'Leitura: executada sem pedir aprovação' : a.decisao === 'aprovada' ? 'Você aprovou; o servidor executou' : a.decisao === 'autonoma' ? 'Escrita leve executada sem aprovação (modo autônomo ou cliente MCP)' : 'Você negou; nada foi executado'],
           ['Decidido em', a.decididoEm ? new Date(a.decididoEm).toLocaleString('pt-BR') : ''],
           ['Duração', duracao(a.ms)],
           ['Execução', <span className="mono" key="e">{a.execucaoId}</span>],

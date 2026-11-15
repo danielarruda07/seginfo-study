@@ -104,13 +104,13 @@ export const FERRAMENTAS_CATALOGO: FerramentaCatalogo[] = [
   },
   {
     id: 'proxmox-leitura', nome: 'Proxmox: consultar nós, VMs, snapshots, armazenamento e ISOs', categoria: 'infra',
-    descricao: 'Lê o estado do hipervisor pela API do Proxmox: hosts, máquinas virtuais, configuração, snapshots, espaço em disco, ISOs disponíveis e o próximo VMID livre.', risco: 'baixo',
+    descricao: 'Lê o estado do hipervisor pela API do Proxmox: hosts, máquinas virtuais, configuração, snapshots, espaço em disco, ISOs e o próximo VMID livre. Também consulta DENTRO das VMs pelo agente QEMU (serviços, processos, portas, disco, memória, logs, rede, agentes Wazuh/Sysmon/Zabbix), sem senha da VM.', risco: 'baixo',
     permissaoSugerida: 'leitura', aprovacaoSugerida: false,
     cuidados: 'O token de API fica só no servidor. Nomes de VM, endereços e configuração vão para o modelo de IA: use apenas com o laboratório.',
   },
   {
     id: 'proxmox-escrita', nome: 'Proxmox: operar VMs, recursos, snapshots e migrações', categoria: 'infra',
-    descricao: 'Opera ciclo de vida de VMs/containers, reduz recursos de até 20 alvos num lote aprovado com restauração do estado ligado, migra VMs entre nós e cria, clona ou apaga VMs.', risco: 'alto',
+    descricao: 'Opera ciclo de vida de VMs/containers, reduz recursos de até 20 alvos num lote aprovado com restauração do estado ligado, migra VMs entre nós, cria, clona ou apaga VMs e executa comandos dentro das VMs (Linux ou Windows) pelo agente QEMU.', risco: 'alto',
     permissaoSugerida: 'escrita', aprovacaoSugerida: true,
     cuidados: 'Cada ação para na tela de aprovação e só roda depois da sua decisão. O lote exige estado atual confirmado, só aceita reduções e tenta restaurar o estado ligado; falhas parciais podem exigir intervenção. Reverter/apagar snapshot e apagar VM não têm volta: leia os detalhes antes de aprovar. Apagar VM exige parada, nome conferido e respeita proteção/lista PROXMOX_VMS_PROTEGIDAS.',
   },
@@ -140,8 +140,8 @@ export const FERRAMENTAS_CATALOGO: FerramentaCatalogo[] = [
   },
   {
     id: 'wazuh-leitura', nome: 'Wazuh: consultar manager e agentes', categoria: 'infra',
-    descricao: 'Consulta estado dos serviços e agentes Wazuh.', risco: 'baixo', permissaoSugerida: 'leitura', aprovacaoSugerida: false,
-    cuidados: 'Dados de agentes e eventos podem conter informação interna; use somente no ambiente autorizado.',
+    descricao: 'Consulta estado dos serviços e agentes Wazuh e busca alertas no indexador (últimas horas, nível, agente, regra ou texto).', risco: 'baixo', permissaoSugerida: 'leitura', aprovacaoSugerida: false,
+    cuidados: 'Alertas trazem texto escrito por atacantes (honeypots, logs): o agente trata como dado, nunca como ordem. Use somente no ambiente autorizado.',
   },
   {
     id: 'wazuh-escrita', nome: 'Wazuh: reiniciar agentes e manager', categoria: 'infra',
@@ -159,8 +159,18 @@ export const FERRAMENTAS_CATALOGO: FerramentaCatalogo[] = [
     cuidados: 'Cada ação requer aprovação. Itens aceitam apenas chaves de monitoramento, não scripts, comandos remotos nem itens HTTP. Triggers e discovery rules ainda não estão implementados.',
   },
   {
+    id: 'coolify-leitura', nome: 'Coolify: listar aplicações, serviços e deploys', categoria: 'infra',
+    descricao: 'Lista aplicações, serviços e bancos do Coolify com estado e domínio, e os deploys em andamento.', risco: 'baixo', permissaoSugerida: 'leitura', aprovacaoSugerida: false,
+    cuidados: 'O token fica no servidor. Nomes e domínios dos serviços vão para o modelo.',
+  },
+  {
+    id: 'coolify-escrita', nome: 'Coolify: iniciar, reiniciar, parar e fazer deploy', categoria: 'infra',
+    descricao: 'Inicia, reinicia ou para aplicações, serviços e bancos, e dispara deploy de uma aplicação.', risco: 'alto', permissaoSugerida: 'escrita', aprovacaoSugerida: true,
+    cuidados: 'Parar exige aprovação. Reiniciar ou fazer deploy do próprio SegInfo Study derruba a API e interrompe a conversa do agente.',
+  },
+  {
     id: 'mcp-servidor', nome: 'Servidor MCP', categoria: 'mcp',
-    descricao: 'Expõe ferramentas, recursos e prompts por um protocolo aberto.', risco: 'medio',
+    descricao: 'Expõe ferramentas, recursos e prompts por um protocolo aberto. Este app já é um servidor MCP: /api/mcp oferece as ferramentas do homelab ao Claude Code de qualquer computador (docs/AGENTS.md).', risco: 'medio',
     permissaoSugerida: 'leitura', aprovacaoSugerida: false,
     cuidados: 'O risco é o das ferramentas que o servidor expõe. Use tokens com perfil de ferramentas (só leitura por padrão) e autenticação.',
   },

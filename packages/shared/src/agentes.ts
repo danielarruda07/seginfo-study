@@ -18,6 +18,13 @@ export const CANAIS_ENTRADA_DE_TERCEIROS: readonly CanalAgente[] = ['slack', 'di
 
 const texto = (max: number) => z.string().max(max);
 
+export const AUTONOMIAS = ['aprovar-tudo', 'leves-automaticas'] as const;
+export type Autonomia = (typeof AUTONOMIAS)[number];
+export const ROTULO_AUTONOMIA: Record<Autonomia, string> = {
+  'aprovar-tudo': 'Aprovar toda ação de escrita',
+  'leves-automaticas': 'Ações leves rodam direto; destrutivas pedem aprovação',
+};
+
 export const AgenteFerramentaSchema = z.object({
   /** id do catálogo (ex.: busca-base) ou "custom" */
   id: z.string().min(1).max(60),
@@ -57,6 +64,13 @@ export const AgenteConfigSchema = z.object({
   }),
   supervisao: z.object({
     decisoesCriticas: texto(2000), registroAuditoria: z.boolean(),
+    /**
+     * aprovar-tudo: toda ação de escrita para na tela de aprovação.
+     * leves-automaticas: ações leves e reversíveis (ligar VM, snapshot, criar host...) rodam direto;
+     * as destrutivas (apagar, reverter snapshot, desligar à força...) continuam pedindo aprovação.
+     * A classificação de cada ação é do servidor, a partir dos parâmetros validados.
+     */
+    autonomia: z.enum(AUTONOMIAS).default('aprovar-tudo'),
   }),
 });
 export type AgenteConfig = z.infer<typeof AgenteConfigSchema>;
@@ -119,8 +133,11 @@ export type PassoExecucao =
       saida: string;
       erro: boolean;
       ms: number;
-      /** só em ações de escrita: o que você decidiu na tela de aprovação, e quando */
-      decisao?: 'aprovada' | 'negada';
+      /**
+       * só em ações de escrita: o que você decidiu na tela de aprovação, e quando.
+       * autonoma = ação leve executada sem parar, porque o agente está em "leves-automaticas".
+       */
+      decisao?: 'aprovada' | 'negada' | 'autonoma';
       decididoEm?: string;
     };
 
@@ -147,7 +164,7 @@ export function agenteConfigVazio(): AgenteConfig {
     conhecimento: { tags: [], observacao: '' },
     orquestracao: { fluxo: '', gatilhos: '', tratamentoErros: '', multiAgente: '' },
     interface: { canais: ['chat'], notas: '' },
-    supervisao: { decisoesCriticas: '', registroAuditoria: true },
+    supervisao: { decisoesCriticas: '', registroAuditoria: true, autonomia: 'aprovar-tudo' },
   };
 }
 
@@ -260,6 +277,7 @@ export function especificacaoMarkdown(nome: string, resumo: string, status: Agen
   secao('Supervisão humana');
   campo('Decisões que exigem um humano', c.supervisao.decisoesCriticas);
   L.push('**Registro de auditoria:** ' + (c.supervisao.registroAuditoria ? 'sim' : 'não'), '');
+  L.push('**Autonomia:** ' + ROTULO_AUTONOMIA[c.supervisao.autonomia], '');
 
   const problemas = revisarAgente(c);
   if (problemas.length) {

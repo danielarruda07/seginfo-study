@@ -28,6 +28,24 @@ Ferramenta de leitura roda direto. Ferramenta de escrita nunca roda direto:
 4. `POST /api/agentes/:id/execucoes/:execId/decidir` recebe a decisão. O servidor confere que ela cobre exatamente as ações pendentes, reivindica a execução de forma atômica (dois cliques não executam duas vezes) e executa os parâmetros que ele guardou.
 5. Ação negada volta ao modelo como erro "o usuário negou"; o laço continua.
 
+#### Modo autônomo (ações leves rodam direto)
+
+No editor do agente, aba Supervisão, "Autonomia nas ações de escrita":
+
+- **Aprovar toda ação de escrita** (padrão): tudo para na tela de aprovação.
+- **Ações leves rodam direto; destrutivas pedem aprovação**: o servidor classifica cada chamada pelos parâmetros validados (`leve` em cada `definir({...})` de `agenteFerramentas.ts`). O modelo do Operador do Homelab já vem assim.
+
+| Leve (roda direto no modo autônomo) | Destrutiva (sempre pede aprovação) |
+|---|---|
+| Ligar, reiniciar, desligar limpo, migrar, ajustar recursos (VM parada), criar snapshot, criar e clonar VM | Desligar à força, reverter e apagar snapshot, apagar VM, redimensionar em lote |
+| Criar policy desativada no FortiGate | Criar policy já ativa, ativar ou desativar policy |
+| Criar VLAN e acrescentar VLAN a trunk no switch | Configurar porta access, configurar SPAN |
+| Reiniciar agentes Wazuh; criar host, item e template e vincular template no Zabbix | Reiniciar o manager Wazuh |
+| Iniciar, reiniciar e fazer deploy no Coolify | Parar recurso no Coolify |
+| — | Comando livre dentro de uma VM (`proxmox_executar_no_convidado`) |
+
+Por que não liberar tudo: o Cloudflare Access controla quem entra no app, mas os alertas do Wazuh, os honeypots e o Radar trazem texto escrito por atacantes. A aprovação nas ações destrutivas é o que impede uma frase plantada num log de virar "apague a VM". Ações autônomas ficam na auditoria como `autonoma` e contam no teto diário de escritas; sem folga no teto, voltam a pedir aprovação.
+
 Cada passo de escrita registra a decisão e a hora. A pausa sobrevive a um reinício da API, porque o estado inteiro fica no banco. Em um mesmo turno, as leituras rodam na hora e as escritas esperam; os resultados voltam juntos ao modelo.
 
 Teste do fluxo: `npm test --workspace apps/api` (`agenteRuntime.test.ts`, com banco, modelo e Proxmox simulados).
@@ -38,16 +56,18 @@ Só roda o que está no `REGISTRO` (`apps/api/src/agenteFerramentas.ts`) **e** f
 | id do catálogo | nomes para o modelo | permissão |
 |---|---|---|
 | `busca-base` | `buscar_base` | leitura |
-| `proxmox-leitura` | `proxmox_listar_nos`, `proxmox_listar_vms`, `proxmox_detalhar_vm`, `proxmox_listar_snapshots`, `proxmox_listar_armazenamento`, `proxmox_listar_isos`, `proxmox_proximo_vmid` | leitura |
-| `proxmox-escrita` | `proxmox_redimensionar_lote`, `proxmox_ajustar_recursos_vm`, `proxmox_migrar_vm`, `proxmox_ligar_vm`, `proxmox_desligar_vm`, `proxmox_reiniciar_vm`, `proxmox_criar_snapshot`, `proxmox_reverter_snapshot`, `proxmox_remover_snapshot`, `proxmox_criar_vm`, `proxmox_clonar_vm`, `proxmox_apagar_vm` | escrita (com aprovação) |
+| `proxmox-leitura` | `proxmox_listar_nos`, `proxmox_listar_vms`, `proxmox_detalhar_vm`, `proxmox_listar_snapshots`, `proxmox_listar_armazenamento`, `proxmox_listar_isos`, `proxmox_proximo_vmid`, `proxmox_info_convidado`, `proxmox_consultar_convidado` (consultas prontas dentro da VM) | leitura |
+| `proxmox-escrita` | `proxmox_redimensionar_lote`, `proxmox_ajustar_recursos_vm`, `proxmox_migrar_vm`, `proxmox_ligar_vm`, `proxmox_desligar_vm`, `proxmox_reiniciar_vm`, `proxmox_criar_snapshot`, `proxmox_reverter_snapshot`, `proxmox_remover_snapshot`, `proxmox_criar_vm`, `proxmox_clonar_vm`, `proxmox_apagar_vm`, `proxmox_executar_no_convidado` | escrita (com aprovação) |
 | `fortigate-leitura` | `fortigate_listar_interfaces`, `fortigate_listar_policies`, `fortigate_listar_enderecos`, `fortigate_contar_sessoes_negadas` | leitura |
 | `fortigate-escrita` | `fortigate_criar_policy` (entra desativada por padrão), `fortigate_definir_status_policy` | escrita (com aprovação) |
 | `catalyst-leitura` | `catalyst_mostrar_vlans`, `catalyst_mostrar_interfaces`, `catalyst_mostrar_trunk`, `catalyst_mostrar_span`, `catalyst_mostrar_running_config_interface` | leitura |
 | `catalyst-escrita` | `catalyst_criar_vlan`, `catalyst_configurar_porta_access`, `catalyst_adicionar_vlan_ao_trunk` (nunca remove VLANs existentes), `catalyst_configurar_span` | escrita (com aprovação) |
-| `wazuh-leitura` | `wazuh_listar_agentes`, `wazuh_status_manager` | leitura |
+| `wazuh-leitura` | `wazuh_listar_agentes`, `wazuh_status_manager`, `wazuh_buscar_alertas` (indexador) | leitura |
 | `wazuh-escrita` | `wazuh_reiniciar_agentes`, `wazuh_reiniciar_manager` | escrita (com aprovação) |
 | `zabbix-leitura` | `zabbix_listar_hosts`, `zabbix_listar_grupos`, `zabbix_listar_templates`, `zabbix_listar_problemas` | leitura |
 | `zabbix-escrita` | `zabbix_criar_host`, `zabbix_criar_template`, `zabbix_criar_item`, `zabbix_vincular_template_host` | escrita (com aprovação) |
+| `coolify-leitura` | `coolify_listar_recursos`, `coolify_listar_deploys` | leitura |
+| `coolify-escrita` | `coolify_acao_recurso` (start, restart, stop), `coolify_deploy_aplicacao` | escrita (com aprovação) |
 
 As ferramentas de escrita só entram quando o item do projeto está marcado como escrita no editor.
 
@@ -59,7 +79,9 @@ Dois tetos diários por usuário, somando todos os agentes, resetados à meia-no
 | Teto | Padrão | Variável |
 |---|---|---|
 | Execuções (pedidos) iniciadas por dia | 60 | `AGENTES_LIMITE_DIARIO_EXECUCOES` |
-| Ações de escrita aprovadas por dia | 30 | `AGENTES_LIMITE_DIARIO_ESCRITAS` |
+| Ações de escrita aprovadas ou autônomas por dia (inclui MCP) | 30 | `AGENTES_LIMITE_DIARIO_ESCRITAS` |
+| Chamadas ao modelo por pedido | 24 | `AGENTES_LIMITE_VOLTAS` |
+| Tokens de saída por pedido | 100 mil | `AGENTES_LIMITE_TOKENS_SAIDA` |
 
 Continuar uma conversa (`continuarDe`) não conta como nova execução. Negar uma ação não conta como
 aprovada. Ao atingir o teto, a rota responde 429 com uma mensagem explicando qual teto foi atingido.
@@ -108,6 +130,14 @@ Cliente em `apps/api/src/proxmox.ts`: `proxmoxGet` lê; `proxmoxAlterar` muda o 
 Criar o token no Proxmox: Datacenter → Permissions → API Tokens → Add. Com "Privilege Separation" marcado, dê a permissão ao próprio token em Datacenter → Permissions → Add → API Token Permission (caminho `/`, role `PVEAuditor` para leitura ou `Administrator` para o que vier depois).
 
 O container da API precisa alcançar o Proxmox na porta 8006. Enquanto faltar variável, o playground mostra as ferramentas em cinza e diz o que falta.
+
+#### Dentro das VMs (agente QEMU)
+
+As ferramentas passam pelo Proxmox (`agent/exec`): não precisam de rede até a VM nem da senha dela, e o sistema (Linux ou Windows) é detectado sozinho. Exige o `qemu-guest-agent` instalado e ligado na VM (Options → QEMU Guest Agent) e, no token, `VM.Monitor` (até PVE 8) ou `VM.GuestAgent.*` (PVE 9).
+
+- **`proxmox_info_convidado`**: sistema, hostname e IPs reais.
+- **`proxmox_consultar_convidado`**: consultas prontas e só leitura (`servicos`, `falhas`, `processos`, `portas`, `disco`, `memoria`, `usuarios`, `logs`, `rede`, `agentes-seguranca`). O modelo escolhe o item; o comando é fixo no servidor.
+- **`proxmox_executar_no_convidado`**: comando livre como root/SYSTEM (shell no Linux, PowerShell no Windows), até 300 s. Sempre pede aprovação, inclusive no modo autônomo. Saída cortada em 15 mil caracteres (fica o fim).
 
 #### Criar, clonar e apagar VM
 
@@ -165,6 +195,11 @@ Variáveis no serviço `seginfo-api` do Coolify:
 | `CATALYST_PASSWORD` (Secret) | senha SSH — ou use `CATALYST_PRIVATE_KEY_B64` em vez desta |
 | `CATALYST_PRIVATE_KEY_B64` (Secret) | chave privada PEM em base64, alternativa à senha |
 
+| `CATALYST_ENABLE_PASSWORD` (Secret) | senha de `enable`, se o usuário não entra direto em modo privilegiado |
+| `CATALYST_HOST_KEY_SHA256` | impressão digital da chave SSH do switch. Com ela, o servidor recusa conversar com outro equipamento no mesmo IP. O "Testar conexão" mostra o valor |
+
+Toda sessão manda `terminal length 0` antes dos comandos (sem `--More--`) e, com a senha de enable definida, entra em modo privilegiado sozinha.
+
 O 2960 precisa de `ip ssh version 2`, um usuário com privilégio para `configure terminal` (ou
 `enable` configurado separadamente — hoje o cliente não envia `enable`, pressupõe um usuário que já
 entra em modo privilegiado) e `line vty ... login local` com SSH habilitado. IOS antigos só oferecem
@@ -173,6 +208,11 @@ essas opções porque o `ssh2` não as liga por padrão.
 
 ### Wazuh
 Cliente em `apps/api/src/wazuh.ts`, consultado pela tela `/wazuh` e por ferramentas dos agentes. O catálogo oferece consulta de status/agentes e reinício de agentes ou manager; edição de regras e arquivos de configuração ainda não está disponível. Variáveis e detalhes em [docs/WAZUH.md](WAZUH.md). Use uma identidade API dedicada com permissões apenas nos endpoints necessários.
+
+Alertas: `wazuh_buscar_alertas` consulta o indexador (OpenSearch, porta 9200, índice `wazuh-alerts-*`), porque a API do manager não devolve alertas. Variáveis `WAZUH_INDEXER_URL`, `WAZUH_INDEXER_USERNAME`, `WAZUH_INDEXER_PASSWORD` (Secret) e `WAZUH_INDEXER_CA_B64` ou `WAZUH_INDEXER_TLS_INSEGURO=true`. Cliente em `apps/api/src/wazuhIndexador.ts`.
+
+### Coolify
+Cliente em `apps/api/src/coolify.ts`. `COOLIFY_URL` é o endereço do painel visto de dentro do container (ex.: `http://IP-DA-VM:8000`) e `COOLIFY_API_TOKEN` (Secret) um token de Keys & Tokens com permissão de deploy. Ações de ciclo de vida tentam POST e, em versões antigas da v4, repetem com GET. Reiniciar ou fazer deploy do próprio SegInfo Study derruba a API e interrompe a conversa.
 
 ### Zabbix
 Cliente JSON-RPC em `apps/api/src/zabbix.ts`. Configure no serviço `seginfo-api` do Coolify:
@@ -189,10 +229,33 @@ O servidor precisa alcançar o frontend/API do Zabbix. O catálogo permite consu
 Isto NÃO substitui a observação acima sobre auditoria dos agentes: as ações dos agentes de IA
 continuam fora do Wazuh até existir um encaminhamento explícito delas para o manager.
 
+## Testar conexão
+
+Em Meu Ambiente → Acessos e integrações, cada integração tem "Testar conexão" (`POST /api/integracoes/:id/testar`). O servidor faz uma consulta mínima e só leitura (versão do Proxmox e nós, status do FortiGate, `show version` no switch, versão do manager Wazuh, alertas das últimas 24 h, contagem de hosts no Zabbix, aplicações do Coolify) e mostra o erro real quando falha: rede, certificado ou credencial.
+
+## MCP: as mesmas ferramentas no Claude Code, de qualquer computador
+
+`POST /api/mcp` é um servidor MCP (Streamable HTTP, sem sessão) com todas as ferramentas do `REGISTRO`, menos a busca na base de um agente. Código em `apps/api/src/mcp.ts`.
+
+- **Acesso, duas camadas:** uma aplicação do Cloudflare Access só para o caminho `/api/mcp`, com política *Service Auth* (`CF_ACCESS_MCP_AUD` e `CF_ACCESS_MCP_CLIENT_ID`, que pode ser o mesmo Service Token da ingestão), e `Authorization: Bearer MCP_TOKEN`. Sem as variáveis, a rota responde 503.
+- **Escrita:** o Claude Code pede sua permissão antes de cada chamada não liberada, e as ferramentas destrutivas chegam marcadas com `destructiveHint`. Não coloque as destrutivas na lista de permitidas. `MCP_DESTRUTIVAS=bloquear` desliga as destrutivas pelo MCP.
+- **Auditoria:** cada chamada vira uma execução do agente "Acesso MCP (Claude Code e outros clientes)", criado sozinho, e aparece em `/agents/auditoria`. Escritas contam no teto diário; chamadas MCP não contam no teto de execuções (não usam o modelo do servidor).
+
+Configurar no Claude Code (em qualquer computador):
+
+```
+claude mcp add --transport http homelab https://<domínio do app>/api/mcp \
+  --header "CF-Access-Client-Id: <client id do Service Token>" \
+  --header "CF-Access-Client-Secret: <client secret>" \
+  --header "Authorization: Bearer <MCP_TOKEN>"
+```
+
+Os acessos do `range.env` (fora do repositório) vão para o Coolify pelo script privado `sync_coolify_env.py` da pasta do range: por padrão ele só cria as variáveis que faltam, nunca imprime valores e gera o `MCP_TOKEN`.
+
 ## Regras
 - Agente só fica `ativo` sem erros em `revisarAgente()` (ex.: ferramenta de escrita exige aprovação humana). Validado no servidor (422).
 - Só agentes `arquivados` podem ser excluídos. Agente arquivado não executa.
-- Toda ferramenta de escrita passa pela tela de aprovação, sem exceção e independente do campo "exige aprovação" do projeto.
+- Toda ferramenta de escrita passa pela tela de aprovação, independente do campo "exige aprovação" do projeto. A única exceção são as ações leves com o agente em "leves-automaticas" (ver Modo autônomo); destrutivas nunca rodam sem aprovação no Playground.
 - Uma execução por vez por usuário.
 - O pedido, as instruções do agente e os resultados das ferramentas são enviados à Anthropic. No laboratório, isso inclui dados do ambiente quando as ferramentas de infraestrutura estão ligadas ao agente (Proxmox, FortiGate, Catalyst 2960, Wazuh e Zabbix).
 - A temperatura do projeto não é enviada: o modelo atual não aceita esse parâmetro.
@@ -206,7 +269,8 @@ continuam fora do Wazuh até existir um encaminhamento explícito delas para o m
 4. **FortiGate (API REST) e Catalyst 2960 (SSH)** (feito: leitura e escrita com aprovação; falta configurar as variáveis e testar contra os equipamentos reais. Backup automático da configuração antes de cada mudança de escrita ainda não existe — hoje a mitigação é: policy nova entra desativada, e "adicionar ao trunk" nunca remove VLANs).
 5. **Wazuh e Zabbix no catálogo de agentes** (feito em parte: Wazuh consulta/reinício; Zabbix consulta, cria host/template/item e vincula template. Falta validar com versões e contas reais; edição de regras Wazuh, triggers/discovery do Zabbix e roteador da operadora seguem pendentes).
 6. Gatilhos por agenda e por evento, e avaliações automáticas.
-7. Um agente chamando outro, servidor MCP próprio.
+7. Servidor MCP próprio (feito: `/api/mcp`, v0.29.0). Um agente chamando outro segue pendente.
+8. Roteador da operadora e NAS (só têm painel web, sem API estável) e o host Proxmox avulso fora do cluster: pendentes.
 
 ## Pendências
 - Incluir `AgenteExecucao` no backup e restaurar agentes no `restore-backup.ts`.

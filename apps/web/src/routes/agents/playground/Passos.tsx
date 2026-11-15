@@ -20,7 +20,8 @@ const PARADA: Record<string, string> = {
 export function Passo({ p, n }: { p: PassoExecucao; n: number }) {
   if (p.tipo === 'ferramenta') {
     const titulo = p.decisao === 'negada' ? `Você negou ${p.nome}: nada foi executado`
-      : p.decisao === 'aprovada' ? `Você aprovou e o servidor executou ${p.nome}` : `Servidor executou ${p.nome}`;
+      : p.decisao === 'aprovada' ? `Você aprovou e o servidor executou ${p.nome}`
+      : p.decisao === 'autonoma' ? `Ação leve executada sem parar (modo autônomo): ${p.nome}` : `Servidor executou ${p.nome}`;
     return (
       <div className={`iv-card ag-passo-exec ${p.erro && p.decisao !== 'negada' ? 'tone-danger' : 'tone-muted'}`}>
         <div className="ag-passo-exec__topo">

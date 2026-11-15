@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { extractUrl } from './extract.js';
 import { registerStateRoutes } from './routes.js';
 import { registerIngestRoutes } from './ingest.js';
+import { registerMcpRoutes } from './mcp.js';
 import { iniciarRetencao } from './radar.js';
 import { iniciarBackupAutomatico } from './backup.js';
 import { iniciarLimpezaMemorias } from './memorias.js';
@@ -30,6 +31,9 @@ await app.register(registerStateRoutes);
 
 // ingestão de eventos por coletores (token de máquina; fora do hook de usuário)
 await app.register(registerIngestRoutes);
+
+// MCP do homelab: as ferramentas dos agentes para clientes como o Claude Code (token próprio + Access)
+await app.register(registerMcpRoutes);
 
 // retenção dos eventos de ataque (ATAQUES_RETENCAO_DIAS, padrão 90)
 iniciarRetencao(app);

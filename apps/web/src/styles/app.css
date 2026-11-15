@@ -329,6 +329,10 @@
 .ac-integ__topo > div { display: grid; gap: .1rem; min-width: 0; }
 .ac-integ__topo small { color: var(--text-color-secondary); font-size: .78rem; }
 .ac-integ__dl { grid-template-columns: 6.5rem minmax(0, 1fr); font-size: .82rem; }
+.ac-integ__teste { display: flex; flex-direction: column; align-items: flex-start; gap: .4rem; margin-top: .6rem; }
+.ac-integ__resultado { display: flex; align-items: flex-start; gap: .35rem; margin: 0; font-size: .8rem; overflow-wrap: anywhere; }
+.ac-integ__resultado.tone-ok { color: var(--tone-ok); }
+.ac-integ__resultado.tone-danger { color: var(--tone-danger); }
 .ac-integ__aviso { display: flex; align-items: center; gap: .3rem; margin-top: .2rem; color: var(--tone-warning); font-size: .75rem; }
 .ac-vars { display: flex; flex-wrap: wrap; gap: .3rem; }
 .ac-var { display: inline-flex; align-items: center; gap: .2rem; padding: .05rem .4rem; border-radius: 4px; background: var(--surface-ground); font-size: .74rem; }

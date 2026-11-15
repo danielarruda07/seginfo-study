@@ -23,7 +23,8 @@ vi.mock('./db.js', () => {
     }
     return valor === cond;
   };
-  const casa = (l: Linha, where: Record<string, unknown>) => Object.entries(where).every(([k, v]) => casaValor(l[k], v));
+  const casa = (l: Linha, where: Record<string, unknown>): boolean => Object.entries(where).every(([k, v]) =>
+    (k === 'NOT' ? !casa(l, v as Record<string, unknown>) : casaValor(l[k], v)));
   return {
     prisma: {
       agente: { findFirst: async () => banco.agente },
@@ -247,5 +248,55 @@ describe('aprovação de ferramentas de escrita', () => {
     const passo = (exec().passos as { tipo: string; erro?: boolean; saida?: string }[]).find((p) => p.tipo === 'ferramenta');
     expect(passo).toMatchObject({ erro: true });
     expect(passo?.saida).toContain('não está ligada');
+  });
+});
+
+describe('modo autônomo (leves-automaticas)', () => {
+  const autonomo = () => {
+    const config = (banco.agente as { config: ReturnType<typeof agenteConfigVazio> }).config;
+    config.supervisao.autonomia = 'leves-automaticas';
+  };
+
+  it('ação leve roda sem parar e fica marcada como autônoma', async () => {
+    autonomo();
+    const app = await subir();
+    respostasDoModelo.push(pedeFerramentas({ id: 't1', name: 'proxmox_ligar_vm', input: VM }), terminaCom('VM ligada.'));
+    await app.inject({ method: 'POST', url: '/api/agentes/a1/executar', payload: { mensagem: 'ligue a 101' } });
+    await assentar();
+    expect(exec().status).toBe('concluida');
+    expect(proxmox.alterar).toHaveBeenCalledWith('POST', 'pm01', '/nodes/pm01/qemu/101/status/start');
+    const passo = (exec().passos as { tipo: string; decisao?: string; decididoEm?: string }[]).find((p) => p.tipo === 'ferramenta');
+    expect(passo?.decisao).toBe('autonoma');
+    expect(passo?.decididoEm).toBeTruthy();
+  });
+
+  it('ação destrutiva continua pedindo aprovação, mesmo no modo autônomo', async () => {
+    autonomo();
+    const app = await subir();
+    respostasDoModelo.push(pedeFerramentas(
+      { id: 't1', name: 'proxmox_desligar_vm', input: { ...VM, forcar: true } },
+      { id: 't2', name: 'proxmox_reiniciar_vm', input: VM },
+    ));
+    await app.inject({ method: 'POST', url: '/api/agentes/a1/executar', payload: { mensagem: 'desligue à força e reinicie' } });
+    await assentar();
+    expect(exec().status).toBe('aguardando_aprovacao');
+    // a leve do mesmo turno já rodou; só a destrutiva espera
+    expect(proxmox.alterar).toHaveBeenCalledTimes(1);
+    expect(proxmox.alterar).toHaveBeenCalledWith('POST', 'pm01', '/nodes/pm01/qemu/101/status/reboot');
+    const visto = (await app.inject({ method: 'GET', url: '/api/agentes/a1/execucoes/exec1' })).json();
+    expect(visto.pendentes.map((x: { id: string }) => x.id)).toEqual(['t1']);
+  });
+
+  it('sem folga no teto diário de escritas, a ação leve volta a pedir aprovação', async () => {
+    autonomo();
+    const decididoEm = new Date().toISOString();
+    const passos = Array.from({ length: 30 }, () => ({ tipo: 'ferramenta', nome: 'x', entrada: {}, saida: 'ok', erro: false, ms: 1, decisao: 'autonoma', decididoEm }));
+    banco.execucoes.push({ id: 'velha1', usuarioId: 'u1', agenteId: 'a1', status: 'concluida', passos, pendencia: null, criadoEm: new Date(), atualizadoEm: new Date() } as unknown as Linha);
+    const app = await subir();
+    respostasDoModelo.push(pedeFerramentas({ id: 't1', name: 'proxmox_ligar_vm', input: VM }));
+    await app.inject({ method: 'POST', url: '/api/agentes/a1/executar', payload: { mensagem: 'ligue a 101' } });
+    await assentar();
+    expect(exec().status).toBe('aguardando_aprovacao');
+    expect(proxmox.alterar).not.toHaveBeenCalled();
   });
 });
