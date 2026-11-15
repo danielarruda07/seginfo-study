@@ -8,6 +8,7 @@ A versão aparece no rodapé do menu lateral (`v0.17.0 · build dd/mm hh:mm`) e 
 
 | Versão | Data | O que entrou |
 |---|---|---|
+| 0.26.1 | 15/11/2026 | Corrige o repasse das variáveis de conexão do Zabbix para o container da API; atualiza a descrição da integração Wazuh no deploy |
 | 0.26.0 | 15/11/2026 | Agents: operador integrado do homelab; redução de memória/CPU em lote e migração de VMs no Proxmox; consultas e reinícios no Wazuh; consultas e criação de hosts, templates e itens no Zabbix, sempre com aprovação para alterações |
 | 0.25.0 | 15/11/2026 | LinkedIn vira pipeline: abas Pipeline (quadro e calendário), Ideias e Projetos; rascunho com estados (rascunho, aprovado, agendado, publicado), versões e verificação antes de aprovar, refeita no servidor; refino com IA (encurtar, mais concreto, 3 ganchos, tom direto, carrossel) e planejador da semana em segundo plano; Radar e labs viram ideias; agendamento como lembrete ou publicação de texto pela API oficial do LinkedIn (conexão OAuth opcional) |
 | 0.24.0 | 14/11/2026 | Biblioteca de artefatos: arquivos, comandos, persistência e processos preservados no PostgreSQL, importação paginada do histórico, busca por conteúdo e hash, notas/tags/favoritos, amostras com SHA-256 verificado, prévias estáticas e download; coletor envia amostras e reimporta arquivos guardados; backup cifrado inclui a biblioteca e os laudos |
