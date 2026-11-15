@@ -4,7 +4,7 @@
 
 A página **Inteligência → Wazuh** reúne duas fontes diferentes:
 
-- **Manager e agentes:** consulta somente leitura à API REST do Wazuh para exibir versão, estado dos serviços e agentes cadastrados/ativos/desconectados.
+- **Manager e agentes:** consulta à API REST do Wazuh para exibir versão, estado dos serviços e agentes cadastrados/ativos/desconectados. No Playground, ferramentas aprovadas também podem solicitar reinício de agentes específicos ou do manager.
 - **Alertas encaminhados:** eventos que o forwarder já normalizou e enviou a `POST /api/ingest`. A tela filtra esse recorte salvo no banco por período, regra, agente e alvo. Ela não consulta `alerts.json` diretamente nem representa todos os eventos do SIEM.
 
 O Radar continua sendo a visão de investigação dos eventos normalizados; a página Wazuh acrescenta a saúde do manager/agentes e um recorte focado nas regras Wazuh. O endpoint de alertas exige a sessão autenticada da aplicação e filtra pelo usuário dono dos eventos. Campos cujo nome sugere senha, token, segredo, cookie ou credencial são redigidos antes de serem enviados ao navegador.
@@ -16,14 +16,16 @@ Defina estas variáveis no serviço `seginfo-api` e faça redeploy:
 | Variável | Uso |
 | --- | --- |
 | `WAZUH_API_URL` | Endereço HTTPS do manager, por exemplo `https://10.10.10.20:55000` |
-| `WAZUH_API_USERNAME` | Usuário dedicado da API com permissões somente leitura |
+| `WAZUH_API_USERNAME` | Usuário dedicado da API com somente os escopos necessários |
 | `WAZUH_API_PASSWORD` | Senha desse usuário (Secret no Coolify) |
 | `WAZUH_API_CA_B64` | Opcional: certificado/CA PEM codificado em Base64 quando não for confiado pelo sistema |
 | `WAZUH_API_TLS_INSEGURO` | Opcional, padrão `false`; `true` desativa validação TLS e deve ficar restrito ao laboratório |
 
 O contêiner da API precisa alcançar o manager pela rede privada na porta 55000/TCP. Não exponha essa porta à Internet. Prefira certificado válido ou instale a CA do manager no contêiner; use TLS inseguro apenas temporariamente em rede isolada.
 
-Crie no Wazuh uma identidade dedicada, com acesso de leitura aos endpoints de informação do manager, estado dos serviços e agentes. Não use a senha do administrador do Wazuh. A API recebe as credenciais somente no servidor, obtém um token de sessão e faz consultas `GET`; o navegador nunca recebe a senha ou o token.
+Crie no Wazuh uma identidade dedicada, com leitura dos endpoints de informação do manager e agentes. Se quiser habilitar as ferramentas de reinício, conceda também somente as permissões exigidas pelos endpoints `PUT /agents/restart` e `PUT /manager/restart`; evite usar a conta administrativa geral. A API recebe as credenciais somente no servidor e obtém um token de sessão; navegador e modelo nunca recebem a senha ou o JWT.
+
+No catálogo dos agentes, `wazuh-escrita` contém apenas reinício de agentes e manager. Edição/criação de regras, decoders e arquivos de configuração ainda não está implementada: essas mudanças exigem validação de regras e um canal controlado para os arquivos do manager.
 
 Se as variáveis estiverem ausentes, o painel ainda lista os alertas que já chegaram pelo forwarder e informa que a consulta direta não foi configurada. Erros de rede, TLS e autenticação aparecem como estado de integração, não como contagens zeradas.
 

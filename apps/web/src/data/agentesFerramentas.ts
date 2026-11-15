@@ -109,10 +109,10 @@ export const FERRAMENTAS_CATALOGO: FerramentaCatalogo[] = [
     cuidados: 'O token de API fica só no servidor. Nomes de VM, endereços e configuração vão para o modelo de IA: use apenas com o laboratório.',
   },
   {
-    id: 'proxmox-escrita', nome: 'Proxmox: energia, snapshots e criar, clonar ou apagar VMs', categoria: 'infra',
-    descricao: 'Altera o hipervisor pela API do Proxmox: liga, desliga e reinicia VMs; cria, reverte e apaga snapshots; cria VM nova, clona VM ou modelo e apaga VM.', risco: 'alto',
+    id: 'proxmox-escrita', nome: 'Proxmox: operar VMs, recursos, snapshots e migrações', categoria: 'infra',
+    descricao: 'Opera ciclo de vida de VMs/containers, reduz recursos de até 20 alvos num lote aprovado com restauração do estado ligado, migra VMs entre nós e cria, clona ou apaga VMs.', risco: 'alto',
     permissaoSugerida: 'escrita', aprovacaoSugerida: true,
-    cuidados: 'Cada ação para na tela de aprovação e só roda depois da sua decisão. Reverter e apagar snapshot e apagar VM não têm volta: leia o resumo antes de aprovar. Apagar VM exige a VM desligada e o nome dela conferindo, e respeita a proteção do Proxmox e a lista PROXMOX_VMS_PROTEGIDAS do servidor. O token precisa das permissões VM.Allocate, VM.Clone, VM.Config.* e Datastore.AllocateSpace para criar e clonar.',
+    cuidados: 'Cada ação para na tela de aprovação e só roda depois da sua decisão. O lote exige estado atual confirmado, só aceita reduções e tenta restaurar o estado ligado; falhas parciais podem exigir intervenção. Reverter/apagar snapshot e apagar VM não têm volta: leia os detalhes antes de aprovar. Apagar VM exige parada, nome conferido e respeita proteção/lista PROXMOX_VMS_PROTEGIDAS.',
   },
   {
     id: 'fortigate-leitura', nome: 'FortiGate: consultar interfaces, policies, endereços e sessões', categoria: 'infra',
@@ -137,6 +137,26 @@ export const FERRAMENTAS_CATALOGO: FerramentaCatalogo[] = [
     descricao: 'Aplica mudanças por SSH com comandos fixos e validados (nunca shell livre): criar VLAN, configurar porta access, acrescentar VLAN a um trunk existente, configurar SPAN.', risco: 'alto',
     permissaoSugerida: 'escrita', aprovacaoSugerida: true,
     cuidados: 'Cada ação para na tela de aprovação. "Acrescentar ao trunk" nunca substitui a lista existente; ainda assim, uma porta errada pode isolar o switch da gerência — confira a interface no resumo.',
+  },
+  {
+    id: 'wazuh-leitura', nome: 'Wazuh: consultar manager e agentes', categoria: 'infra',
+    descricao: 'Consulta estado dos serviços e agentes Wazuh.', risco: 'baixo', permissaoSugerida: 'leitura', aprovacaoSugerida: false,
+    cuidados: 'Dados de agentes e eventos podem conter informação interna; use somente no ambiente autorizado.',
+  },
+  {
+    id: 'wazuh-escrita', nome: 'Wazuh: reiniciar agentes e manager', categoria: 'infra',
+    descricao: 'Solicita reinício de agentes específicos ou do serviço manager.', risco: 'alto', permissaoSugerida: 'escrita', aprovacaoSugerida: true,
+    cuidados: 'Reinícios interrompem coleta temporariamente. Mudanças de regras/configuração do manager ainda não estão incluídas.',
+  },
+  {
+    id: 'zabbix-leitura', nome: 'Zabbix: consultar hosts, grupos, templates e problemas', categoria: 'infra',
+    descricao: 'Consulta inventário e problemas recentes pela API JSON-RPC.', risco: 'baixo', permissaoSugerida: 'leitura', aprovacaoSugerida: false,
+    cuidados: 'Nomes, endereços e alertas do ambiente são enviados ao modelo para responder ao pedido.',
+  },
+  {
+    id: 'zabbix-escrita', nome: 'Zabbix: criar hosts, templates e itens', categoria: 'infra',
+    descricao: 'Cria hosts, templates e itens de agente/agent ativo; vincula templates a hosts.', risco: 'alto', permissaoSugerida: 'escrita', aprovacaoSugerida: true,
+    cuidados: 'Cada ação requer aprovação. Itens aceitam apenas chaves de monitoramento, não scripts, comandos remotos nem itens HTTP. Triggers e discovery rules ainda não estão implementados.',
   },
   {
     id: 'mcp-servidor', nome: 'Servidor MCP', categoria: 'mcp',

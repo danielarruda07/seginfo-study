@@ -5,6 +5,8 @@ import { buscarNaBase } from './memorias.js';
 import { proxmoxAlterar, proxmoxFaltando, proxmoxGet } from './proxmox.js';
 import { fortigateAlterar, fortigateFaltando, fortigateGet } from './fortigate.js';
 import { catalystExecutar, catalystFaltando } from './catalyst.js';
+import { wazuhApi, wazuhFaltando } from './wazuh.js';
+import { zabbixChamar, zabbixFaltando } from './zabbix.js';
 
 /**
  * Ferramentas que o servidor sabe executar para os agentes.
@@ -205,6 +207,14 @@ const PROXMOX: FerramentaReal[] = [
 
 const proxmoxEscrita = { id: 'proxmox-escrita', permissao: 'escrita', faltando: proxmoxFaltando } as const;
 const alvo = (v: z.infer<typeof Vm>) => `${v.tipo === 'qemu' ? 'VM' : 'container'} ${v.vmid} no nó ${v.no}`;
+async function aguardarEstado(no: string, tipo: 'qemu' | 'lxc', vmid: number, esperado: 'running' | 'stopped', timeoutSegundos = 120): Promise<void> {
+  for (let i = 0; i < Math.ceil(timeoutSegundos / 2); i++) {
+    const estado = await proxmoxGet(`/nodes/${no}/${tipo}/${vmid}/status/current`) as Record<string, unknown>;
+    if (estado.status === esperado) return;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+  throw new Error(`Tempo esgotado esperando ${vmid} ficar ${esperado}.`);
+}
 const NomeSnapshot = z.string().regex(/^[A-Za-z][A-Za-z0-9_-]{1,39}$/, 'use letras, números, "_" e "-", começando por letra (2 a 40 caracteres)');
 const VmComSnapshot = Vm.extend({ nome: NomeSnapshot });
 const esquemaSnapshot = {
@@ -298,6 +308,165 @@ export async function conferirAntesDeApagar(v: z.infer<typeof Vm> & { nomeConfir
 }
 
 const PROXMOX_ESCRITA: FerramentaReal[] = [
+  definir({
+    ...proxmoxEscrita,
+    nome: 'proxmox_redimensionar_lote',
+    descricao:
+      'Reduz memória e/ou cores de até 20 VMs/containers em uma única mudança planejada. Primeiro consulte configuração e estado de cada alvo. ' +
+      'A ferramenta valida todos antes de iniciar, desliga limpo os que estavam ligados, aplica as reduções e religa apenas os que estavam ligados. ' +
+      `Se uma etapa falhar, interrompe o lote e tenta restaurar o estado ligado dos alvos já parados. ${AVISO}`,
+    esquema: {
+      type: 'object',
+      properties: {
+        itens: { type: 'array', minItems: 1, maxItems: 20, items: { type: 'object', properties: {
+          no: { type: 'string' }, tipo: { type: 'string', enum: ['qemu', 'lxc'] }, vmid: { type: 'integer' },
+          memoriaAtualEsperadaMb: { type: 'integer', description: 'Valor atual confirmado em proxmox_detalhar_vm.' },
+          memoriaMb: { type: 'integer', description: 'Novo valor menor que a memória atual.' },
+          coresAtuaisEsperadas: { type: 'integer', description: 'Obrigatório quando reduzir cores.' }, cores: { type: 'integer', description: 'Novo valor menor que os cores atuais.' },
+        }, required: ['no', 'tipo', 'vmid', 'memoriaAtualEsperadaMb'], additionalProperties: false } },
+      }, required: ['itens'], additionalProperties: false,
+    },
+    entrada: z.object({ itens: z.array(z.object({
+      no: NomeDoNo, tipo: z.enum(['qemu', 'lxc']), vmid: NumeroVm,
+      memoriaAtualEsperadaMb: z.number().int().min(256).max(1_048_576), memoriaMb: z.number().int().min(256).max(1_048_576).optional(),
+      coresAtuaisEsperadas: z.number().int().min(1).max(256).optional(), cores: z.number().int().min(1).max(256).optional(),
+    }).refine((v) => v.memoriaMb !== undefined || v.cores !== undefined, 'informe ao menos um recurso para reduzir')
+      .refine((v) => v.cores === undefined || v.coresAtuaisEsperadas !== undefined, 'informe coresAtuaisEsperadas ao reduzir cores'))
+      .min(1).max(20).refine((xs) => new Set(xs.map((v) => `${v.tipo}:${v.vmid}`)).size === xs.length, 'não repita VMs no lote') }),
+    resumo: (v) => `Lote: desligar limpo, reduzir e restaurar estado de ${v.itens.length} alvo(s): ` + v.itens.map((i) =>
+      `${i.vmid}@${i.no} ${i.memoriaMb !== undefined ? `${i.memoriaAtualEsperadaMb}→${i.memoriaMb} MB` : ''}${i.cores !== undefined ? ` ${i.coresAtuaisEsperadas}→${i.cores} cores` : ''}`.trim(),
+    ).join('; '),
+    async executar(_ctx, { itens }) {
+      const alvos = await Promise.all(itens.map(async (v) => {
+        const [config, estado] = await Promise.all([
+          proxmoxGet(`/nodes/${v.no}/${v.tipo}/${v.vmid}/config`) as Promise<Record<string, unknown>>,
+          proxmoxGet(`/nodes/${v.no}/${v.tipo}/${v.vmid}/status/current`) as Promise<Record<string, unknown>>,
+        ]);
+        const memAtual = Number(config.memory ?? 0);
+        const coresAtual = Number(config.cores ?? 0);
+        if (estado.status !== 'running' && estado.status !== 'stopped') throw new Error(`Estado não suportado para ${v.vmid}: ${String(estado.status ?? 'desconhecido')}.`);
+        if (Number(config.protection) === 1) throw new Error(`Alvo ${v.vmid} está protegido no Proxmox.`);
+        if (memAtual !== v.memoriaAtualEsperadaMb) throw new Error(`Memória de ${v.vmid} mudou desde a consulta (${memAtual} MB; esperado ${v.memoriaAtualEsperadaMb} MB). Refaça o inventário.`);
+        if (v.memoriaMb !== undefined && v.memoriaMb >= memAtual) throw new Error(`A nova memória de ${v.vmid} precisa ser menor que a atual (${memAtual} MB).`);
+        if (v.cores !== undefined && (coresAtual !== v.coresAtuaisEsperadas || v.cores >= coresAtual)) throw new Error(`Cores de ${v.vmid} mudaram ou o novo valor não é menor que o atual (${coresAtual}). Refaça o inventário.`);
+        return { ...v, estavaLigado: estado.status === 'running', coresAtual };
+      }));
+
+      const parados: typeof alvos = [];
+      const alterados: typeof alvos = [];
+      try {
+        for (const v of alvos) {
+          if (!v.estavaLigado) continue;
+          parados.push(v);
+          await proxmoxAlterar('POST', v.no, `/nodes/${v.no}/${v.tipo}/${v.vmid}/status/shutdown`, {}, 120);
+          await aguardarEstado(v.no, v.tipo, v.vmid, 'stopped');
+        }
+        for (const v of alvos) {
+          await proxmoxAlterar('PUT', v.no, `/nodes/${v.no}/${v.tipo}/${v.vmid}/config`, {
+            ...(v.memoriaMb !== undefined ? { memory: v.memoriaMb } : {}),
+            ...(v.cores !== undefined ? { cores: v.cores } : {}),
+          });
+          alterados.push(v);
+        }
+        for (const v of parados) {
+          await proxmoxAlterar('POST', v.no, `/nodes/${v.no}/${v.tipo}/${v.vmid}/status/start`);
+          await aguardarEstado(v.no, v.tipo, v.vmid, 'running');
+        }
+      } catch (erro) {
+        const restauracao: string[] = [];
+        for (const v of parados) {
+          try {
+            const atual = await proxmoxGet(`/nodes/${v.no}/${v.tipo}/${v.vmid}/status/current`) as Record<string, unknown>;
+            if (atual.status === 'stopped') await proxmoxAlterar('POST', v.no, `/nodes/${v.no}/${v.tipo}/${v.vmid}/status/start`);
+            await aguardarEstado(v.no, v.tipo, v.vmid, 'running');
+          } catch { restauracao.push(String(v.vmid)); }
+        }
+        throw new Error(`Lote interrompido: ${erro instanceof Error ? erro.message : 'falha inesperada'}. Recursos alterados: ${alterados.map((v) => v.vmid).join(', ') || 'nenhum'}. Falha ao restaurar estado ligado: ${restauracao.join(', ') || 'nenhuma'}.`);
+      }
+
+      const religadas = parados.map((v) => String(v.vmid));
+      return JSON.stringify({ concluidas: alvos.map((v) => ({ vmid: v.vmid, no: v.no, tipo: v.tipo,
+        memoriaMb: v.memoriaMb ?? v.memoriaAtualEsperadaMb, cores: v.cores ?? v.coresAtual, estadoRestaurado: v.estavaLigado ? 'running' : 'stopped' })), religadas });
+    },
+  }),
+  definir({
+    ...proxmoxEscrita,
+    nome: 'proxmox_ajustar_recursos_vm',
+    descricao:
+      'Altera CPU e/ou memória de uma VM ou container Proxmox. Exige que o alvo esteja desligado; consulte a configuração atual e a capacidade dos nós antes de propor a mudança. ' +
+      `Informe ao menos um recurso. ${AVISO}`,
+    esquema: {
+      type: 'object',
+      properties: {
+        ...esquemaVm.properties,
+        memoriaMb: { type: 'integer', description: 'Nova memória em MB (256–1.048.576).' },
+        cores: { type: 'integer', description: 'Novo número de cores/vCPUs (1–256).' },
+      },
+      required: ['no', 'tipo', 'vmid'],
+      additionalProperties: false,
+    },
+    entrada: Vm.extend({
+      memoriaMb: z.number().int().min(256).max(1_048_576).optional(),
+      cores: z.number().int().min(1).max(256).optional(),
+    }).refine((v) => v.memoriaMb !== undefined || v.cores !== undefined, 'informe memoriaMb e/ou cores'),
+    resumo: (v) => `Ajustar recursos de ${alvo(v)}: ${[
+      v.memoriaMb !== undefined ? `memória para ${v.memoriaMb} MB` : '',
+      v.cores !== undefined ? `${v.cores} vCPU/core(s)` : '',
+    ].filter(Boolean).join(' e ')} (somente desligada)`,
+    async executar(_ctx, v) {
+      const [atual, config] = await Promise.all([
+        proxmoxGet(`/nodes/${v.no}/${v.tipo}/${v.vmid}/status/current`),
+        proxmoxGet(`/nodes/${v.no}/${v.tipo}/${v.vmid}/config`),
+      ]) as [Record<string, unknown>, Record<string, unknown>];
+      if (atual.status !== 'stopped') throw new Error(`Recusado: ${alvo(v)} está "${String(atual.status ?? 'desconhecido')}". Desligue e confirme a janela de manutenção antes de alterar CPU/memória.`);
+      if (Number(config.protection) === 1) throw new Error(`Recusado: ${alvo(v)} está protegida no Proxmox.`);
+      const parametros = {
+        ...(v.memoriaMb !== undefined ? { memory: v.memoriaMb } : {}),
+        ...(v.cores !== undefined ? { cores: v.cores } : {}),
+      };
+      await proxmoxAlterar('PUT', v.no, `/nodes/${v.no}/${v.tipo}/${v.vmid}/config`, parametros);
+      return JSON.stringify({ mensagem: 'Recursos atualizados; a VM/container continua desligado.', vmid: v.vmid, no: v.no, parametros });
+    },
+  }),
+  definir({
+    ...proxmoxEscrita,
+    nome: 'proxmox_migrar_vm',
+    descricao:
+      'Migra uma VM QEMU para outro nó do cluster. Antes, confira estado, compatibilidade e capacidade do destino. ' +
+      'Migração online só é aceita para VM ligada e pode depender de CPU compatível e storage compartilhado; migração offline exige VM desligada. ' + AVISO,
+    esquema: {
+      type: 'object',
+      properties: {
+        no: { type: 'string', description: 'Nó de origem, obtido em proxmox_listar_vms.' },
+        vmid: { type: 'integer', description: 'VMID QEMU.' },
+        noDestino: { type: 'string', description: 'Nó de destino no cluster.' },
+        online: { type: 'boolean', description: 'true tenta migração ao vivo; false exige a VM parada.' },
+      },
+      required: ['no', 'vmid', 'noDestino', 'online'],
+      additionalProperties: false,
+    },
+    entrada: z.object({ no: NomeDoNo, vmid: NumeroVm, noDestino: NomeDoNo, online: z.boolean() })
+      .refine((v) => v.no !== v.noDestino, { message: 'origem e destino precisam ser diferentes', path: ['noDestino'] }),
+    resumo: (v) => `Migrar VM ${v.vmid} de ${v.no} para ${v.noDestino} (${v.online ? 'tentativa online, sem desligamento planejado' : 'offline, VM precisa estar parada'})`,
+    async executar(_ctx, v) {
+      const [nos, atual, config] = await Promise.all([
+        proxmoxGet('/nodes'),
+        proxmoxGet(`/nodes/${v.no}/qemu/${v.vmid}/status/current`),
+        proxmoxGet(`/nodes/${v.no}/qemu/${v.vmid}/config`),
+      ]);
+      const destino = lista(nos).find((n) => n.node === v.noDestino && n.status === 'online');
+      if (!destino) throw new Error(`Recusado: nó de destino ${v.noDestino} não encontrado ou não está online.`);
+      const vm = atual as Record<string, unknown>;
+      if (vm.status === 'unknown' || !vm.status) throw new Error(`Recusado: não foi possível confirmar o estado da VM ${v.vmid} no nó ${v.no}.`);
+      if (v.online && vm.status !== 'running') throw new Error('Migração online requer VM ligada; para migrar desligada, solicite online=false.');
+      if (!v.online && vm.status !== 'stopped') throw new Error('Migração offline requer VM parada. Desligue a VM e tente novamente.');
+      const c = config as Record<string, unknown>;
+      if (Number(c.protection) === 1) throw new Error(`Recusado: a VM ${v.vmid} está protegida no Proxmox.`);
+      return proxmoxAlterar('POST', v.no, `/nodes/${v.no}/qemu/${v.vmid}/migrate`, {
+        target: v.noDestino, online: v.online ? 1 : 0,
+      }, 300);
+    },
+  }),
   definir({
     ...proxmoxEscrita,
     nome: 'proxmox_ligar_vm',
@@ -728,6 +897,201 @@ const CATALYST_ESCRITA: FerramentaReal[] = [
   }),
 ];
 
+// ---------- Wazuh ----------
+
+const wazuhLeitura = { id: 'wazuh-leitura', permissao: 'leitura', faltando: wazuhFaltando } as const;
+const wazuhEscrita = { id: 'wazuh-escrita', permissao: 'escrita', faltando: wazuhFaltando } as const;
+const WAZUH: FerramentaReal[] = [
+  definir({
+    ...wazuhLeitura,
+    nome: 'wazuh_listar_agentes',
+    descricao: 'Lista agentes Wazuh com estado, versão, sistema operacional e último contato. Use antes de pedir reinício de agente.',
+    esquema: { type: 'object', properties: { limite: { type: 'integer', description: 'Máximo de agentes (1–500).' } }, additionalProperties: false },
+    entrada: z.object({ limite: z.number().int().min(1).max(500).optional() }),
+    async executar(_ctx, { limite }) {
+      const r = await wazuhApi('GET', `/agents?limit=${limite ?? 200}&select=id,name,ip,status,version,lastKeepAlive,os.name,os.version`);
+      const dados = (r as { data?: { affected_items?: Record<string, unknown>[]; total_affected_items?: number } })?.data;
+      return JSON.stringify({ total: dados?.total_affected_items ?? dados?.affected_items?.length ?? 0, agentes: dados?.affected_items ?? [] });
+    },
+  }),
+  definir({
+    ...wazuhLeitura,
+    nome: 'wazuh_status_manager',
+    descricao: 'Consulta o estado dos serviços do manager Wazuh, sem expor o conteúdo da configuração.',
+    esquema: semParametros,
+    entrada: z.object({}),
+    executar: async () => JSON.stringify(await wazuhApi('GET', '/manager/status')),
+  }),
+];
+
+const WAZUH_ESCRITA: FerramentaReal[] = [
+  definir({
+    ...wazuhEscrita,
+    nome: 'wazuh_reiniciar_agentes',
+    descricao: 'Solicita reinício dos agentes Wazuh informados (1–20 IDs). Confirme o ID com wazuh_listar_agentes; os agentes podem ficar temporariamente sem enviar eventos. ' + AVISO,
+    esquema: { type: 'object', properties: { ids: { type: 'array', items: { type: 'string' }, description: 'IDs exatos retornados por wazuh_listar_agentes.' } }, required: ['ids'], additionalProperties: false },
+    entrada: z.object({ ids: z.array(z.string().regex(/^\d{3,8}$/)).min(1).max(20) }).refine((v) => new Set(v.ids).size === v.ids.length, 'IDs duplicados'),
+    resumo: (v) => `Solicitar reinício de ${v.ids.length} agente(s) Wazuh: ${v.ids.join(', ')}`,
+    executar: async (_ctx, { ids }) => JSON.stringify(await wazuhApi('PUT', `/agents/restart?agents_list=${ids.join(',')}&wait_for_complete=true`)),
+  }),
+  definir({
+    ...wazuhEscrita,
+    nome: 'wazuh_reiniciar_manager',
+    descricao: `Reinicia o serviço Wazuh Manager. Isso interrompe temporariamente ingestão/análise de eventos; use só após validar a configuração e numa janela adequada. ${AVISO}`,
+    esquema: { type: 'object', properties: { confirmacao: { type: 'string', description: 'Digite exatamente REINICIAR WAZUH para confirmar a intenção.' } }, required: ['confirmacao'], additionalProperties: false },
+    entrada: z.object({ confirmacao: z.literal('REINICIAR WAZUH') }),
+    resumo: () => 'REINICIAR o Wazuh Manager (interrupção temporária da análise e ingestão)',
+    executar: async () => JSON.stringify(await wazuhApi('PUT', '/manager/restart')),
+  }),
+];
+
+// ---------- Zabbix ----------
+
+const zabbixLeitura = { id: 'zabbix-leitura', permissao: 'leitura', faltando: zabbixFaltando } as const;
+const zabbixEscrita = { id: 'zabbix-escrita', permissao: 'escrita', faltando: zabbixFaltando } as const;
+const ZABBIX: FerramentaReal[] = [
+  definir({
+    ...zabbixLeitura,
+    nome: 'zabbix_listar_hosts',
+    descricao: 'Lista hosts cadastrados no Zabbix com estado, interfaces, grupos e templates vinculados.',
+    esquema: { type: 'object', properties: { limite: { type: 'integer', description: 'Máximo de hosts (1–500).' } }, additionalProperties: false },
+    entrada: z.object({ limite: z.number().int().min(1).max(500).optional() }),
+    executar: async (_ctx, { limite }) => JSON.stringify(await zabbixChamar('host.get', {
+      output: ['hostid', 'host', 'name', 'status', 'description'], selectInterfaces: ['type', 'ip', 'dns', 'useip', 'port'],
+      selectGroups: ['groupid', 'name'], selectParentTemplates: ['templateid', 'name'], limit: limite ?? 200,
+    })),
+  }),
+  definir({
+    ...zabbixLeitura,
+    nome: 'zabbix_listar_grupos',
+    descricao: 'Lista os grupos de hosts do Zabbix e seus IDs; necessário para criar hosts e templates.',
+    esquema: semParametros,
+    entrada: z.object({}),
+    executar: async () => JSON.stringify(await zabbixChamar('hostgroup.get', { output: ['groupid', 'name'], sortfield: 'name' })),
+  }),
+  definir({
+    ...zabbixLeitura,
+    nome: 'zabbix_listar_templates',
+    descricao: 'Lista templates do Zabbix e IDs para vincular a hosts.',
+    esquema: { type: 'object', properties: { limite: { type: 'integer' } }, additionalProperties: false },
+    entrada: z.object({ limite: z.number().int().min(1).max(500).optional() }),
+    executar: async (_ctx, { limite }) => JSON.stringify(await zabbixChamar('template.get', { output: ['templateid', 'host', 'name'], selectGroups: ['groupid', 'name'], limit: limite ?? 200 })),
+  }),
+  definir({
+    ...zabbixLeitura,
+    nome: 'zabbix_listar_problemas',
+    descricao: 'Consulta problemas recentes no Zabbix com gravidade, horário, host e reconhecimento.',
+    esquema: { type: 'object', properties: { limite: { type: 'integer' } }, additionalProperties: false },
+    entrada: z.object({ limite: z.number().int().min(1).max(200).optional() }),
+    executar: async (_ctx, { limite }) => JSON.stringify(await zabbixChamar('problem.get', {
+      output: ['eventid', 'name', 'severity', 'clock', 'acknowledged'], selectHosts: ['hostid', 'host', 'name'],
+      recent: true, sortfield: ['eventid'], sortorder: 'DESC', limit: limite ?? 100,
+    })),
+  }),
+];
+
+const ZABBIX_ESCRITA: FerramentaReal[] = [
+  definir({
+    ...zabbixEscrita,
+    nome: 'zabbix_criar_host',
+    descricao: `Cria host no Zabbix num grupo existente, com interface de agente e templates opcionais. Confira grupos/templates e duplicidade antes. ${AVISO}`,
+    esquema: { type: 'object', properties: {
+      host: { type: 'string', description: 'Nome técnico do host no Zabbix.' }, nome: { type: 'string', description: 'Nome visível opcional.' },
+      grupoId: { type: 'string', description: 'ID existente, obtido em zabbix_listar_grupos.' },
+      interface: { type: 'string', description: 'IP ou DNS usado pelo agente.' }, usarIp: { type: 'boolean' }, porta: { type: 'integer' },
+      templateIds: { type: 'array', items: { type: 'string' }, description: 'IDs opcionais obtidos em zabbix_listar_templates.' },
+    }, required: ['host', 'grupoId', 'interface'], additionalProperties: false },
+    entrada: z.object({
+      host: z.string().trim().min(1).max(128).regex(/^[^\u0000-\u001f]+$/), nome: z.string().trim().min(1).max(128).optional(),
+      grupoId: z.string().regex(/^\d+$/), interface: z.string().trim().min(1).max(253).regex(/^[A-Za-z0-9.:%_-]+$/),
+      usarIp: z.boolean().optional(), porta: z.number().int().min(1).max(65535).optional(),
+      templateIds: z.array(z.string().regex(/^\d+$/)).max(20).optional(),
+    }),
+    resumo: (v) => `Criar host Zabbix "${v.host}" em grupo ${v.grupoId}, interface ${v.interface}${v.templateIds?.length ? ` e vincular ${v.templateIds.length} template(s)` : ''}`,
+    async executar(_ctx, v) {
+      const [grupos, duplicados, templates] = await Promise.all([
+        zabbixChamar('hostgroup.get', { output: ['groupid'], groupids: [v.grupoId] }),
+        zabbixChamar('host.get', { output: ['hostid'], filter: { host: [v.host] } }),
+        v.templateIds?.length ? zabbixChamar('template.get', { output: ['templateid'], templateids: v.templateIds }) : Promise.resolve([]),
+      ]);
+      if (!Array.isArray(grupos) || grupos.length !== 1) throw new Error(`Grupo Zabbix ${v.grupoId} não encontrado.`);
+      if (Array.isArray(duplicados) && duplicados.length) throw new Error(`Já existe host com nome técnico "${v.host}" no Zabbix.`);
+      if (!Array.isArray(templates) || templates.length !== (v.templateIds?.length ?? 0)) throw new Error('Um ou mais templateIds não existem no Zabbix.');
+      const result = await zabbixChamar('host.create', { host: v.host, ...(v.nome ? { name: v.nome } : {}),
+        groups: [{ groupid: v.grupoId }], interfaces: [{ type: 1, main: 1, useip: v.usarIp === false ? 0 : 1,
+          ip: v.usarIp === false ? '' : v.interface, dns: v.usarIp === false ? v.interface : '', port: String(v.porta ?? 10050) }],
+        ...(v.templateIds?.length ? { templates: v.templateIds.map((templateid) => ({ templateid })) } : {}),
+      });
+      return JSON.stringify(result);
+    },
+  }),
+  definir({
+    ...zabbixEscrita,
+    nome: 'zabbix_criar_item',
+    descricao: `Cria um item de monitoramento do tipo agente Zabbix ou agente ativo em um host ou template. Não aceita scripts, comandos remotos nem itens HTTP. ${AVISO}`,
+    esquema: { type: 'object', properties: {
+      donoId: { type: 'string', description: 'Host ID ou template ID.' }, tipoDono: { type: 'string', enum: ['host', 'template'] },
+      nome: { type: 'string' }, chave: { type: 'string', description: 'Item key suportada pelo agente (ex.: system.cpu.util[,user]).' },
+      agenteAtivo: { type: 'boolean', description: 'true usa Zabbix agent active; false usa agent passivo.' },
+      tipoValor: { type: 'integer', enum: [0, 1, 3, 4], description: '0 decimal, 1 texto curto, 3 inteiro sem sinal, 4 texto.' },
+      intervalo: { type: 'string', description: 'Intervalo simples (ex.: 30s, 1m, 5m).' }, interfaceId: { type: 'string', description: 'Interface Zabbix do host para agent passivo; omita em templates e agent ativo.' }, unidades: { type: 'string' },
+    }, required: ['donoId', 'tipoDono', 'nome', 'chave', 'tipoValor'], additionalProperties: false },
+    entrada: z.object({
+      donoId: z.string().regex(/^\d+$/), tipoDono: z.enum(['host', 'template']), nome: z.string().trim().min(1).max(255),
+      chave: z.string().min(1).max(255).regex(/^[A-Za-z0-9_.]+(?:\[[A-Za-z0-9_.,:/ -]{0,128}\])?$/),
+      agenteAtivo: z.boolean().optional(), tipoValor: z.union([z.literal(0), z.literal(1), z.literal(3), z.literal(4)]),
+      intervalo: z.string().regex(/^(?:[1-9]\d{0,3})(?:s|m|h|d|w)$/).optional(), interfaceId: z.string().regex(/^\d+$/).optional(),
+      unidades: z.string().max(64).optional(),
+    }).refine((v) => !(v.tipoDono === 'template' && v.interfaceId), { message: 'template não deve receber interfaceid', path: ['interfaceId'] }),
+    resumo: (v) => `Criar item Zabbix "${v.nome}" (${v.chave}) em ${v.tipoDono} ${v.donoId}, tipo ${v.agenteAtivo ? 'agent ativo' : 'agent passivo'}`,
+    async executar(_ctx, v) {
+      const owners = v.tipoDono === 'host'
+        ? await zabbixChamar('host.get', { output: ['hostid'], hostids: [v.donoId] })
+        : await zabbixChamar('template.get', { output: ['templateid'], templateids: [v.donoId] });
+      if (!Array.isArray(owners) || owners.length !== 1) throw new Error(`${v.tipoDono === 'host' ? 'Host' : 'Template'} ${v.donoId} não encontrado.`);
+      if (v.tipoDono === 'host' && !v.agenteAtivo && !v.interfaceId) throw new Error('Item agent passivo em host exige interfaceId; consulte zabbix_listar_hosts para achar a interface correta.');
+      return JSON.stringify(await zabbixChamar('item.create', {
+        name: v.nome, key_: v.chave, hostid: v.donoId, type: v.agenteAtivo ? 7 : 0, value_type: v.tipoValor,
+        delay: v.intervalo ?? '1m', ...(v.interfaceId ? { interfaceid: v.interfaceId } : {}), ...(v.unidades ? { units: v.unidades } : {}),
+      }));
+    },
+  }),
+  definir({
+    ...zabbixEscrita,
+    nome: 'zabbix_criar_template',
+    descricao: `Cria um template vazio no grupo existente indicado. Itens, triggers e discovery rules são objetos separados e não são criados automaticamente. ${AVISO}`,
+    esquema: { type: 'object', properties: { host: { type: 'string', description: 'Identificador técnico do template.' }, nome: { type: 'string', description: 'Nome visível opcional.' }, grupoId: { type: 'string', description: 'ID de grupo de templates existente.' } }, required: ['host', 'grupoId'], additionalProperties: false },
+    entrada: z.object({ host: z.string().trim().min(1).max(128).regex(/^[^\u0000-\u001f]+$/), nome: z.string().trim().min(1).max(128).optional(), grupoId: z.string().regex(/^\d+$/) }),
+    resumo: (v) => `Criar template Zabbix "${v.host}" no grupo ${v.grupoId}${v.nome ? ` (visível como "${v.nome}")` : ''}`,
+    async executar(_ctx, v) {
+      const [grupos, existentes] = await Promise.all([
+        zabbixChamar('templategroup.get', { output: ['groupid'], groupids: [v.grupoId] }),
+        zabbixChamar('template.get', { output: ['templateid'], filter: { host: [v.host] } }),
+      ]);
+      if (!Array.isArray(grupos) || grupos.length !== 1) throw new Error(`Grupo de templates ${v.grupoId} não encontrado.`);
+      if (Array.isArray(existentes) && existentes.length) throw new Error(`Já existe template com identificador "${v.host}".`);
+      return JSON.stringify(await zabbixChamar('template.create', { host: v.host, ...(v.nome ? { name: v.nome } : {}), groups: [{ groupid: v.grupoId }] }));
+    },
+  }),
+  definir({
+    ...zabbixEscrita,
+    nome: 'zabbix_vincular_template_host',
+    descricao: `Vincula um template existente a um host, preservando os vínculos atuais (host.massadd). Confirme ambos os IDs antes. ${AVISO}`,
+    esquema: { type: 'object', properties: { hostId: { type: 'string' }, templateId: { type: 'string' } }, required: ['hostId', 'templateId'], additionalProperties: false },
+    entrada: z.object({ hostId: z.string().regex(/^\d+$/), templateId: z.string().regex(/^\d+$/) }),
+    resumo: (v) => `Vincular template ${v.templateId} ao host ${v.hostId} no Zabbix`,
+    async executar(_ctx, v) {
+      const [hosts, templates] = await Promise.all([
+        zabbixChamar('host.get', { output: ['hostid'], hostids: [v.hostId] }),
+        zabbixChamar('template.get', { output: ['templateid'], templateids: [v.templateId] }),
+      ]);
+      if (!Array.isArray(hosts) || hosts.length !== 1) throw new Error(`Host ${v.hostId} não encontrado.`);
+      if (!Array.isArray(templates) || templates.length !== 1) throw new Error(`Template ${v.templateId} não encontrado.`);
+      return JSON.stringify(await zabbixChamar('host.massadd', { hosts: [{ hostid: v.hostId }], templates: [{ templateid: v.templateId }] }));
+    },
+  }),
+];
+
 // ---------- registro ----------
 
 export const REGISTRO: FerramentaReal[] = [
@@ -759,6 +1123,10 @@ export const REGISTRO: FerramentaReal[] = [
   ...FORTIGATE_ESCRITA,
   ...CATALYST,
   ...CATALYST_ESCRITA,
+  ...WAZUH,
+  ...WAZUH_ESCRITA,
+  ...ZABBIX,
+  ...ZABBIX_ESCRITA,
 ];
 
 /** Ferramentas reais ligadas a um id do catálogo. */

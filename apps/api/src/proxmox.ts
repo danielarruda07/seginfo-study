@@ -29,7 +29,7 @@ export const proxmoxGet = (caminho: string): Promise<unknown> => pedir('GET', ca
  * A maioria das alterações devolve o id de uma tarefa (UPID) que roda em segundo plano no nó.
  */
 export async function proxmoxAlterar(
-  metodo: 'POST' | 'DELETE',
+  metodo: 'POST' | 'PUT' | 'DELETE',
   no: string,
   caminho: string,
   parametros: Record<string, string | number> = {},
@@ -50,7 +50,7 @@ export async function proxmoxAlterar(
   return `A tarefa foi iniciada e ainda está em andamento no Proxmox depois de ${esperaSegundos} segundos. Consulte o estado antes de concluir que terminou.`;
 }
 
-function pedir(metodo: 'GET' | 'POST' | 'DELETE', caminho: string, corpo = ''): Promise<unknown> {
+function pedir(metodo: 'GET' | 'POST' | 'PUT' | 'DELETE', caminho: string, corpo = ''): Promise<unknown> {
   const faltando = proxmoxFaltando();
   if (faltando.length > 0) {
     return Promise.reject(new Error(`Proxmox não configurado no servidor: falta definir ${faltando.join(' e ')}.`));
@@ -86,7 +86,7 @@ function pedir(metodo: 'GET' | 'POST' | 'DELETE', caminho: string, corpo = ''): 
         headers: {
           Authorization: `PVEAPIToken=${token}`,
           Accept: 'application/json',
-          ...(metodo === 'POST' ? { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(corpo) } : {}),
+          ...(metodo !== 'GET' ? { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(corpo) } : {}),
         },
         timeout: 10_000,
         ca,
@@ -122,7 +122,7 @@ function pedir(metodo: 'GET' | 'POST' | 'DELETE', caminho: string, corpo = ''): 
       }
       reject(new Error(e.message));
     });
-    req.end(metodo === 'POST' ? corpo : undefined);
+    req.end(metodo !== 'GET' ? corpo : undefined);
   });
 }
 

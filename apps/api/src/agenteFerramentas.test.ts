@@ -161,6 +161,50 @@ describe('ferramentas do Proxmox: criar, clonar e apagar VM', () => {
   });
 });
 
+describe('lote de redução de recursos no Proxmox', () => {
+  const itens = [
+    { no: 'pm01', tipo: 'qemu', vmid: 901, memoriaAtualEsperadaMb: 4096, memoriaMb: 2048 },
+    { no: 'pm02', tipo: 'qemu', vmid: 902, memoriaAtualEsperadaMb: 2048, memoriaMb: 1024 },
+  ];
+
+  it('recusa o lote inteiro quando uma configuração mudou antes de desligar qualquer VM', async () => {
+    proxmox.get.mockImplementation(async (path: string) => path.endsWith('/config')
+      ? { memory: path.includes('/901/') ? 4096 : 3072, cores: 2 }
+      : { status: 'running' });
+    proxmox.alterar.mockClear();
+    await expect(porNome('proxmox_redimensionar_lote').rodar(ctx, { itens })).rejects.toThrow(/mudou desde a consulta/);
+    expect(proxmox.alterar).not.toHaveBeenCalled();
+  });
+
+  it('desliga e religa somente as VMs originalmente ligadas após reduzir os recursos', async () => {
+    const estado = new Map([[901, 'running'], [902, 'stopped']]);
+    proxmox.get.mockImplementation(async (path: string) => {
+      const vmid = Number(path.match(/\/(901|902)\//)?.[1]);
+      return path.endsWith('/config')
+        ? { memory: vmid === 901 ? 4096 : 2048, cores: 2 }
+        : { status: estado.get(vmid) };
+    });
+    proxmox.alterar.mockReset();
+    proxmox.alterar.mockImplementation(async (_method: unknown, _node: unknown, path: unknown) => {
+      const target = String(path);
+      const vmid = Number(target.match(/\/(901|902)\//)?.[1]);
+      if (target.endsWith('/shutdown')) estado.set(vmid, 'stopped');
+      if (target.endsWith('/start')) estado.set(vmid, 'running');
+      return 'ok';
+    });
+    const resultado = JSON.parse(await porNome('proxmox_redimensionar_lote').rodar(ctx, { itens }));
+    expect(resultado.concluidas).toHaveLength(2);
+    expect(estado.get(901)).toBe('running');
+    expect(estado.get(902)).toBe('stopped');
+    expect(proxmox.alterar.mock.calls.map((call) => String(call[2]))).toEqual([
+      '/nodes/pm01/qemu/901/status/shutdown',
+      '/nodes/pm01/qemu/901/config',
+      '/nodes/pm02/qemu/902/config',
+      '/nodes/pm01/qemu/901/status/start',
+    ]);
+  });
+});
+
 describe('ferramentasDoId', () => {
   it('cada id novo do catálogo resolve para as ferramentas certas', async () => {
     const { ferramentasDoId } = await import('./agenteFerramentas.js');

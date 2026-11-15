@@ -24,6 +24,16 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-15-agente-operacao-homelab',
+    data: '2026-11-15',
+    titulo: 'Agentes passam a operar mais partes da infraestrutura com aprovação',
+    descricao:
+      'O operador integrado ganhou ferramentas para ajustar CPU e memória de VMs desligadas, migrar VMs entre nós, consultar o Wazuh e solicitar reinícios aprovados, além de consultar e administrar hosts, templates e itens simples no Zabbix. ' +
+      'As credenciais continuam no servidor, os parâmetros são validados e cada escrita exige aprovação. A experiência reforça que autonomia útil começa com inventário e plano, e termina com verificação do estado. O roteador, regras do Wazuh, triggers e discovery rules do Zabbix ainda exigem integrações próprias.',
+    categoria: 'funcionalidade',
+    tags: ['agents', 'proxmox', 'wazuh', 'zabbix', 'aprovacao', 'homelab'],
+  },
+  {
     id: 'proj-2026-11-14-biblioteca-artefatos',
     data: '2026-11-14',
     titulo: 'Uma biblioteca permanente para estudar os rastros dos ataques',

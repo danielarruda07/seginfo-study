@@ -39,11 +39,15 @@ Só roda o que está no `REGISTRO` (`apps/api/src/agenteFerramentas.ts`) **e** f
 |---|---|---|
 | `busca-base` | `buscar_base` | leitura |
 | `proxmox-leitura` | `proxmox_listar_nos`, `proxmox_listar_vms`, `proxmox_detalhar_vm`, `proxmox_listar_snapshots`, `proxmox_listar_armazenamento`, `proxmox_listar_isos`, `proxmox_proximo_vmid` | leitura |
-| `proxmox-escrita` | `proxmox_ligar_vm`, `proxmox_desligar_vm`, `proxmox_reiniciar_vm`, `proxmox_criar_snapshot`, `proxmox_reverter_snapshot`, `proxmox_remover_snapshot`, `proxmox_criar_vm`, `proxmox_clonar_vm`, `proxmox_apagar_vm` | escrita (com aprovação) |
+| `proxmox-escrita` | `proxmox_redimensionar_lote`, `proxmox_ajustar_recursos_vm`, `proxmox_migrar_vm`, `proxmox_ligar_vm`, `proxmox_desligar_vm`, `proxmox_reiniciar_vm`, `proxmox_criar_snapshot`, `proxmox_reverter_snapshot`, `proxmox_remover_snapshot`, `proxmox_criar_vm`, `proxmox_clonar_vm`, `proxmox_apagar_vm` | escrita (com aprovação) |
 | `fortigate-leitura` | `fortigate_listar_interfaces`, `fortigate_listar_policies`, `fortigate_listar_enderecos`, `fortigate_contar_sessoes_negadas` | leitura |
 | `fortigate-escrita` | `fortigate_criar_policy` (entra desativada por padrão), `fortigate_definir_status_policy` | escrita (com aprovação) |
 | `catalyst-leitura` | `catalyst_mostrar_vlans`, `catalyst_mostrar_interfaces`, `catalyst_mostrar_trunk`, `catalyst_mostrar_span`, `catalyst_mostrar_running_config_interface` | leitura |
 | `catalyst-escrita` | `catalyst_criar_vlan`, `catalyst_configurar_porta_access`, `catalyst_adicionar_vlan_ao_trunk` (nunca remove VLANs existentes), `catalyst_configurar_span` | escrita (com aprovação) |
+| `wazuh-leitura` | `wazuh_listar_agentes`, `wazuh_status_manager` | leitura |
+| `wazuh-escrita` | `wazuh_reiniciar_agentes`, `wazuh_reiniciar_manager` | escrita (com aprovação) |
+| `zabbix-leitura` | `zabbix_listar_hosts`, `zabbix_listar_grupos`, `zabbix_listar_templates`, `zabbix_listar_problemas` | leitura |
+| `zabbix-escrita` | `zabbix_criar_host`, `zabbix_criar_template`, `zabbix_criar_item`, `zabbix_vincular_template_host` | escrita (com aprovação) |
 
 As ferramentas de escrita só entram quando o item do projeto está marcado como escrita no editor.
 
@@ -116,6 +120,13 @@ O container da API precisa alcançar o Proxmox na porta 8006. Enquanto faltar va
   4. a VM está parada.
 - Apoio, só leitura: `proxmox_proximo_vmid` (número livre) e `proxmox_listar_isos` (volids de um storage).
 
+#### Ajustar recursos e migrar VM
+
+- **`proxmox_ajustar_recursos_vm`**: atualiza memória e/ou cores de uma VM QEMU ou container LXC, mas recusa operar enquanto o alvo estiver ligado. O agente deve consultar configuração e capacidade dos nós antes; após a mudança, o alvo permanece desligado.
+- **`proxmox_migrar_vm`**: migra uma VM QEMU para um nó online do cluster. Migração online exige VM ligada; offline exige VM parada. A ferramenta confere origem, estado, destino e proteção da VM. Compatibilidade de CPU, storage e rede continuam sendo pré-requisitos do cluster e precisam ser analisados antes da aprovação.
+- **`proxmox_redimensionar_lote`**: recebe até 20 alvos e os valores atuais esperados, valida todos antes de agir, desliga limpo apenas os que estavam ligados, aplica somente reduções de memória/cores e restaura o estado ligado original. Se falhar, interrompe e tenta religar o que parou; o resultado informa alterações parciais e falhas de restauração. Uma única aprovação cobre exatamente os parâmetros e VMIDs mostrados no resumo e na entrada da ação.
+- As ferramentas exigem aprovação humana e usam parâmetros fechados. O lote não migra VMs; para isso use `proxmox_migrar_vm` em uma etapa separada após validar capacidade, storage e rede.
+
 | Variável | Valor |
 |---|---|
 | `PROXMOX_VMS_PROTEGIDAS` | VMIDs que nenhum agente pode apagar, separados por vírgula. Coloque aqui a VM que hospeda o próprio app (ex.: `100`). |
@@ -160,10 +171,20 @@ entra em modo privilegiado) e `line vty ... login local` com SSH habilitado. IOS
 troca de chave e cifras mais antigas (DH group14/group1 SHA1, AES-CBC, 3DES); o cliente já habilita
 essas opções porque o `ssh2` não as liga por padrão.
 
-### Wazuh (leitura, fora do catálogo de ferramentas dos agentes)
-Cliente em `apps/api/src/wazuh.ts`, consultado pela tela `/wazuh` (não é uma ferramenta do catálogo
-de agentes — não há `wazuh-leitura`/`wazuh-escrita` ligável a um projeto). Variáveis e detalhes em
-[docs/WAZUH.md](WAZUH.md).
+### Wazuh
+Cliente em `apps/api/src/wazuh.ts`, consultado pela tela `/wazuh` e por ferramentas dos agentes. O catálogo oferece consulta de status/agentes e reinício de agentes ou manager; edição de regras e arquivos de configuração ainda não está disponível. Variáveis e detalhes em [docs/WAZUH.md](WAZUH.md). Use uma identidade API dedicada com permissões apenas nos endpoints necessários.
+
+### Zabbix
+Cliente JSON-RPC em `apps/api/src/zabbix.ts`. Configure no serviço `seginfo-api` do Coolify:
+
+| Variável | Uso |
+|---|---|
+| `ZABBIX_API_URL` | URL HTTPS completa do endpoint JSON-RPC (ex.: `https://zabbix.example/api_jsonrpc.php`) |
+| `ZABBIX_API_TOKEN` (Secret) | Token de API de uma conta dedicada |
+| `ZABBIX_CA_B64` | Opcional: CA PEM em Base64 para certificado privado |
+| `ZABBIX_TLS_INSEGURO` | Opcional; `true` desliga validação TLS, somente em laboratório isolado |
+
+O servidor precisa alcançar o frontend/API do Zabbix. O catálogo permite consultar hosts, grupos, templates e problemas; criar host e template em grupos existentes; criar itens simples de Zabbix agent/agent ativo; e vincular template a host. Criação de itens não aceita scripts, comandos remotos ou itens HTTP. Templates podem receber itens; triggers, discovery rules e ações ainda não estão implementados. A API JSON-RPC recebe somente métodos definidos no código.
 
 Isto NÃO substitui a observação acima sobre auditoria dos agentes: as ações dos agentes de IA
 continuam fora do Wazuh até existir um encaminhamento explícito delas para o manager.
@@ -173,7 +194,7 @@ continuam fora do Wazuh até existir um encaminhamento explícito delas para o m
 - Só agentes `arquivados` podem ser excluídos. Agente arquivado não executa.
 - Toda ferramenta de escrita passa pela tela de aprovação, sem exceção e independente do campo "exige aprovação" do projeto.
 - Uma execução por vez por usuário.
-- O pedido, as instruções do agente e os resultados das ferramentas são enviados à Anthropic. Decisão de 13/11/2026: no laboratório, isso inclui dados do ambiente quando as ferramentas de infraestrutura existirem (hoje: Proxmox, FortiGate e Catalyst 2960).
+- O pedido, as instruções do agente e os resultados das ferramentas são enviados à Anthropic. No laboratório, isso inclui dados do ambiente quando as ferramentas de infraestrutura estão ligadas ao agente (Proxmox, FortiGate, Catalyst 2960, Wazuh e Zabbix).
 - A temperatura do projeto não é enviada: o modelo atual não aceita esse parâmetro.
 - Dados no PostgreSQL (tabelas `Agente`, `AgenteAvaliacao`, `AgenteExecucao`; migrations `20261112000000_agentes`, `20261113000000_agente_execucao` e `20261113010000_agente_execucao_pendencia`).
 - Dependência nova: `ssh2` (cliente SSH do Catalyst), versão pinada em `apps/api/package.json`.
@@ -181,10 +202,11 @@ continuam fora do Wazuh até existir um encaminhamento explícito delas para o m
 ## Plano
 1. **Playground com ferramentas de leitura** (feito).
 2. **Ferramentas de leitura do Proxmox** (feito e testado contra o Proxmox real em 13/11/2026).
-3. **Tela de aprovação e escrita no Proxmox** (feito: energia das VMs e snapshots. Primeiro teste real em 13/11/2026: aprovação e envio funcionaram; o snapshot foi recusado pelo armazenamento, ver o registro em `docs/AMBIENTE.md`. Criar, clonar e apagar VM ficam para depois).
+3. **Tela de aprovação e escrita no Proxmox** (feito: energia, recursos, migração, snapshots e ciclo de vida de VMs; falta validar as novas operações contra versões e permissões reais do cluster).
 4. **FortiGate (API REST) e Catalyst 2960 (SSH)** (feito: leitura e escrita com aprovação; falta configurar as variáveis e testar contra os equipamentos reais. Backup automático da configuração antes de cada mudança de escrita ainda não existe — hoje a mitigação é: policy nova entra desativada, e "adicionar ao trunk" nunca remove VLANs).
-5. Gatilhos por agenda e por evento, e avaliações automáticas.
-6. Um agente chamando outro, servidor MCP próprio.
+5. **Wazuh e Zabbix no catálogo de agentes** (feito em parte: Wazuh consulta/reinício; Zabbix consulta, cria host/template/item e vincula template. Falta validar com versões e contas reais; edição de regras Wazuh, triggers/discovery do Zabbix e roteador da operadora seguem pendentes).
+6. Gatilhos por agenda e por evento, e avaliações automáticas.
+7. Um agente chamando outro, servidor MCP próprio.
 
 ## Pendências
 - Incluir `AgenteExecucao` no backup e restaurar agentes no `restore-backup.ts`.

@@ -24,12 +24,12 @@ const erroTexto = (e: unknown): string => e instanceof Error ? e.message : 'Falh
 
 export const wazuhFaltando = (): string[] => VARIAVEIS.filter((k) => !process.env[k]);
 
-function request(method: 'GET' | 'POST', path: string, headers: Record<string, string> = {}, ca?: string, insecure = false): Promise<string> {
+function request(method: 'GET' | 'POST' | 'PUT', path: string, headers: Record<string, string> = {}, ca?: string, insecure = false, body?: string): Promise<string> {
   const base = new URL(process.env.WAZUH_API_URL as string);
   return new Promise((resolve, reject) => {
     const req = https.request({
       hostname: base.hostname, port: base.port || 55000, path, method,
-      headers: { Accept: 'application/json', ...headers },
+      headers: { Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } : {}), ...headers },
       timeout: 8_000, ca, rejectUnauthorized: !insecure,
     }, (res) => {
       const chunks: Buffer[] = [];
@@ -49,12 +49,35 @@ function request(method: 'GET' | 'POST', path: string, headers: Record<string, s
       if (e.code && ERROS_CERT.includes(e.code)) return reject(new Error(`Wazuh API ${method} ${path}: certificado TLS não confiável. Configure WAZUH_API_CA_B64 ou, apenas no laboratório, WAZUH_API_TLS_INSEGURO=true.`));
       reject(new Error(`Wazuh API ${method} ${path}: não foi possível alcançar a API pela rede privada; confira URL, porta e firewall.`));
     });
-    req.end();
+    req.end(body);
   });
 }
 
 async function consultar(path: string, token: string, ca?: string, insecure = false): Promise<unknown> {
   const raw = await request('GET', path, { Authorization: `Bearer ${token}` }, ca, insecure);
+  try { return JSON.parse(raw); } catch { throw new Error('Wazuh API devolveu uma resposta inválida.'); }
+}
+
+/** Executa uma chamada Wazuh API para ferramentas de agente; credenciais e JWT nunca saem do servidor. */
+export async function wazuhApi(method: 'GET' | 'PUT', path: string): Promise<unknown> {
+  const faltando = wazuhFaltando();
+  if (faltando.length) throw new Error(`Wazuh não configurado no servidor: falta definir ${faltando.join(', ')}.`);
+  let apiUrl: URL;
+  try { apiUrl = new URL(process.env.WAZUH_API_URL as string); }
+  catch { throw new Error('WAZUH_API_URL inválida.'); }
+  if (apiUrl.protocol !== 'https:' || apiUrl.username || apiUrl.password || apiUrl.search || apiUrl.hash || !['', '/'].includes(apiUrl.pathname)) {
+    throw new Error('Use WAZUH_API_URL em HTTPS, apenas com host e porta.');
+  }
+  const insecure = process.env.WAZUH_API_TLS_INSEGURO === 'true';
+  let ca: string | undefined;
+  if (!insecure && process.env.WAZUH_API_CA_B64) {
+    try { ca = Buffer.from(process.env.WAZUH_API_CA_B64, 'base64').toString('utf8'); }
+    catch { throw new Error('WAZUH_API_CA_B64 inválida.'); }
+  }
+  const basic = Buffer.from(`${process.env.WAZUH_API_USERNAME}:${process.env.WAZUH_API_PASSWORD}`).toString('base64');
+  const token = (await request('POST', '/security/user/authenticate?raw=true', { Authorization: `Basic ${basic}` }, ca, insecure)).trim();
+  if (!token || token.length > 8192) throw new Error('Wazuh API não retornou um token de sessão válido.');
+  const raw = await request(method, path, { Authorization: `Bearer ${token}` }, ca, insecure);
   try { return JSON.parse(raw); } catch { throw new Error('Wazuh API devolveu uma resposta inválida.'); }
 }
 
