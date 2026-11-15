@@ -1,4 +1,4 @@
-<!-- Regras do honeypot do range (Cowrie e Dionaea). IDs 100200-100229. -->
+<!-- Regras do honeypot do range. IDs 100200-100290. -->
 <group name="honeypot,cowrie,">
   <rule id="100200" level="3">
     <decoded_as>json</decoded_as>
@@ -36,6 +36,71 @@
     <same_field>src_ip</same_field>
     <description>Cowrie: forca bruta (20 logins falhos em 2 min) de $(src_ip)</description>
     <mitre><id>T1110.001</id></mitre>
+  </rule>
+</group>
+
+<!-- Prompt honeypot: sinais de processamento semântico e comportamento HTTP.
+     Nenhum sinal isolado prova que o visitante seja uma IA. -->
+<group name="honeypot,prompt_honeypot,">
+  <rule id="100281" level="10">
+    <decoded_as>json</decoded_as>
+    <field name="honeypot_type">^prompt$</field>
+    <field name="event_type">^canary_followed$</field>
+    <description>Prompt honeypot: canário semântico seguido no mesmo host (não confirma IA)</description>
+  </rule>
+  <rule id="100282" level="8">
+    <decoded_as>json</decoded_as>
+    <field name="honeypot_type">^prompt$</field>
+    <field name="canary_credential_used">^true$</field>
+    <description>Prompt honeypot: credencial falsa do HTML usada no login isca</description>
+  </rule>
+  <rule id="100283" level="6">
+    <decoded_as>json</decoded_as>
+    <field name="honeypot_type">^prompt$</field>
+    <field name="ua_switch">^true$</field>
+    <description>Prompt honeypot: User-Agent mudou durante a sessão (sinal comportamental)</description>
+  </rule>
+  <rule id="100284" level="5">
+    <decoded_as>json</decoded_as>
+    <field name="honeypot_type">^prompt$</field>
+    <field name="sawtooth_candidate">^true$</field>
+    <description>Prompt honeypot: pausa e rajada de requisições (sinal comportamental)</description>
+  </rule>
+  <rule id="100285" level="6">
+    <decoded_as>json</decoded_as>
+    <field name="honeypot_type">^prompt$</field>
+    <field name="unusual_method">^true$</field>
+    <description>Prompt honeypot: método HTTP incomum usado</description>
+  </rule>
+  <rule id="100286" level="6">
+    <decoded_as>json</decoded_as>
+    <field name="honeypot_type">^prompt$</field>
+    <field name="probe_sqli">^true$</field>
+    <description>Prompt honeypot: parâmetro compatível com tentativa de SQLi</description>
+  </rule>
+  <rule id="100287" level="6">
+    <decoded_as>json</decoded_as>
+    <field name="honeypot_type">^prompt$</field>
+    <field name="probe_xss">^true$</field>
+    <description>Prompt honeypot: parâmetro compatível com tentativa de XSS</description>
+  </rule>
+  <rule id="100288" level="6">
+    <decoded_as>json</decoded_as>
+    <field name="honeypot_type">^prompt$</field>
+    <field name="probe_ssti">^true$</field>
+    <description>Prompt honeypot: parâmetro compatível com tentativa de SSTI</description>
+  </rule>
+  <rule id="100289" level="7">
+    <decoded_as>json</decoded_as>
+    <field name="honeypot_type">^prompt$</field>
+    <field name="probe_cmd">^true$</field>
+    <description>Prompt honeypot: parâmetro compatível com tentativa de command injection</description>
+  </rule>
+  <rule id="100290" level="5">
+    <decoded_as>json</decoded_as>
+    <field name="honeypot_type">^prompt$</field>
+    <field name="event_type">^login_attempt$</field>
+    <description>Prompt honeypot: formulário de login da isca enviado</description>
   </rule>
 </group>
 

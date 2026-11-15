@@ -366,7 +366,7 @@ export type BiblioItem = z.infer<typeof BiblioItemSchema>;
 // ===================== RADAR DE ATAQUES (auto-vulnerabilidade / honeypot) =====================
 
 /** Origem do evento: de onde o coletor leu. */
-export const AtaqueFonte = z.enum(['fortigate', 'windows', 'cowrie', 'opencanary', 'dionaea', 'heralding', 'isca', 'outro']);
+export const AtaqueFonte = z.enum(['fortigate', 'windows', 'cowrie', 'opencanary', 'dionaea', 'heralding', 'isca', 'prompt_honeypot', 'outro']);
 export type AtaqueFonte = z.infer<typeof AtaqueFonte>;
 
 /** O que o atacante fez. */

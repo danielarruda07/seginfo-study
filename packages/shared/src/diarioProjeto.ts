@@ -24,6 +24,20 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-14-prompt-honeypot',
+    data: '2026-11-14',
+    titulo: 'Um canário HTTP para observar automação que lê páginas',
+    descricao:
+      'O honeypot de rede já mostrava conexões a serviços; um experimento separado agora observa leitores automatizados ' +
+      'de uma página HTTP. Um canário pede uma consulta apenas ao mesmo host e usa credenciais falsas que nunca autenticam. ' +
+      'O serviço não pede prompts ou segredos, não executa entrada recebida, grava apenas nomes de campos e indicadores, ' +
+      'e limita o tamanho dos logs. O Wazuh e o Radar recebem sinais como uso do canário, mudança de User-Agent e pausas ' +
+      'entre rajadas. A classificação continua deliberadamente modesta: esses padrões indicam automação para investigar, ' +
+      'mas não provam que uma IA esteja por trás do acesso.',
+    categoria: 'seguranca',
+    tags: ['honeypot', 'wazuh', 'prompt-injection', 'deception'],
+  },
+  {
     id: 'proj-2026-11-14-agentes-vm-sync-backup',
     data: '2026-11-14',
     titulo: 'Agentes cuidam do ciclo de vida das VMs e o inventário se atualiza sozinho',
