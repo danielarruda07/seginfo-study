@@ -26,6 +26,19 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-15-linkedin-conexao',
+    data: '2026-11-15',
+    titulo: 'Conectar ao LinkedIn sem caça ao tesouro',
+    descricao:
+      'Um teste de ponta a ponta mostrou que a conexão com o LinkedIn falhava em silêncio: o botão ficava escondido ' +
+      'no fim da aba de marca, e quando o retorno do LinkedIn dava erro, a tela só dizia "não foi possível" sem motivo. ' +
+      'Agora o retorno explica o que aconteceu (recusa, código ausente, estado expirado), o motivo fica salvo na conta ' +
+      'e a tela de publicação avisa quando a conexão está desligada, com atalho direto. Lição: uma integração que depende ' +
+      'de um redirecionamento precisa dizer o motivo quando falha, senão quem testa fica sem nada para investigar.',
+    categoria: 'funcionalidade',
+    tags: ['linkedin', 'oauth', 'ux', 'erro'],
+  },
+  {
     id: 'proj-2026-11-15-operador-homelab-mcp',
     data: '2026-11-15',
     titulo: 'Operar o homelab de qualquer lugar, sem aprovar cada clique',

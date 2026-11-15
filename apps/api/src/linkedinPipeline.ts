@@ -544,14 +544,30 @@ export async function registerLinkedinPipelineRoutes(app: FastifyInstance) {
 
   // Passo 2: o LinkedIn devolve o navegador aqui, ainda com a sessão do Access.
   app.get('/api/linkedin/conta/callback', async (req, reply) => {
-    const q = z.object({ code: z.string().optional(), state: z.string().optional(), error: z.string().optional() }).safeParse(req.query);
-    if (!q.success || q.data.error || !q.data.code || !q.data.state) return reply.redirect('/posts?linkedin=erro');
+    const q = z.object({
+      code: z.string().optional(), state: z.string().optional(),
+      error: z.string().optional(), error_description: z.string().optional(),
+    }).safeParse(req.query);
+    // o motivo vai na URL (a tela mostra) e fica em ultimoErro (quando já existe uma conta)
+    const falhar = async (motivo: string) => {
+      const texto = motivo.slice(0, 300);
+      await prisma.linkedinConta.updateMany({ where: { usuarioId: uid(req) }, data: { ultimoErro: texto } }).catch(() => undefined);
+      return reply.redirect(`/posts?linkedin=erro&motivo=${encodeURIComponent(texto)}`);
+    };
+    if (!q.success) return falhar('O retorno do LinkedIn veio em formato inesperado.');
+    if (q.data.error) {
+      return falhar(`O LinkedIn não autorizou a conexão${q.data.error_description ? `: ${q.data.error_description}` : '.'}`);
+    }
+    if (!q.data.code || !q.data.state) return falhar('O retorno do LinkedIn veio sem o código de autorização.');
     try {
       await concluirAutorizacao(q.data.code, q.data.state, uid(req));
       return reply.redirect('/posts?linkedin=conectado');
     } catch (e) {
-      req.log.warn({ err: (e as Error).message }, 'linkedin: falha ao concluir a autorização');
-      return reply.redirect('/posts?linkedin=erro');
+      const msg = e instanceof ErroLinkedin
+        ? e.message
+        : 'Falha inesperada ao concluir a conexão.';
+      req.log.error({ err: (e as Error).message, tipo: e instanceof ErroLinkedin ? e.status : 'inesperado' }, 'linkedin: falha ao concluir a autorização');
+      return falhar(`${msg} Tente de novo; o link de autorização vale 10 minutos.`);
     }
   });
 

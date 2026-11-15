@@ -25,12 +25,14 @@ function retornoDoOAuth(): Aviso | null {
   const params = new URLSearchParams(window.location.search);
   const valor = params.get('linkedin');
   if (!valor) return null;
+  const motivo = params.get('motivo');
   params.delete('linkedin');
+  params.delete('motivo');
   const resto = params.toString();
   window.history.replaceState(window.history.state, '', `${window.location.pathname}${resto ? `?${resto}` : ''}${window.location.hash}`);
   return valor === 'conectado'
     ? { sev: 'success', text: 'LinkedIn conectado. O servidor já pode publicar os posts de texto que você aprovar.' }
-    : { sev: 'error', text: 'Não foi possível concluir a conexão com o LinkedIn. Tente de novo; se repetir, confira a URL de redirecionamento no app do LinkedIn.' };
+    : { sev: 'error', text: motivo ? `Não consegui conectar ao LinkedIn. ${motivo}` : 'Não consegui conectar ao LinkedIn. Tente de novo; se repetir, confira a URL de redirecionamento no app do LinkedIn.' };
 }
 
 /**
@@ -88,7 +90,7 @@ export function Posts() {
       ) : (
         <TabView activeIndex={aba} onTabChange={(e) => setAba(e.index)} className="linkedin-tabs" scrollable renderActiveOnly={false}>
           <TabPanel header="Pipeline" leftIcon="pi pi-send mr-2">
-            <Pipeline onEditar={editarRascunho} onNovo={() => abrirEstudio({})} onVerPublicados={irPara('publicados')} onVerIdeias={irPara('ideias')} />
+            <Pipeline onEditar={editarRascunho} onNovo={() => abrirEstudio({})} onVerPublicados={irPara('publicados')} onVerIdeias={irPara('ideias')} onVerMarca={irPara('marca')} />
           </TabPanel>
           <TabPanel header="Estúdio" leftIcon="pi pi-pencil mr-2">
             <Estudio pedido={pedidoEstudio} onPedidoConsumido={limparPedido} onVerPipeline={irPara('pipeline')} />
