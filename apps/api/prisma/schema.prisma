@@ -37,6 +37,9 @@ model Usuario {
   linkedinPosts LinkedinPost[]
   diario       DiarioEntrada[]
   linkedinEstrategia LinkedinEstrategia?
+  linkedinProjetos LinkedinProjeto[]
+  linkedinIdeias   LinkedinIdeia[]
+  linkedinConta    LinkedinConta?
   agentes      Agente[]
 }
 
@@ -135,9 +138,41 @@ model Post {
   textoAlternativo String @default("")
   roteiroSlides String @default("")
   topicoId  String?
-  publicado Boolean  @default(false)
+  publicado Boolean  @default(false) // legado: espelha status = publicado
+  criadoEm  DateTime @default(now())
+  // ----- pipeline do LinkedIn (rascunho -> aprovado -> agendado -> publicado) -----
+  status         String    @default("rascunho") // rascunho | aprovado | agendado | publicando | publicado | falhou
+  formato        String    @default("texto")    // texto | imagem | carrossel | video | artigo | enquete
+  projetoId      String?   // LinkedinProjeto.id (sem FK: apagar o projeto só solta o vínculo)
+  ideiaId        String?   // LinkedinIdeia.id que originou o rascunho
+  agendadoPara   DateTime? // instante em UTC
+  canal          String    @default("lembrete") // lembrete (publica à mão) | api (servidor publica)
+  tentativas     Int       @default(0)
+  ultimoErro     String    @default("")
+  linkedinPostId String?   // LinkedinPost.id criado quando o rascunho foi publicado
+  aprovadoEm     DateTime?
+  publicadoEm    DateTime?
+  atualizadoEm   DateTime  @default(now()) @updatedAt
+  versoes        PostVersao[]
+
+  @@index([usuarioId])
+  @@index([status, agendadoPara])
+}
+
+// Histórico do texto de um rascunho. Refinar com a IA cria uma versão nova em vez de
+// sobrescrever, para comparar e voltar atrás.
+model PostVersao {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  usuarioId String
+  numero    Int
+  gancho    String
+  corpo     String
+  origem    String   @default("manual") // manual | ia:gerar | ia:<ação> | restaurar:<n>
   criadoEm  DateTime @default(now())
 
+  @@unique([postId, numero])
   @@index([usuarioId])
 }
 
@@ -350,9 +385,11 @@ model LinkedinPost {
   texto          String
   formato        String   @default("texto") // texto | imagem | carrossel | video | artigo | enquete
   metricas       Json     @default("{}")
-  origem         String   @default("manual") // manual | importacao
+  origem         String   @default("manual") // manual | importacao | api
   analise        Json?
   memoriaId      String?
+  projetoId      String?  // LinkedinProjeto.id
+  urn            String?  // urn:li:share:... quando publicado pela API
   criadoEm       DateTime @default(now())
   atualizadoEm   DateTime @updatedAt
 
@@ -371,6 +408,7 @@ model DiarioEntrada {
   descricao String
   categoria String   // funcionalidade | seguranca | infra | decisao | aprendizado | plano
   tags      String[] @default([])
+  projetoId String?  // LinkedinProjeto.id
   criadoEm  DateTime @default(now())
 
   @@index([usuarioId, data])
@@ -385,6 +423,62 @@ model LinkedinEstrategia {
   voz          String
   pilares      String[]
   atualizadoEm DateTime @updatedAt
+}
+
+// Projeto (ou série) de conteúdo: agrupa ideias, rascunhos, posts publicados e marcos do diário
+// em torno de um assunto (ex.: "Honeypot exposto", "Construindo a SegInfo").
+model LinkedinProjeto {
+  id           String   @id @default(cuid())
+  usuarioId    String
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  nome         String
+  descricao    String   @default("")
+  objetivo     String   @default("")
+  pilar        String?
+  status       String   @default("ativo") // ativo | pausado | concluido
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([usuarioId, status])
+}
+
+// Backlog de ideias de post. Nascem à mão, da análise de um post publicado, de um lab,
+// de um marco do diário, do Radar ou do planejador semanal.
+model LinkedinIdeia {
+  id           String   @id @default(cuid())
+  usuarioId    String
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  titulo       String
+  briefing     String   @default("")
+  pilar        String?
+  projetoId    String?
+  formato      String?
+  origem       String   @default("manual") // manual | analise | lab | marco | radar | planejador
+  origemRef    String?  // id do post, lab ou marco de origem
+  status       String   @default("nova")   // nova | em_rascunho | descartada
+  sugeridaPara String?  // YYYY-MM-DD (planejador)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  // repetir a análise de um post não duplica as ideias dele
+  @@unique([usuarioId, origem, origemRef, titulo])
+  @@index([usuarioId, status])
+}
+
+// Conexão com a API do LinkedIn (OAuth do app "Share on LinkedIn"). O token fica cifrado
+// com STORAGE_TOKEN_KEY (AES-256-GCM) e nunca sai do servidor nem entra em backup.
+model LinkedinConta {
+  usuarioId           String    @id
+  usuario             Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  personUrn           String    // urn:li:person:<id>
+  nome                String    @default("")
+  accessTokenCifrado  String
+  refreshTokenCifrado String?
+  expiraEm            DateTime
+  escopos             String    @default("")
+  ultimoErro          String?
+  conectadoEm         DateTime  @default(now())
+  atualizadoEm        DateTime  @updatedAt
 }
 
 // Agents: projeto de um agente de IA (8 pilares), guardado em `config` (JSON validado pelo

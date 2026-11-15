@@ -20,6 +20,8 @@ export interface EntradaDiario {
   descricao: string;
   categoria: CategoriaDiario;
   tags: string[];
+  /** projeto do LinkedIn a que o marco pertence (só marcos criados pela tela) */
+  projetoId?: string | null;
 }
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
@@ -32,6 +34,24 @@ export const DIARIO_PROJETO: EntradaDiario[] = [
       'As credenciais continuam no servidor, os parâmetros são validados e cada escrita exige aprovação. A experiência reforça que autonomia útil começa com inventário e plano, e termina com verificação do estado. O roteador, regras do Wazuh, triggers e discovery rules do Zabbix ainda exigem integrações próprias.',
     categoria: 'funcionalidade',
     tags: ['agents', 'proxmox', 'wazuh', 'zabbix', 'aprovacao', 'homelab'],
+  },
+  {
+    id: 'proj-2026-11-15-linkedin-pipeline',
+    data: '2026-11-15',
+    titulo: 'O módulo de conteúdo virou um pipeline: do projeto ao post agendado',
+    descricao:
+      'Rascunho e post publicado eram duas listas que não se conheciam, e as ideias que a IA tirava de cada post ' +
+      'se perdiam. Agora o conteúdo anda por um caminho só: projeto, ideia no backlog, rascunho com versões, ' +
+      'aprovação, agendamento e publicação. A decisão central foi tratar a publicação como ação externa e ' +
+      'irreversível: nada sai sem aprovação explícita, a aprovação vale para um texto (editar desfaz), e o servidor ' +
+      'refaz a verificação antes de enviar, com a mesma regra que a tela mostra. Essa verificação barra campos ' +
+      'que a IA deixou entre colchetes para confirmar e qualquer endereço ou domínio do ambiente. Para nunca ' +
+      'publicar duas vezes, o rascunho é reservado numa atualização condicional antes da chamada; se o serviço ' +
+      'reiniciar no meio, o post fica como falha e ninguém o reenvia sozinho. O agendador nasceu independente da ' +
+      'API da rede: sem conexão, ele funciona como lembrete. Lição de pesquisa: a API oficial publica texto no ' +
+      'perfil, mas não agenda nem devolve métricas de posts pessoais, então o desenho precisou assumir isso desde o início.',
+    categoria: 'funcionalidade',
+    tags: ['linkedin', 'pipeline', 'agendamento', 'ia', 'seguranca'],
   },
   {
     id: 'proj-2026-11-14-biblioteca-artefatos',

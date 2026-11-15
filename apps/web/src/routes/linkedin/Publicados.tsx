@@ -1,54 +1,50 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useMemo, useState, type ChangeEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from 'primereact/button';
+import { Dropdown } from 'primereact/dropdown';
 import { Message } from 'primereact/message';
 import { confirmDialog } from 'primereact/confirmdialog';
 import type { PostPublicado } from '@seginfo/shared';
-import { Kpi, StatusStrip, Chip, EmptyState } from '@/components/InfraKit';
+import { Kpi, StatusStrip, EmptyState } from '@/components/InfraKit';
 import { useInvalidate } from '@/hooks/useInvalidate';
 import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import {
-  getEstrategia, importarPublicados, juntarDiario, lerSharesCsv, listDiarioServidor, listPublicados, mensagemErro,
-  organizarPost, removerPublicado, sincronizarCerebro, statusIA,
+  editarPublicado, getEstrategia, importarPublicados, juntarDiario, lerSharesCsv, listDiarioServidor, mensagemErro,
+  organizarPost, removerPublicado, sincronizarCerebro,
 } from '@/services/linkedin';
+import { useOpcoesDeProjeto, useProjetos, usePublicados, useStatusIA } from './dados';
 import type { PedidoEstudio } from './Estudio';
+import { nomeDoProjeto } from './pipelineRegras';
 import { PostCard } from './PostCard';
 import { PostDrawer } from './PostDrawer';
 import { PostForm, formularioDe, novoFormulario } from './PostForm';
+import { PublicadosResumo } from './PublicadosResumo';
 import { resumoPublicados, type FormularioPost } from './regras';
-
-/** Rascunho do Estúdio que acabou de ser publicado: pré-preenche o registro. */
-export interface RascunhoParaPublicar { texto: string }
 
 type Aviso = { sev: 'success' | 'info' | 'warn' | 'error'; text: string };
 
-export function Publicados({ prefill, onPrefillConsumido, onUsarIdeia }: {
-  prefill: RascunhoParaPublicar | null;
-  onPrefillConsumido: () => void;
-  onUsarIdeia: (p: PedidoEstudio) => void;
-}) {
+export function Publicados({ onUsarIdeia }: { onUsarIdeia: (p: PedidoEstudio) => void }) {
   const invalidate = useInvalidate();
-  const { data: posts = [], error: erroLista, isLoading } = useQuery({ queryKey: ['linkedin-publicados'], queryFn: listPublicados });
+  const { data: posts = [], error: erroLista, isLoading } = usePublicados();
+  const { data: projetos = [] } = useProjetos();
   const { data: estrategia } = useQuery({ queryKey: ['linkedin-estrategia'], queryFn: getEstrategia });
-  const { data: ia } = useQuery({ queryKey: ['ia-status'], queryFn: statusIA });
+  const { data: ia } = useStatusIA();
   const { data: diarioServidor = [] } = useQuery({ queryKey: ['linkedin-diario'], queryFn: listDiarioServidor });
+  const opcoesProjeto = useOpcoesDeProjeto(projetos);
 
   const [form, setForm] = useState<FormularioPost | null>(null);
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [ocupado, setOcupado] = useState<Record<string, string>>({});
   const [lote, setLote] = useState<string | null>(null);
   const [filtroPilar, setFiltroPilar] = useState<string | undefined>();
+  const [filtroProjeto, setFiltroProjeto] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!prefill) return;
-    setForm(novoFormulario(prefill.texto));
-    onPrefillConsumido();
-  }, [prefill, onPrefillConsumido]);
-
-  const refresh = () => invalidate('linkedin-publicados');
+  // organizar um post deposita ideias no backlog: as duas listas mudam
+  const refresh = () => invalidate('linkedin-publicados', 'linkedin-ideias');
   const iaPronta = !!ia?.configurada;
   const r = useMemo(() => resumoPublicados(posts, estrategia?.pilares ?? []), [posts, estrategia]);
-  const visiveis = useMemo(() => (filtroPilar ? posts.filter((p) => p.analise?.pilar === filtroPilar) : posts), [posts, filtroPilar]);
+  const visiveis = useMemo(() => posts.filter((p) =>
+    (!filtroPilar || p.analise?.pilar === filtroPilar) && (!filtroProjeto || p.projetoId === filtroProjeto)), [posts, filtroPilar, filtroProjeto]);
   const diario = useMemo(() => juntarDiario(diarioServidor), [diarioServidor]);
   const sel = useDrawerSelection(visiveis);
 
@@ -129,10 +125,12 @@ export function Publicados({ prefill, onPrefillConsumido, onUsarIdeia }: {
               <span className="p-button-label">Importar Shares.csv</span>
               <input type="file" accept=".csv,text/csv" className="ca-file__input" onChange={importar} />
             </label>
+            <Dropdown value={filtroProjeto} options={opcoesProjeto} onChange={(e) => setFiltroProjeto(e.value ?? null)} placeholder="Todos os projetos"
+              showClear ariaLabel="Filtrar por projeto" emptyMessage="Nenhum projeto criado" />
           </div>
           <Button label={lote ?? `Organizar pendentes (${r.pendentes.length})`} icon="pi pi-sparkles" severity="help"
             disabled={!r.pendentes.length || !iaPronta || !!lote} loading={!!lote} onClick={organizarPendentes}
-            tooltip={!iaPronta ? 'Defina ANTHROPIC_API_KEY na API (Coolify)' : 'A IA lê cada post, liga a pilares, tópicos e trilhas e guarda no Segundo Cérebro'}
+            tooltip={!iaPronta ? 'Defina ANTHROPIC_API_KEY na API (Coolify)' : 'A IA lê cada post, liga a pilares, tópicos e trilhas, guarda no Segundo Cérebro e deposita ideias no backlog'}
             tooltipOptions={{ showOnDisabled: true }} />
         </div>
         <details className="ca-ajuda">
@@ -146,18 +144,7 @@ export function Publicados({ prefill, onPrefillConsumido, onUsarIdeia }: {
         )}
       </div>
 
-      {r.analisados > 0 && (
-        <div className="iv-card iv-mt">
-          <h3 className="iv-section-label">Equilíbrio dos pilares · clique para filtrar</h3>
-          <div className="iv-row iv-wrap">
-            <Chip label={`Todos (${posts.length})`} active={!filtroPilar} onClick={() => setFiltroPilar(undefined)} />
-            {r.porPilar.map(([p, n]) => <Chip key={p} label={`${p} (${n})`} active={filtroPilar === p} onClick={() => setFiltroPilar(filtroPilar === p ? undefined : p)} />)}
-          </div>
-          {r.esquecidos.length > 0 && (
-            <p className="iv-muted ca-small ca-mb0"><i className="pi pi-lightbulb" aria-hidden="true" /> Pilar sem nenhum post: <strong>{r.esquecidos.join(', ')}</strong>. Um bom candidato para o próximo.</p>
-          )}
-        </div>
-      )}
+      <PublicadosResumo posts={posts} projetos={projetos} resumo={r} filtroPilar={filtroPilar} onPilar={setFiltroPilar} />
 
       <div className="ca-lista-cards iv-mt">
         {isLoading && <p className="iv-muted" role="status"><i className="pi pi-spin pi-spinner" aria-hidden="true" /> Carregando posts…</p>}
@@ -166,16 +153,18 @@ export function Publicados({ prefill, onPrefillConsumido, onUsarIdeia }: {
             text="Registre o primeiro ou importe o export do LinkedIn: cada post publicado vira contexto para os próximos."
             action={<Button label="Registrar post publicado" icon="pi pi-plus" onClick={() => setForm(novoFormulario())} />} /></div>
         )}
-        {visiveis.map((p) => <PostCard key={p.id} post={p} ocupado={ocupado[p.id]} selected={sel.isOpen(p.id)} onOpen={() => sel.open(p.id)} />)}
+        {!isLoading && posts.length > 0 && visiveis.length === 0 && <p className="iv-muted">Nenhum post com esses filtros.</p>}
+        {visiveis.map((p) => <PostCard key={p.id} post={p} projeto={nomeDoProjeto(projetos, p.projetoId)} ocupado={ocupado[p.id]} selected={sel.isOpen(p.id)} onOpen={() => sel.open(p.id)} />)}
       </div>
 
       {sel.item && (
-        <PostDrawer post={sel.item} nav={sel.nav} diario={diario} ocupado={ocupado[sel.item.id]} iaPronta={iaPronta}
+        <PostDrawer post={sel.item} nav={sel.nav} diario={diario} ocupado={ocupado[sel.item.id]} iaPronta={iaPronta} projetos={opcoesProjeto}
           onEditar={() => setForm(formularioDe(sel.item!))}
-          onOrganizar={() => comOcupado(sel.item!, 'Analisando...', () => organizarPost(sel.item!.id), 'Post analisado e guardado no Segundo Cérebro.')}
+          onOrganizar={() => comOcupado(sel.item!, 'Analisando...', () => organizarPost(sel.item!.id), 'Post analisado, guardado no Segundo Cérebro e com as ideias no backlog.')}
           onReenviar={() => comOcupado(sel.item!, 'Enviando...', () => sincronizarCerebro(sel.item!.id), 'Nota atualizada no Segundo Cérebro.')}
+          onProjeto={(projetoId) => comOcupado(sel.item!, 'Salvando...', () => editarPublicado(sel.item!.id, { projetoId }), projetoId ? 'Post ligado ao projeto.' : 'Post sem projeto.')}
           onExcluir={() => excluir(sel.item!)}
-          onUsarIdeia={(ideia) => { sel.close(); onUsarIdeia({ briefing: ideia, pilar: sel.item!.analise?.pilar }); }} />
+          onUsarIdeia={(ideia) => { const post = sel.item!; sel.close(); onUsarIdeia({ briefing: ideia, pilar: post.analise?.pilar, projetoId: post.projetoId }); }} />
       )}
 
       {form && <PostForm key={form.id ?? 'novo'} inicial={form} posts={posts} onClose={() => setForm(null)} onSalvo={() => { setForm(null); refresh(); }} />}

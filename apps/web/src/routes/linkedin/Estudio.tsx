@@ -1,123 +1,124 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { Dropdown } from 'primereact/dropdown';
-import { Checkbox } from 'primereact/checkbox';
-import { Button } from 'primereact/button';
-import { Message } from 'primereact/message';
-import { StatusStrip, Chip, Pill } from '@/components/InfraKit';
+import { FORMATOS_POST, type AcaoRefino, type FormatoPost, type RascunhoLinkedin, type RefinoIA } from '@seginfo/shared';
+import { StatusStrip } from '@/components/InfraKit';
 import { POST_TEMPLATES } from '@/data/postTemplates';
-import { listTopicos } from '@/services/catalog';
-import {
-  checklistPost, criarRascunho, editarRascunho, FORMATOS, gerarRascunho, getEstrategia, listRascunhos,
-  mensagemErro, removerRascunho, riscosDePublicacao, statusIA, type Rascunho, type RascunhoIA,
-} from '@/services/linkedin';
-import { confirmDialog } from 'primereact/confirmdialog';
-import { Rascunhos } from './Rascunhos';
-import { tomChecklist } from './regras';
-import { buscarMemorias } from '@/services/cerebro';
 import { useInvalidate } from '@/hooks/useInvalidate';
-import { copyToClipboard } from '@/lib/clipboard';
-import type { RascunhoParaPublicar } from './Publicados';
+import { listTopicos } from '@/services/catalog';
+import { buscarMemorias } from '@/services/cerebro';
+import { getEstrategia, mensagemErro, riscosDePublicacao } from '@/services/linkedin';
+import { criarRascunhoPipeline, editarRascunhoPipeline, gerarRascunhoIA } from '@/services/linkedinPipeline';
+import { copiarPost, useOpcoesDeProjeto, useProjetos, useRascunhos, useStatusIA } from './dados';
+import { EstudioEditor, FORM_VAZIO, type FormEstudio } from './EstudioEditor';
+import { EstudioIA, type PedidoIA, type SugestaoIA } from './EstudioIA';
+import { EstudioLateral } from './EstudioLateral';
+import { Refino, type UltimoRefino } from './Refino';
 
-/** Pedido vindo de outra aba: uma ideia derivada ou "post sobre o projeto". */
+/** Pedido vindo de outra aba: abrir um rascunho existente ou começar um post novo com briefing pronto. */
 export interface PedidoEstudio {
-  briefing: string;
+  rascunhoId?: string;
+  briefing?: string;
   pilar?: string;
   incluirDiario?: boolean;
+  ideiaId?: string | null;
+  projetoId?: string | null;
+  formato?: string;
 }
 
-export function Estudio({ pedido, onPedidoConsumido, onPublicado }: {
+const PEDIDO_VAZIO: PedidoIA = { briefing: '', pilar: undefined, incluirDiario: false };
+const formatoValido = (f?: string): FormatoPost => ((FORMATOS_POST as readonly string[]).includes(f ?? '') ? (f as FormatoPost) : 'texto');
+
+const formDe = (r: RascunhoLinkedin): FormEstudio => ({
+  titulo: r.titulo, gancho: r.gancho, corpo: r.corpo, direcaoVisual: r.direcaoVisual ?? '', textoAlternativo: r.textoAlternativo ?? '',
+  roteiroSlides: r.roteiroSlides ?? '', topicoId: r.topicoId ?? undefined, projetoId: r.projetoId ?? null, formato: formatoValido(r.formato),
+});
+
+/** Estúdio: escrever à mão, partir de um modelo ou pedir à IA; refinar; salvar no pipeline. */
+export function Estudio({ pedido, onPedidoConsumido, onVerPipeline }: {
   pedido: PedidoEstudio | null;
   onPedidoConsumido: () => void;
-  onPublicado: (r: RascunhoParaPublicar) => void;
+  onVerPipeline: () => void;
 }) {
   const invalidate = useInvalidate();
-  const { data: rascunhos = [] } = useQuery({ queryKey: ['linkedin-rascunhos'], queryFn: listRascunhos });
+  const { data: rascunhos = [], isSuccess: rascunhosProntos } = useRascunhos();
+  const { data: projetos = [] } = useProjetos();
   const { data: estrategia } = useQuery({ queryKey: ['linkedin-estrategia'], queryFn: getEstrategia });
-  const { data: ia } = useQuery({ queryKey: ['ia-status'], queryFn: statusIA });
+  const { data: ia } = useStatusIA();
+  const opcoesProjeto = useOpcoesDeProjeto(projetos);
+  const topicos = useMemo(() => listTopicos({ rows: 1000 }).items.map((t) => ({ label: t.titulo, value: t.id })), []);
 
-  // editor
-  const [titulo, setTitulo] = useState('');
-  const [gancho, setGancho] = useState('');
-  const [corpo, setCorpo] = useState('');
-  const [direcaoVisual, setDirecaoVisual] = useState('');
-  const [textoAlternativo, setTextoAlternativo] = useState('');
-  const [roteiroSlides, setRoteiroSlides] = useState('');
-  const [topicoId, setTopicoId] = useState<string | undefined>();
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<FormEstudio>(FORM_VAZIO);
+  const [editando, setEditando] = useState<RascunhoLinkedin | null>(null);
+  const [ideiaId, setIdeiaId] = useState<string | null>(null);
+  /** rótulo da próxima versão: quem fez a última mudança de texto */
+  const [origem, setOrigem] = useState('manual');
   const [erro, setErro] = useState('');
-  const topicOptions = listTopicos({ rows: 1000 }).items.map((t) => ({ label: t.titulo, value: t.id }));
+  const [salvo, setSalvo] = useState(false);
+  const [salvando, setSalvando] = useState(false);
 
-  // IA
-  const [briefing, setBriefing] = useState('');
-  const [pilar, setPilar] = useState<string | undefined>();
-  const [formato, setFormato] = useState<string>('texto');
-  const [incluirDiario, setIncluirDiario] = useState(false);
+  const [pedidoIA, setPedidoIA] = useState<PedidoIA>(PEDIDO_VAZIO);
   const [gerando, setGerando] = useState(false);
   const [erroIA, setErroIA] = useState('');
-  const [sugestao, setSugestao] = useState<(RascunhoIA & { notasUsadas: number }) | null>(null);
+  const [sugestao, setSugestao] = useState<SugestaoIA | null>(null);
+  const [antesDoRefino, setAntesDoRefino] = useState<{ form: FormEstudio; origem: string } | null>(null);
+  const [ultimoRefino, setUltimoRefino] = useState<UltimoRefino | null>(null);
+
+  function limpar() {
+    setForm(FORM_VAZIO); setEditando(null); setIdeiaId(null); setOrigem('manual'); setSugestao(null);
+    setAntesDoRefino(null); setUltimoRefino(null); setErro(''); setSalvo(false);
+  }
 
   useEffect(() => {
     if (!pedido) return;
-    setBriefing(pedido.briefing);
-    setPilar(pedido.pilar);
-    setIncluirDiario(!!pedido.incluirDiario);
+    if (pedido.rascunhoId) {
+      if (!rascunhosProntos) return; // espera a lista chegar
+      const r = rascunhos.find((x) => x.id === pedido.rascunhoId);
+      limpar();
+      if (r) { setForm(formDe(r)); setEditando(r); setIdeiaId(r.ideiaId); }
+      else setErro('Não encontrei esse rascunho. Ele pode ter sido excluído.');
+    } else {
+      limpar();
+      setPedidoIA({ briefing: pedido.briefing ?? '', pilar: pedido.pilar, incluirDiario: !!pedido.incluirDiario });
+      setIdeiaId(pedido.ideiaId ?? null);
+      setForm({ ...FORM_VAZIO, projetoId: pedido.projetoId ?? null, formato: formatoValido(pedido.formato) });
+    }
     onPedidoConsumido();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [pedido, onPedidoConsumido]);
+  }, [pedido, rascunhosProntos]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function limpar() { setTitulo(''); setGancho(''); setCorpo(''); setDirecaoVisual(''); setTextoAlternativo(''); setRoteiroSlides(''); setTopicoId(undefined); setEditingId(null); setSugestao(null); }
+  function campo<K extends keyof FormEstudio>(k: K, valor: FormEstudio[K]) {
+    setForm((f) => ({ ...f, [k]: valor }));
+    setSalvo(false);
+    if (k === 'gancho' || k === 'corpo') setOrigem('manual');
+  }
 
-  function aplicarTemplate(id: string) {
+  function aplicarModelo(id: string) {
     const t = POST_TEMPLATES.find((x) => x.id === id);
-    if (t) { setTitulo(t.titulo); setGancho(t.gancho); setCorpo(t.corpo); }
-  }
-
-  async function salvar() {
-    if (!titulo.trim()) return;
-    setErro('');
-    try {
-      if (editingId) await editarRascunho(editingId, { titulo, gancho, corpo, direcaoVisual, textoAlternativo, roteiroSlides, topicoId: topicoId ?? null });
-      else await criarRascunho({ titulo, gancho, corpo, direcaoVisual, textoAlternativo, roteiroSlides, topicoId });
-      limpar();
-      invalidate('linkedin-rascunhos');
-    } catch (e) {
-      setErro(mensagemErro(e));
-    }
-  }
-
-  function copiar(g: string, c: string) {
-    const texto = `${g}\n\n${c}`;
-    const riscos = riscosDePublicacao(texto);
-    if (riscos.length && !window.confirm(`O texto pode expor ${riscos.join(', ')}. Revise antes de publicar. Copiar mesmo assim?`)) return;
-    copyToClipboard(texto);
+    if (t) { setForm((f) => ({ ...f, titulo: t.titulo, gancho: t.gancho, corpo: t.corpo })); setOrigem('manual'); setSalvo(false); }
   }
 
   async function gerar() {
-    if (!briefing.trim()) return;
+    if (!pedidoIA.briefing.trim()) return;
     setGerando(true); setErroIA(''); setSugestao(null);
     try {
       // só notas PESSOAIS do Segundo Cérebro, e nenhuma que cite IP/host/segredo
       let notas: { titulo: string; trecho: string }[] = [];
       try {
-        const achados = await buscarMemorias(briefing.slice(0, 200));
+        const achados = await buscarMemorias(pedidoIA.briefing.slice(0, 200));
         notas = achados
           .filter((n) => n.escopo === 'pessoal' && riscosDePublicacao(`${n.titulo}\n${n.trecho}`).length === 0)
           .slice(0, 5)
           .map((n) => ({ titulo: n.titulo, trecho: n.trecho }));
       } catch { /* sem cérebro, segue só com a jornada */ }
-      const r = await gerarRascunho({ briefing, pilar, formato, incluirDiario, notas });
-      setSugestao({ ...r, notasUsadas: notas.length });
-      setEditingId(null);
-      setTitulo(r.titulo);
-      setGancho(r.gancho);
+      const r = await gerarRascunhoIA({ ...pedidoIA, formato: form.formato, notas, projetoId: form.projetoId });
       const tags = r.hashtags.map((h) => `#${h.replace(/^#/, '')}`).join(' ');
-      setCorpo(`${r.corpo.trim()}${tags ? `\n\n${tags}` : ''}`);
-      setDirecaoVisual(r.direcaoVisual);
-      setTextoAlternativo(r.textoAlternativo);
-      setRoteiroSlides(r.roteiroSlides.join('\n'));
+      setSugestao({ ...r, notasUsadas: notas.length });
+      setEditando(null); // texto novo = rascunho novo (o anterior, se havia, continua salvo)
+      setForm((f) => ({
+        ...f, titulo: r.titulo, gancho: r.gancho, corpo: `${r.corpo.trim()}${tags ? `\n\n${tags}` : ''}`,
+        direcaoVisual: r.direcaoVisual, textoAlternativo: r.textoAlternativo, roteiroSlides: r.roteiroSlides.join('\n'),
+      }));
+      setOrigem('ia:gerar'); setSalvo(false); setAntesDoRefino(null); setUltimoRefino(null);
     } catch (e) {
       setErroIA(mensagemErro(e));
     } finally {
@@ -125,143 +126,60 @@ export function Estudio({ pedido, onPedidoConsumido, onPublicado }: {
     }
   }
 
-  async function marcarPublicado(r: { id: string; gancho: string; corpo: string }) {
+  function aoRefinar(acao: AcaoRefino, r: RefinoIA) {
+    setAntesDoRefino({ form, origem });
+    setUltimoRefino({ acao, oQueMudou: r.oQueMudou, alternativasGancho: acao === 'ganchos' ? r.alternativasGancho : [] });
+    if (acao === 'ganchos') return; // o texto só muda quando uma das opções for escolhida
+    setForm((f) => ({
+      ...f, gancho: r.gancho, corpo: r.corpo,
+      ...(acao === 'carrossel' ? { formato: 'carrossel' as const, roteiroSlides: r.roteiroSlides.join('\n') } : {}),
+    }));
+    setOrigem(`ia:${acao}`); setSalvo(false);
+  }
+  function escolherGancho(g: string) { setForm((f) => ({ ...f, gancho: g })); setOrigem('ia:ganchos'); setSalvo(false); }
+  function desfazerRefino() {
+    if (!antesDoRefino) return;
+    setForm(antesDoRefino.form); setOrigem(antesDoRefino.origem); setAntesDoRefino(null); setUltimoRefino(null); setSalvo(false);
+  }
+
+  async function salvar() {
+    if (!form.titulo.trim()) return;
+    setErro(''); setSalvando(true);
+    const corpoReq = { ...form, titulo: form.titulo.trim(), topicoId: form.topicoId ?? null, origemVersao: origem };
     try {
-      await editarRascunho(r.id, { publicado: true });
-      invalidate('linkedin-rascunhos');
-      onPublicado({ texto: `${r.gancho}\n\n${r.corpo}`.trim() });
+      const r = editando ? await editarRascunhoPipeline(editando.id, corpoReq) : await criarRascunhoPipeline({ ...corpoReq, ideiaId });
+      // continua editando o mesmo rascunho (uma API antiga responde só { ok: true })
+      if (r?.id) setEditando(r);
+      setOrigem('manual'); setSalvo(true); setAntesDoRefino(null);
+      invalidate('linkedin-rascunhos', 'linkedin-ideias');
     } catch (e) {
       setErro(mensagemErro(e));
+    } finally {
+      setSalvando(false);
     }
   }
 
-  function excluir(r: Rascunho) {
-    confirmDialog({
-      header: 'Excluir rascunho', message: <span>Excluir o rascunho <strong>{r.titulo}</strong>? Não dá para desfazer.</span>,
-      icon: 'pi pi-exclamation-triangle', acceptLabel: 'Excluir', rejectLabel: 'Cancelar', acceptClassName: 'p-button-danger',
-      accept: async () => {
-        try { await removerRascunho(r.id); if (editingId === r.id) limpar(); invalidate('linkedin-rascunhos'); }
-        catch (e) { setErro(mensagemErro(e)); }
-      },
-    });
-  }
-
-  function editar(p: Rascunho) {
-    setEditingId(p.id); setTitulo(p.titulo); setGancho(p.gancho); setCorpo(p.corpo); setDirecaoVisual(p.direcaoVisual ?? ''); setTextoAlternativo(p.textoAlternativo ?? ''); setRoteiroSlides(p.roteiroSlides ?? ''); setTopicoId(p.topicoId ?? undefined); setSugestao(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  const checklist = checklistPost(gancho, corpo);
-  const riscos = riscosDePublicacao(`${gancho}\n${corpo}`);
-  const nota = checklist.filter((c) => c.ok).length;
   const iaPronta = !!ia?.configurada;
+  const emAndamento = rascunhos.filter((r) => r.status !== 'publicado').length;
 
   return (
     <div>
       <StatusStrip tone="ok" icon="pi-linkedin">
-        {rascunhos.length} rascunhos no servidor. Escreva à mão, parta de um modelo ou peça um rascunho à IA com o contexto da sua jornada.
+        {emAndamento} {emAndamento === 1 ? 'post em andamento' : 'posts em andamento'} no pipeline. Escreva à mão, parta de um modelo ou peça um rascunho à IA; depois refine e salve.
       </StatusStrip>
 
-      <section className="iv-card iv-mt">
-        <div className="ca-toolbar">
-          <h3 className="ca-h3"><i className="pi pi-sparkles" aria-hidden="true" /> Rascunho com IA</h3>
-          <Pill label={iaPronta ? 'IA pronta' : 'IA não configurada'} tone={iaPronta ? 'ok' : 'muted'} />
-        </div>
-        {ia && !iaPronta && (
-          <p className="iv-muted ca-small">Defina o Secret <code>ANTHROPIC_API_KEY</code> na API no Coolify (veja a aba Estratégia & IA).</p>
-
-        )}
-        <div className="iv-col iv-gap iv-mt">
-          <InputTextarea value={briefing} onChange={(e) => setBriefing(e.target.value)} rows={3} autoResize
-            aria-label="Briefing do post" placeholder="Sobre o que é o post? Ex.: o que aprendi montando um honeypot e analisando as primeiras tentativas de login." />
-          <div className="iv-row iv-wrap iv-gap">
-            <Dropdown value={pilar} options={estrategia?.pilares ?? []} onChange={(e) => setPilar(e.value)} placeholder="Pilar (a IA escolhe)" ariaLabel="Pilar" showClear style={{ minWidth: 240 }} />
-            <Dropdown value={formato} options={[...FORMATOS]} onChange={(e) => setFormato(e.value)} ariaLabel="Formato" style={{ minWidth: 140 }} />
-            <label className="iv-row ca-small">
-              <Checkbox checked={incluirDiario} onChange={(e) => setIncluirDiario(!!e.checked)} />
-              Usar o diário do projeto (posts sobre a SegInfo)
-            </label>
-            <Button label={gerando ? 'Gerando...' : 'Gerar rascunho'} icon="pi pi-sparkles" loading={gerando} disabled={!iaPronta || briefing.trim().length < 5} onClick={gerar} />
-          </div>
-          {erroIA && <Message severity="error" text={erroIA} className="ca-w100" />}
-          {sugestao && (
-            <Message severity="info" className="ca-w100" content={
-              <div className="ca-small">
-                <div><strong>Por que funciona:</strong> {sugestao.porQueFunciona}</div>
-                {sugestao.dadosParaConfirmar.length > 0 && <div className="iv-mt"><strong>Confira antes de publicar:</strong> {sugestao.dadosParaConfirmar.join(' · ')}</div>}
-                <div className="iv-muted iv-mt">Contexto usado: estratégia, estudo, histórico de posts{incluirDiario ? ', diário do projeto' : ''}{sugestao.notasUsadas ? `, ${sugestao.notasUsadas} notas do Segundo Cérebro` : ''}. O rascunho já está no editor abaixo.</div>
-              </div>
-            } />
-          )}
-        </div>
-      </section>
+      <EstudioIA pedido={pedidoIA} onPedido={setPedidoIA} formato={form.formato} onFormato={(f) => campo('formato', formatoValido(f))}
+        pilares={estrategia?.pilares ?? []} iaPronta={iaPronta} iaConhecida={!!ia} gerando={gerando} erro={erroIA} sugestao={sugestao} onGerar={gerar} />
 
       <div className="posts-workspace iv-mt">
-        <section className="iv-card posts-editor">
-          <div className="ca-toolbar">
-            <h3 className="ca-h3">{editingId ? 'Editar rascunho' : 'Editor'}</h3>
-            {(editingId || titulo || corpo) && <Button label="Limpar" text onClick={limpar} />}
-          </div>
-          <div className="posts-title-row iv-mt">
-            <InputText value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título interno do post" aria-label="Título interno do post" />
-            <Dropdown value={topicoId} options={topicOptions} onChange={(e) => setTopicoId(e.value)} placeholder="Tópico relacionado (opcional)" ariaLabel="Tópico relacionado" showClear filter />
-          </div>
-          <InputText value={gancho} onChange={(e) => setGancho(e.target.value)} placeholder="Gancho (primeira linha, o que prende a atenção)" aria-label="Gancho" />
-          <InputTextarea value={corpo} onChange={(e) => setCorpo(e.target.value)} rows={12} autoResize placeholder="Desenvolva a ideia, o que aprendeu e como aplicou..." aria-label="Corpo do post" />
-          <small className={gancho.length + corpo.length > 3_000 ? 'iv-field__error' : 'iv-muted'} aria-live="polite">
-            {gancho.length + corpo.length} / 3.000 caracteres do post. O tamanho abaixo do limite depende da ideia.
-          </small>
-          {(formato === 'imagem' || formato === 'carrossel') && (
-            <section className="iv-card iv-col iv-gap" aria-label="Apoio visual">
-              <h4 className="ca-h4">Direção visual</h4>
-              <p className="iv-muted ca-small ca-mb0">Use a descrição como briefing para criar a arte. Revise termos técnicos e não coloque dados do ambiente ou texto pequeno na imagem.</p>
-              {formato === 'carrossel' && <label className="iv-col iv-gap"><strong>Roteiro dos slides</strong><InputTextarea value={roteiroSlides} onChange={(e) => setRoteiroSlides(e.target.value)} rows={5} autoResize aria-label="Roteiro dos slides" placeholder="Uma ideia por linha: capa, contexto, passos e conclusão." /></label>}
-              <label className="iv-col iv-gap"><strong>Prompt visual</strong><InputTextarea value={direcaoVisual} onChange={(e) => setDirecaoVisual(e.target.value)} rows={4} autoResize aria-label="Direção visual" placeholder="A direção de arte aparecerá aqui após gerar o rascunho." /></label>
-              <div className="iv-row iv-wrap">
-                <Button label="Copiar prompt visual" icon="pi pi-copy" outlined disabled={!direcaoVisual} onClick={() => copyToClipboard(direcaoVisual)} />
-                <Button label="Copiar roteiro" icon="pi pi-copy" outlined disabled={!roteiroSlides} onClick={() => copyToClipboard(roteiroSlides)} />
-              </div>
-              <label className="iv-col iv-gap"><strong>Texto alternativo da imagem</strong><InputTextarea value={textoAlternativo} onChange={(e) => setTextoAlternativo(e.target.value)} rows={2} autoResize aria-label="Texto alternativo" placeholder="Descreva a informação visual para quem usa leitor de tela." /></label>
-            </section>
-          )}
-          <div className="iv-row iv-wrap">
-            <Button label={editingId ? 'Atualizar rascunho' : 'Salvar rascunho'} icon="pi pi-save" onClick={salvar} disabled={!titulo.trim()} />
-            <Button label="Copiar texto" icon="pi pi-copy" outlined onClick={() => copiar(gancho, corpo)} />
-          </div>
-          {erro && <Message severity="error" text={erro} className="ca-w100" />}
-        </section>
-
-        <aside className="posts-aside">
-          <section className="iv-card">
-            <div className="ca-toolbar">
-              <h3 className="ca-h3">Checklist do post</h3>
-              <Pill label={`${nota}/${checklist.length}`} tone={tomChecklist(nota)} />
-            </div>
-            <ul className="linkedin-checklist">
-              {checklist.map((c) => (
-                <li key={c.id} title={c.dica}>
-                  <i className={`pi ${c.ok ? 'pi-check-circle ca-ok' : 'pi-circle iv-muted'}`} aria-hidden="true" />
-                  <span><strong>{c.label}</strong>{!c.ok && <span className="iv-muted"> — {c.dica}</span>}</span>
-                </li>
-              ))}
-            </ul>
-            {riscos.length > 0 && <Message severity="warn" className="ca-w100" text={`Pode expor: ${riscos.join(', ')}.`} />}
-          </section>
-          <section className="iv-card posts-preview" aria-live="polite">
-            <div className="ca-toolbar"><h3 className="ca-h3">Prévia</h3><Pill label="LinkedIn" /></div>
-            <strong>{gancho || 'Seu gancho aparece aqui'}</strong>
-            <p className="iv-muted ca-pre ca-mb0">{corpo || 'A prévia acompanha o texto enquanto você escreve.'}</p>
-          </section>
-          <section className="iv-card">
-            <h3 className="ca-h3 ca-mb">Modelos</h3>
-            <div className="posts-template-list">
-              {POST_TEMPLATES.map((t) => <Chip key={t.id} label={t.titulo} icon="pi-copy" onClick={() => aplicarTemplate(t.id)} />)}
-            </div>
-          </section>
-        </aside>
+        <EstudioEditor form={form} onCampo={campo} editando={editando} topicos={topicos} projetos={opcoesProjeto}
+          erro={erro} salvo={salvo} salvando={salvando} onSalvar={salvar} onLimpar={limpar}
+          onCopiar={() => copiarPost(form.gancho, form.corpo)} onVerPipeline={onVerPipeline}>
+          <Refino gancho={form.gancho} corpo={form.corpo} iaPronta={iaPronta} ultimo={ultimoRefino} podeDesfazer={!!antesDoRefino}
+            onResultado={aoRefinar} onEscolherGancho={escolherGancho} onDesfazer={desfazerRefino} />
+        </EstudioEditor>
+        <EstudioLateral gancho={form.gancho} corpo={form.corpo} onModelo={aplicarModelo} />
       </div>
-
-      <Rascunhos rascunhos={rascunhos} onEditar={editar} onCopiar={(r) => copiar(r.gancho, r.corpo)} onMarcarPublicado={marcarPublicado} onExcluir={excluir} />
     </div>
   );
 }

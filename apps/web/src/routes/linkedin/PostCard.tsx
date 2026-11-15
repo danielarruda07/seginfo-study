@@ -7,8 +7,8 @@ import { primeiraLinha } from './regras';
 const fmt = (n?: number) => (n === undefined ? '—' : n.toLocaleString('pt-BR'));
 
 /** Cartão compacto do post publicado; o detalhe (texto, análise, ideias) abre na ficha lateral. */
-export function PostCard({ post: p, ocupado, selected, onOpen }: {
-  post: PostPublicado; ocupado?: string; selected: boolean; onOpen: () => void;
+export function PostCard({ post: p, projeto, ocupado, selected, onOpen }: {
+  post: PostPublicado; projeto?: string | null; ocupado?: string; selected: boolean; onOpen: () => void;
 }) {
   const a = p.analise;
   const m = p.metricas;
@@ -20,6 +20,8 @@ export function PostCard({ post: p, ocupado, selected, onOpen }: {
         <span className="iv-muted">{p.publicadoEm}</span>
         <Pill label={p.formato} />
         {a ? <Pill label={a.pilar} tone="info" /> : <Pill label="Não organizado" tone="muted" icon="pi-clock" />}
+        {projeto && <Pill label={projeto} icon="pi-folder" />}
+        {p.origem === 'api' && <Pill label="publicado pela API" icon="pi-send" />}
         {p.memoriaId && <Pill label="No cérebro" icon="pi-sitemap" tone="ok" />}
         <span className="iv-right iv-row">
           {ocupado && <span className="iv-muted ca-small" role="status"><i className="pi pi-spin pi-spinner" aria-hidden="true" /> {ocupado}</span>}

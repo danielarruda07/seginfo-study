@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from 'primereact/button';
+import { Dropdown } from 'primereact/dropdown';
 import type { PostPublicado } from '@seginfo/shared';
 import { DetailDrawer, type DetailDrawerProps } from '@/components/ui/DetailDrawer';
 import { DetailFields } from '@/components/ui/Detail';
@@ -13,9 +14,11 @@ import { avisoMetricas, falaDoProjeto, marcosAntesDe, METRICAS_CAMPOS, primeiraL
 type Nav = Pick<DetailDrawerProps, 'index' | 'total' | 'onIndex' | 'onClose'>;
 
 /** Ficha do post publicado: texto completo, métricas, organização da IA, ideias e marcos do diário. */
-export function PostDrawer({ post: p, nav, diario, ocupado, iaPronta, onEditar, onOrganizar, onReenviar, onExcluir, onUsarIdeia }: {
+export function PostDrawer({ post: p, nav, diario, ocupado, iaPronta, projetos, onEditar, onOrganizar, onReenviar, onProjeto, onExcluir, onUsarIdeia }: {
   post: PostPublicado; nav: Nav; diario: EntradaDiarioComOrigem[]; ocupado?: string; iaPronta: boolean;
-  onEditar: () => void; onOrganizar: () => void; onReenviar: () => void; onExcluir: () => void; onUsarIdeia: (ideia: string) => void;
+  projetos: { label: string; value: string }[];
+  onEditar: () => void; onOrganizar: () => void; onReenviar: () => void; onProjeto: (projetoId: string | null) => void;
+  onExcluir: () => void; onUsarIdeia: (ideia: string) => void;
 }) {
   const [copiado, setCopiado] = useState(false);
   const a = p.analise;
@@ -35,7 +38,7 @@ export function PostDrawer({ post: p, nav, diario, ocupado, iaPronta, onEditar, 
         {ocupado && <span className="iv-muted ca-small" role="status"><i className="pi pi-spin pi-spinner" aria-hidden="true" /> {ocupado}</span>}
       </>}
       title={a?.resumo ?? primeiraLinha(p.texto)}
-      subtitle={`Publicado em ${p.publicadoEm} · ${p.origem === 'importacao' ? 'importado do export do LinkedIn' : 'registrado à mão'}`}
+      subtitle={`Publicado em ${p.publicadoEm} · ${p.origem === 'importacao' ? 'importado do export do LinkedIn' : p.origem === 'api' ? 'publicado pelo servidor (API do LinkedIn)' : 'registrado à mão'}`}
       actions={<>
         <Button label={a ? 'Reanalisar' : 'Organizar com IA'} icon="pi pi-sparkles" size="small" outlined={!!a} disabled={!iaPronta || !!ocupado} onClick={onOrganizar}
           tooltip={!iaPronta ? 'Defina ANTHROPIC_API_KEY na API (Coolify)' : undefined} tooltipOptions={{ showOnDisabled: true }} />
@@ -45,6 +48,12 @@ export function PostDrawer({ post: p, nav, diario, ocupado, iaPronta, onEditar, 
         {a && <Button label="Atualizar no cérebro" icon="pi pi-sitemap" size="small" text disabled={!!ocupado} onClick={onReenviar} />}
         <Button label="Remover" icon="pi pi-trash" size="small" text severity="danger" onClick={onExcluir} />
       </>}>
+
+      <section>
+        <h3 className="iv-section-label">Projeto</h3>
+        <Dropdown value={p.projetoId} options={projetos} onChange={(e) => onProjeto(e.value ?? null)} placeholder="Sem projeto" showClear disabled={!!ocupado}
+          ariaLabel="Projeto do post" emptyMessage="Crie um projeto na aba Projetos" className="lp-drawer-select" />
+      </section>
 
       <section>
         <h3 className="iv-section-label">Métricas</h3>

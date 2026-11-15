@@ -1,6 +1,6 @@
 import {
-  DIARIO_PROJETO, FORMATOS_POST, normalizarUrlLinkedin,
-  type CatalogoIA, type CategoriaDiario, type EntradaDiario, type Estrategia, type Metricas,
+  DIARIO_PROJETO, FORMATOS_POST, normalizarUrlLinkedin, preflightPost, textoDoPost,
+  type CatalogoIA, type CategoriaDiario, type EntradaDiario, type Estrategia, type ItemPreflight, type Metricas,
   type PostPublicado, type RascunhoIA,
 } from '@seginfo/shared';
 import type { PostIdea } from '@seginfo/shared';
@@ -38,7 +38,7 @@ type NovoPost = { url: string; publicadoEm: string; texto: string; formato?: str
 
 export const listPublicados = () => http.get<PostPublicado[]>('/linkedin/posts').then((r) => r.data);
 export const criarPublicado = (b: NovoPost) => http.post<PostPublicado>('/linkedin/posts', b).then((r) => r.data);
-export const editarPublicado = (id: string, b: Partial<NovoPost>) => http.patch<PostPublicado>(`/linkedin/posts/${id}`, b).then((r) => r.data);
+export const editarPublicado = (id: string, b: Partial<NovoPost> & { projetoId?: string | null }) => http.patch<PostPublicado>(`/linkedin/posts/${id}`, b).then((r) => r.data);
 export const removerPublicado = (id: string) => http.delete(`/linkedin/posts/${id}`).then((r) => r.data);
 export const importarPublicados = (posts: (NovoPost & { origem?: string; analise?: unknown })[]) =>
   http.post<{ novos: number; duplicados: number }>('/linkedin/posts/importar', { posts }, { timeout: 60_000 }).then((r) => r.data);
@@ -217,15 +217,34 @@ export function riscosDePublicacao(texto: string): string[] {
   if (/\b(?:senha|password|token|secret|credencial|vulner[aá]vel|exposto|exploit)\b/i.test(texto)) {
     riscos.push('termo que pode revelar segredo ou fragilidade');
   }
-  const ativos = listAtivos({ rows: 1_000 }).items;
-  const lower = texto.toLowerCase();
-  if (ativos.some((a) => [a.nome, a.endereco].some((v) => v && v.length > 3 && v !== '-' && lower.includes(v.toLowerCase())))) {
-    riscos.push('nome ou endereço de ativo do homelab');
-  }
+  if (ativosCitados(texto).length > 0) riscos.push('nome ou endereço de ativo do homelab');
   if (/\b[a-z0-9.-]+\.(?:local|internal|corp|lan|criecom\.ia\.br)\b/i.test(texto)) {
     riscos.push('domínio do ambiente');
   }
   return [...new Set(riscos)];
+}
+
+/** Nomes ou endereços de ativos do inventário (que vive no navegador) citados no texto. */
+export function ativosCitados(texto: string): string[] {
+  const lower = texto.toLowerCase();
+  const achados = new Set<string>();
+  for (const a of listAtivos({ rows: 1_000 }).items) {
+    for (const v of [a.nome, a.endereco]) {
+      if (v && v.length > 3 && v !== '-' && lower.includes(v.toLowerCase())) achados.add(v);
+    }
+  }
+  return [...achados].slice(0, 5);
+}
+
+/** Sufixos de domínio do ambiente que o preflight trata como exposição. */
+const DOMINIOS_DO_AMBIENTE = ['criecom.ia.br'];
+
+/**
+ * Preflight na tela: as regras de @seginfo/shared (as mesmas que o servidor aplica) mais o que
+ * só o navegador enxerga, que são os ativos do inventário citados no texto.
+ */
+export function preflightLocal(gancho: string, corpo: string): ItemPreflight[] {
+  return preflightPost({ gancho, corpo }, { dominiosExtras: DOMINIOS_DO_AMBIENTE, riscosExtras: ativosCitados(textoDoPost(gancho, corpo)) });
 }
 
 export interface ItemChecklist {

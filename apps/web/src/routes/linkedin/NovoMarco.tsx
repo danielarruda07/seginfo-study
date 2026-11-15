@@ -8,6 +8,7 @@ import { FormField } from '@/components/ui/FormField';
 import { useInvalidate } from '@/hooks/useInvalidate';
 import { todayISO } from '@/services/store';
 import { addDiario, CATEGORIA_DIARIO_LABEL, mensagemErro, riscosDePublicacao } from '@/services/linkedin';
+import { useOpcoesDeProjeto, useProjetos } from './dados';
 
 const CATEGORIAS = Object.entries(CATEGORIA_DIARIO_LABEL).map(([value, label]) => ({ value, label }));
 
@@ -19,14 +20,17 @@ export function NovoMarco({ onErro }: { onErro: (msg: string) => void }) {
   const [descricao, setDescricao] = useState('');
   const [categoria, setCategoria] = useState<CategoriaDiario>('aprendizado');
   const [data, setData] = useState(todayISO);
+  const [projetoId, setProjetoId] = useState<string | null>(null);
+  const { data: projetos = [] } = useProjetos();
+  const opcoesProjeto = useOpcoesDeProjeto(projetos);
   const riscos = riscosDePublicacao(`${titulo}\n${descricao}`);
 
   async function salvar() {
     if (!titulo.trim() || !descricao.trim()) return;
     onErro('');
     try {
-      await addDiario({ data, titulo: titulo.trim(), descricao: descricao.trim(), categoria, tags: [] });
-      setTitulo(''); setDescricao(''); setAberto(false);
+      await addDiario({ data, titulo: titulo.trim(), descricao: descricao.trim(), categoria, tags: [], projetoId });
+      setTitulo(''); setDescricao(''); setProjetoId(null); setAberto(false);
       invalidate('linkedin-diario');
     } catch (e) {
       onErro(mensagemErro(e));
@@ -51,6 +55,10 @@ export function NovoMarco({ onErro }: { onErro: (msg: string) => void }) {
           </FormField>
           <FormField id="marco-cat" label="Categoria">
             <Dropdown inputId="marco-cat" value={categoria} options={CATEGORIAS} onChange={(e) => setCategoria(e.value)} />
+          </FormField>
+          <FormField id="marco-projeto" label="Projeto" full hint="Opcional: liga o marco a um projeto de conteúdo.">
+            <Dropdown inputId="marco-projeto" value={projetoId} options={opcoesProjeto} onChange={(e) => setProjetoId(e.value ?? null)}
+              placeholder="Sem projeto" showClear emptyMessage="Crie um projeto na aba Projetos" />
           </FormField>
           <FormField id="marco-titulo" label="O que aconteceu?" required full>
             <InputText id="marco-titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} />

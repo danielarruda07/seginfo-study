@@ -10,8 +10,9 @@ import { CATEGORIA_COR } from './regras';
 type Nav = Pick<DetailDrawerProps, 'index' | 'total' | 'onIndex' | 'onClose'>;
 
 /** Ficha de um marco do diário do projeto: texto completo, categoria, tags e atalho para virar post. */
-export function MarcoDrawer({ marco: e, nav, onGerarPost, onRemover }: {
-  marco: EntradaDiarioComOrigem; nav: Nav; onGerarPost: () => void; onRemover?: () => void;
+export function MarcoDrawer({ marco: e, nav, projeto, onGerarPost, onGuardarIdeia, onRemover }: {
+  marco: EntradaDiarioComOrigem; nav: Nav; projeto?: string | null;
+  onGerarPost: () => void; onGuardarIdeia: () => void; onRemover?: () => void;
 }) {
   const [copiado, setCopiado] = useState(false);
   function copiar() {
@@ -29,6 +30,7 @@ export function MarcoDrawer({ marco: e, nav, onGerarPost, onRemover }: {
       subtitle={e.data}
       actions={<>
         <Button label="Escrever post sobre este marco" icon="pi pi-pencil" size="small" onClick={onGerarPost} />
+        <Button label="Guardar como ideia" icon="pi pi-lightbulb" size="small" outlined onClick={onGuardarIdeia} />
         <Button label={copiado ? 'Copiado!' : 'Copiar (Markdown)'} icon="pi pi-copy" size="small" outlined onClick={copiar} />
         {onRemover && <Button label="Remover" icon="pi pi-trash" size="small" text severity="danger" onClick={onRemover} />}
       </>}>
@@ -41,6 +43,7 @@ export function MarcoDrawer({ marco: e, nav, onGerarPost, onRemover }: {
         <DetailFields items={[
           ['Data', e.data],
           ['Categoria', CATEGORIA_DIARIO_LABEL[e.categoria]],
+          ['Projeto', projeto ?? ''],
           ['Tags', e.tags.length ? <span className="iv-row iv-wrap">{e.tags.map((t) => <Pill key={t} label={`#${t}`} />)}</span> : ''],
           ['Origem', e.origem === 'voce' ? 'Você registrou aqui (fica no banco; pode remover)' : 'Assistente de desenvolvimento, junto com o código (somente leitura)'],
         ]} />

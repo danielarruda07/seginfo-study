@@ -1,0 +1,114 @@
+/*
+ * LinkedIn (/posts): pipeline, calendário, ideias, projetos e refino. Prefixo lp-.
+ * Só variáveis de tokens.css (nada de hex). Utilitários ca-* e iv-* continuam valendo.
+ */
+
+/* ===== ícones de estado da verificação ===== */
+.lp-bloqueio { color: var(--tone-danger); }
+.lp-aviso { color: var(--tone-serious); }
+.lp-codigo { margin-right: .35rem; }
+.lp-drawer-select { width: 100%; max-width: 26rem; }
+
+/* ===== faixas do topo (hora de publicar, falha) ===== */
+.lp-avisos { display: grid; gap: .5rem; margin-top: .75rem; }
+.lp-faixa {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem;
+  padding: .6rem .8rem; border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--tone) 35%, var(--surface-border));
+  border-left: 4px solid var(--tone);
+  background: color-mix(in srgb, var(--tone) 6%, var(--surface-card));
+  font-size: .9rem;
+}
+.lp-faixa > .pi { color: var(--tone); }
+
+/* ===== quadro ===== */
+.lp-quadro { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; align-items: start; }
+.lp-coluna {
+  display: grid; gap: .5rem; align-content: start; min-width: 0;
+  padding: .6rem; border-radius: var(--radius);
+  background: var(--surface-section); border: 1px solid var(--surface-border);
+}
+.lp-coluna__titulo { margin: 0 0 .1rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-color-secondary); display: flex; justify-content: space-between; }
+.lp-coluna__vazia { margin: 0; padding: .35rem .2rem; }
+.lp-coluna > .iv-card + .iv-card { margin-top: 0; }
+.lp-cartao.iv-card { padding: .65rem .75rem; box-shadow: none; display: grid; gap: .3rem; }
+.lp-cartao__gancho { margin: 0; }
+
+/* ===== grade de cartões (ideias, projetos) ===== */
+.lp-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: .75rem; align-items: start; }
+.lp-grade > .iv-card { margin: 0; min-width: 0; display: grid; gap: .35rem; align-content: start; }
+.lp-grade > .iv-card + .iv-card { margin-top: 0; }
+.lp-grade__cheio { grid-column: 1 / -1; }
+.lp-contagens { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .35rem; margin: .25rem 0; }
+.lp-contagens > div { padding: .35rem .25rem; border-radius: var(--radius-sm); background: var(--surface-section); text-align: center; }
+.lp-contagens dt { font-size: .68rem; color: var(--text-color-secondary); }
+.lp-contagens dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ===== calendário ===== */
+.lp-cal__titulo::first-letter { text-transform: uppercase; }
+.lp-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--surface-border); border: 1px solid var(--surface-border); border-radius: var(--radius-sm); overflow: hidden; }
+.lp-cal__cab { background: var(--surface-section); padding: .3rem .4rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; color: var(--text-color-secondary); text-align: center; }
+.lp-cal__dia { background: var(--surface-card); min-height: 5.5rem; padding: .25rem; display: grid; gap: .2rem; align-content: start; min-width: 0; }
+.lp-cal__dia[data-fora] { background: var(--surface-section); }
+.lp-cal__dia[data-fora] .lp-cal__num { opacity: .5; }
+.lp-cal__num { font-size: .78rem; font-variant-numeric: tabular-nums; color: var(--text-color-secondary); justify-self: start; padding: 0 .3rem; border-radius: 999px; }
+.lp-cal__dia[data-hoje] .lp-cal__num { background: var(--primary-color); color: var(--primary-color-text); font-weight: 700; }
+.lp-cal__item {
+  --tone: var(--tone-info);
+  display: flex; align-items: center; gap: .25rem; width: 100%; min-width: 0;
+  padding: .15rem .35rem; border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--tone) 40%, var(--surface-border));
+  background: color-mix(in srgb, var(--tone) 8%, var(--surface-card));
+  color: var(--text-color); font: inherit; font-size: .74rem; text-align: left;
+}
+.lp-cal__item:hover { background: color-mix(in srgb, var(--tone) 16%, var(--surface-card)); }
+.lp-cal__item:focus-visible { outline: 2px solid var(--alvoar-teal-600); outline-offset: 1px; }
+.lp-cal__item > .pi { font-size: .7rem; color: var(--tone); }
+.lp-cal__item--publicado { --tone: var(--tone-ok); }
+.lp-cal__item--falhou { --tone: var(--tone-danger); }
+.lp-cal__item--ideia { --tone: var(--tone-muted); border-style: dashed; background: transparent; }
+.lp-cal__hora { font-variant-numeric: tabular-nums; font-weight: 600; }
+.lp-cal__texto { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.lp-cal__legenda { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+.lp-cal__item--legenda { width: auto; cursor: default; }
+.lp-cal__item--legenda:hover { background: color-mix(in srgb, var(--tone) 8%, var(--surface-card)); }
+.lp-cal__item--ideia.lp-cal__item--legenda:hover { background: transparent; }
+
+/* ===== planejador ===== */
+.lp-planejador > summary { cursor: pointer; }
+.lp-planejador > summary:focus-visible { outline: 2px solid var(--alvoar-teal-600); outline-offset: 2px; border-radius: 2px; }
+.lp-sugestoes { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.lp-sugestoes > li { padding: .6rem .75rem; border: 1px solid var(--surface-border); border-radius: var(--radius-sm); background: var(--surface-section); display: grid; gap: .25rem; }
+.lp-sugestoes .ca-post__titulo { margin: .15rem 0 0; }
+
+/* ===== refino no Estúdio ===== */
+.lp-refino { display: grid; gap: .5rem; padding: .65rem .75rem; border: 1px dashed var(--surface-border); border-radius: var(--radius-sm); background: var(--surface-section); }
+.lp-refino__rotulo { margin: 0 .25rem 0 0; }
+.lp-refino__livre { align-items: stretch; }
+.lp-refino__resultado { display: grid; gap: .4rem; padding-top: .4rem; border-top: 1px solid var(--surface-border); }
+
+/* ===== versões ===== */
+.lp-versoes { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; font-size: .875rem; }
+.lp-versoes > li { display: grid; gap: .35rem; }
+.lp-versoes__linha { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem .75rem; }
+
+/* ===== ranking de desempenho ===== */
+.lp-ranking { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; font-size: .85rem; }
+.lp-ranking > li { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(60px, 1fr) auto; align-items: center; gap: .6rem; }
+.lp-ranking__nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-ranking__barra { height: .5rem; border-radius: 999px; background: var(--surface-section); overflow: hidden; }
+.lp-ranking__barra > span { display: block; height: 100%; border-radius: 999px; background: var(--primary-color); }
+
+@media (max-width: 1100px) {
+  .lp-quadro { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .lp-quadro { grid-template-columns: minmax(0, 1fr); }
+  .lp-cal__dia { min-height: 3.6rem; padding: .15rem; }
+  .lp-cal__texto, .lp-cal__hora { display: none; }
+  .lp-cal__item { justify-content: center; padding: .2rem; }
+  .lp-cal__item--legenda .pi { margin-right: .2rem; }
+  .lp-faixa > .iv-row { width: 100%; }
+  .lp-ranking > li { grid-template-columns: minmax(0, 1fr) auto; }
+  .lp-ranking__barra { display: none; }
+}

@@ -469,5 +469,6 @@ export type PericiaIn = z.infer<typeof PericiaInSchema>;
 // ===================== DIÁRIO DO PROJETO =====================
 export * from './diarioProjeto';
 export * from './linkedin';
+export * from './linkedinPipeline';
 export * from './agentes';
 export * from './versao';

@@ -45,7 +45,7 @@ export function LabDrawer({ lab, progresso, nav, onSave, onDraft, onExerciciosCh
       subtitle={lab.objetivo}
       actions={<>
         {proximo && <Button label={proximo.rotulo} icon={proximo.icon} onClick={() => onSave({ ...progresso, status: proximo.para })} />}
-        {progresso.status === 'concluido' && <Button label="Criar rascunho para LinkedIn" icon="pi pi-linkedin" onClick={onDraft} />}
+        {progresso.status === 'concluido' && <Button label="Criar ideia de post" icon="pi pi-linkedin" onClick={onDraft} />}
         {progresso.status === 'concluido' && <Button label="Reabrir" icon="pi pi-replay" outlined onClick={() => onSave({ ...progresso, status: 'em_andamento' })} />}
       </>}>
 

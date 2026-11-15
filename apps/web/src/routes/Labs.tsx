@@ -14,6 +14,9 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useInvalidate } from '@/hooks/useInvalidate';
 import { listLabs, getProgressoLab, saveProgressoLab, type EstadoLab, type ProgressoLab } from '@/services/inventario';
 import { addPost, listPosts } from '@/services/sessoes';
+import { getModeSync } from '@/services/mode';
+import { mensagemErro } from '@/services/linkedin';
+import { criarIdeia } from '@/services/linkedinPipeline';
 import { listPurpleExercises } from '@/services/exerciciosPurple';
 import { DOMINIO_LAB } from '@/theme/status';
 import { combina, labPedeAcao, resumoRedBlue } from './pratica/relacoes';
@@ -73,13 +76,28 @@ export function Labs() {
     setProgresso((atual) => ({ ...atual, [labId]: getProgressoLab(labId) }));
   }
 
-  function criarRascunho(lab: Lab) {
+  async function criarRascunho(lab: Lab) {
     const titulo = `Lab: ${lab.titulo}`;
+    const aprendizado = getProgressoLab(lab.id).aprendizado;
+    // com o servidor no ar, o lab vira uma IDEIA no backlog do LinkedIn (o texto nasce no Estúdio)
+    if (getModeSync() === 'servidor') {
+      const briefing = `Post sobre um lab que concluí: "${lab.titulo}".\nObjetivo: ${lab.objetivo}\nO que fiz: ${lab.passos.join('; ')}\nResultado esperado: ${lab.resultadoEsperado}\nAprendizado: ${aprendizado || '[CONFIRMAR: o que aprendi]'}`;
+      try {
+        await criarIdeia({ titulo: titulo.slice(0, 200), briefing: briefing.slice(0, 3_000), origem: 'lab', origemRef: lab.id });
+        invalidate('linkedin-ideias');
+        toast.current?.show({ severity: 'success', summary: 'Ideia de post criada', detail: `${titulo} (LinkedIn → Ideias)`, life: 4000 });
+      } catch (e) {
+        const status = (e as { response?: { status?: number } }).response?.status;
+        if (status === 409) toast.current?.show({ severity: 'info', summary: 'Ideia já existe', detail: titulo, life: 3000 });
+        else toast.current?.show({ severity: 'error', summary: 'Não consegui criar a ideia', detail: mensagemErro(e), life: 5000 });
+      }
+      return;
+    }
     if (listPosts().some((p) => p.titulo === titulo)) {
       toast.current?.show({ severity: 'info', summary: 'Rascunho já existe', detail: titulo, life: 3000 });
       return;
     }
-    addPost({ titulo, gancho: `Pratiquei: ${lab.titulo}`, corpo: `Objetivo: ${lab.objetivo}\n\nO que fiz:\n${lab.passos.map((x) => `• ${x}`).join('\n')}\n\nResultado esperado: ${lab.resultadoEsperado}\n\nAprendizados: ${getProgressoLab(lab.id).aprendizado || '[Adicione seus aprendizados antes de publicar.]'}`, topicoId: lab.topicoId, publicado: false });
+    addPost({ titulo, gancho: `Pratiquei: ${lab.titulo}`, corpo: `Objetivo: ${lab.objetivo}\n\nO que fiz:\n${lab.passos.map((x) => `• ${x}`).join('\n')}\n\nResultado esperado: ${lab.resultadoEsperado}\n\nAprendizados: ${aprendizado || '[Adicione seus aprendizados antes de publicar.]'}`, topicoId: lab.topicoId, publicado: false });
     invalidate('posts');
     toast.current?.show({ severity: 'success', summary: 'Rascunho criado no LinkedIn', detail: titulo, life: 3000 });
   }

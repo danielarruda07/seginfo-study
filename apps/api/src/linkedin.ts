@@ -22,7 +22,10 @@ const Data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const Texto = z.string().trim().min(1).max(10_000);
 const Formato = z.enum(FORMATOS_POST);
 
-const NovoPost = z.object({ url: Url, publicadoEm: Data, texto: Texto, formato: Formato.optional(), metricas: MetricasSchema.optional() });
+const NovoPost = z.object({
+  url: Url, publicadoEm: Data, texto: Texto, formato: Formato.optional(), metricas: MetricasSchema.optional(),
+  projetoId: z.string().max(100).nullable().optional(),
+});
 const EditarPost = NovoPost.partial();
 const Importar = z.object({
   posts: z.array(NovoPost.extend({
@@ -51,12 +54,13 @@ const NovaEntrada = z.object({
   descricao: z.string().trim().min(1).max(4_000),
   categoria: z.enum(['funcionalidade', 'seguranca', 'infra', 'decisao', 'aprendizado', 'plano']),
   tags: z.array(z.string().trim().min(1).max(40)).max(10).optional(),
+  projetoId: z.string().max(100).nullable().optional(),
 });
 
 // ---------- helpers ----------
 type LinhaPost = Awaited<ReturnType<typeof prisma.linkedinPost.findFirstOrThrow>>;
 
-function paraDto(p: LinhaPost): PostPublicado {
+export function paraDto(p: LinhaPost): PostPublicado {
   return {
     id: p.id, url: p.url, publicadoEm: p.publicadoEm, texto: p.texto,
     formato: p.formato as PostPublicado['formato'],
@@ -64,10 +68,33 @@ function paraDto(p: LinhaPost): PostPublicado {
     origem: p.origem as PostPublicado['origem'],
     analise: (p.analise ?? null) as AnalisePost | null,
     memoriaId: p.memoriaId,
+    projetoId: p.projetoId,
   };
 }
 
-async function estrategiaDe(usuarioId: string): Promise<Estrategia> {
+/** O projeto é do usuário? (`null`/ausente sempre pode: é "sem projeto") */
+async function projetoValido(usuarioId: string, projetoId: string | null | undefined): Promise<boolean> {
+  if (!projetoId) return true;
+  return (await prisma.linkedinProjeto.count({ where: { id: projetoId, usuarioId } })) === 1;
+}
+
+/**
+ * Cada ideia derivada da análise entra no backlog (antes só existia dentro do JSON da análise
+ * e se perdia). Reanalisar o mesmo post não duplica: a chave é usuário + origem + post + título.
+ */
+async function depositarIdeias(usuarioId: string, post: PostPublicado): Promise<void> {
+  const a = post.analise;
+  if (!a?.ideiasDerivadas.length) return;
+  await prisma.linkedinIdeia.createMany({
+    data: a.ideiasDerivadas.map((ideia) => ({
+      usuarioId, titulo: ideia.trim().slice(0, 200), briefing: ideia.trim().slice(0, 3_000), pilar: a.pilar.slice(0, 80),
+      projetoId: post.projetoId, origem: 'analise', origemRef: post.id,
+    })).filter((i) => i.titulo.length >= 3),
+    skipDuplicates: true,
+  });
+}
+
+export async function estrategiaDe(usuarioId: string): Promise<Estrategia> {
   const e = await prisma.linkedinEstrategia.findUnique({ where: { usuarioId } });
   return e ? { objetivo: e.objetivo, publico: e.publico, voz: e.voz, pilares: e.pilares } : ESTRATEGIA_PADRAO;
 }
@@ -125,11 +152,12 @@ async function sincronizarCerebro(usuarioId: string, p: PostPublicado, catalogo:
 }
 
 /** Contexto da jornada para rascunhos: estratégia + histórico + diário (do banco) + estudo (do front). */
-async function contextoDaJornada(usuarioId: string, estudo: string, incluirDiario: boolean): Promise<string> {
-  const [estrategia, linhas, diario] = await Promise.all([
+export async function contextoDaJornada(usuarioId: string, estudo: string, incluirDiario: boolean): Promise<string> {
+  const [estrategia, linhas, diario, projetos] = await Promise.all([
     estrategiaDe(usuarioId),
     prisma.linkedinPost.findMany({ where: { usuarioId }, orderBy: { publicadoEm: 'desc' }, take: 200 }),
     incluirDiario ? prisma.diarioEntrada.findMany({ where: { usuarioId } }) : Promise.resolve([]),
+    prisma.linkedinProjeto.findMany({ where: { usuarioId, status: 'ativo' }, orderBy: { criadoEm: 'asc' } }),
   ]);
   const posts = linhas.map(paraDto);
   const comAnalise = posts.filter((p) => p.analise);
@@ -146,6 +174,11 @@ async function contextoDaJornada(usuarioId: string, estudo: string, incluirDiari
       (melhores.length ? `\nMelhores por engajamento:\n${melhores.map((p) => `- "${p.texto.split('\n')[0].slice(0, 160)}" — ${pontos(p.metricas)} pts`).join('\n')}` : '') +
       (comAnalise.length ? `\nIdeias derivadas ainda não usadas:\n- ${comAnalise.flatMap((p) => p.analise!.ideiasDerivadas).slice(0, 10).join('\n- ')}` : ''),
   ];
+  if (projetos.length) {
+    const porProjeto = new Map<string, number>();
+    for (const p of posts) if (p.projetoId) porProjeto.set(p.projetoId, (porProjeto.get(p.projetoId) ?? 0) + 1);
+    partes.push(`## Projetos de conteúdo ativos\n${projetos.map((p) => `- ${p.nome}${p.objetivo ? `: ${p.objetivo}` : ''} (${porProjeto.get(p.id) ?? 0} posts publicados)`).join('\n')}`);
+  }
   if (incluirDiario) {
     const marcos = [...DIARIO_PROJETO, ...diario].sort((a, b) => a.data.localeCompare(b.data));
     partes.push(`## Diário de construção da SegInfo Study (projeto pessoal)\n${marcos.map((e) => `- ${e.data} [${e.categoria}] ${e.titulo}: ${e.descricao}`).join('\n')}`);
@@ -174,12 +207,13 @@ export async function registerLinkedinRoutes(app: FastifyInstance) {
   app.post('/api/linkedin/posts', async (req, reply) => {
     const b = NovoPost.safeParse(req.body);
     if (!b.success) return reply.status(400).send({ error: 'payload inválido' });
+    if (!(await projetoValido(uid(req), b.data.projetoId))) return reply.status(400).send({ error: 'Projeto não encontrado.' });
     try {
       const p = await prisma.linkedinPost.create({
         data: {
           usuarioId: uid(req), url: b.data.url, urlNormalizada: normalizarUrlLinkedin(b.data.url),
           publicadoEm: b.data.publicadoEm, texto: b.data.texto, formato: b.data.formato ?? 'texto',
-          metricas: (b.data.metricas ?? {}) as Prisma.InputJsonValue,
+          metricas: (b.data.metricas ?? {}) as Prisma.InputJsonValue, projetoId: b.data.projetoId ?? null,
         },
       });
       return paraDto(p);
@@ -196,6 +230,7 @@ export async function registerLinkedinRoutes(app: FastifyInstance) {
     if (!b.success) return reply.status(400).send({ error: 'payload inválido' });
     const atual = await prisma.linkedinPost.findFirst({ where: { id: idDe(req), usuarioId: uid(req) } });
     if (!atual) return reply.status(404).send({ error: 'não encontrado' });
+    if (!(await projetoValido(uid(req), b.data.projetoId))) return reply.status(400).send({ error: 'Projeto não encontrado.' });
     const { url, metricas, texto, ...resto } = b.data;
     try {
       const p = await prisma.linkedinPost.update({
@@ -248,6 +283,7 @@ export async function registerLinkedinRoutes(app: FastifyInstance) {
       const analise = await analisarPost(atual, pilares, b.data.catalogo);
       const p = paraDto(await prisma.linkedinPost.update({ where: { id: atual.id }, data: { analise: analise as Prisma.InputJsonValue } }));
       const memoriaId = await sincronizarCerebro(uid(req), p, b.data.catalogo);
+      await depositarIdeias(uid(req), p);
       return { ...p, memoriaId };
     } catch (e) {
       return responderErroIA(e, reply);
@@ -292,7 +328,8 @@ export async function registerLinkedinRoutes(app: FastifyInstance) {
   app.post('/api/linkedin/diario', async (req, reply) => {
     const b = NovaEntrada.safeParse(req.body);
     if (!b.success) return reply.status(400).send({ error: 'payload inválido' });
-    return prisma.diarioEntrada.create({ data: { ...b.data, tags: b.data.tags ?? [], usuarioId: uid(req) } });
+    if (!(await projetoValido(uid(req), b.data.projetoId))) return reply.status(400).send({ error: 'Projeto não encontrado.' });
+    return prisma.diarioEntrada.create({ data: { ...b.data, tags: b.data.tags ?? [], projetoId: b.data.projetoId ?? null, usuarioId: uid(req) } });
   });
   app.delete('/api/linkedin/diario/:id', async (req) => {
     await prisma.diarioEntrada.deleteMany({ where: { id: idDe(req), usuarioId: uid(req) } });

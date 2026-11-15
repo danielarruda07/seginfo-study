@@ -8,7 +8,10 @@ import { StatusStrip, Chip, Pill } from '@/components/InfraKit';
 import { ClickCard } from '@/components/ui/ClickCard';
 import { useInvalidate } from '@/hooks/useInvalidate';
 import { useDrawerSelection } from '@/hooks/useDrawerSelection';
-import { CATEGORIA_DIARIO_LABEL, diarioEmMarkdown, juntarDiario, listDiarioServidor, mensagemErro, removeDiario } from '@/services/linkedin';
+import { CATEGORIA_DIARIO_LABEL, diarioEmMarkdown, juntarDiario, listDiarioServidor, mensagemErro, removeDiario, type EntradaDiarioComOrigem } from '@/services/linkedin';
+import { criarIdeia } from '@/services/linkedinPipeline';
+import { detalheDoErro, useProjetos } from './dados';
+import { nomeDoProjeto } from './pipelineRegras';
 import { copyToClipboard } from '@/lib/clipboard';
 import type { PedidoEstudio } from './Estudio';
 import { CATEGORIA_COR, briefingDoMarco } from './regras';
@@ -57,8 +60,22 @@ export function Diario({ onGerarPost }: { onGerarPost: (p: PedidoEstudio) => voi
   const [filtro, setFiltro] = useState<CategoriaDiario | undefined>();
   const [copiado, setCopiado] = useState(false);
   const [erro, setErro] = useState('');
+  const [ok, setOk] = useState('');
+  const { data: projetos = [] } = useProjetos();
   const visiveis = useMemo(() => (filtro ? entradas.filter((e) => e.categoria === filtro) : entradas), [entradas, filtro]);
   const sel = useDrawerSelection(visiveis);
+
+  async function guardarIdeia(e: EntradaDiarioComOrigem) {
+    setErro(''); setOk('');
+    try {
+      await criarIdeia({ titulo: `Marco: ${e.titulo}`.slice(0, 200), briefing: briefingDoMarco(e).slice(0, 3_000), pilar: PILAR_PROJETO, projetoId: e.projetoId ?? null, origem: 'marco', origemRef: e.id });
+      invalidate('linkedin-ideias');
+      setOk(`Ideia guardada no backlog: "${e.titulo}".`);
+    } catch (err) {
+      if (detalheDoErro(err).status === 409) setOk('Este marco já está no backlog de ideias.');
+      else setErro(mensagemErro(err));
+    }
+  }
 
   function remover(id: string, titulo: string) {
     confirmDialog({
@@ -96,6 +113,7 @@ export function Diario({ onGerarPost }: { onGerarPost: (p: PedidoEstudio) => voi
 
       <NovoMarco onErro={setErro} />
       {erro && <Message severity="error" text={erro} className="ca-msg" />}
+      {ok && <Message severity="success" text={ok} className="ca-msg" />}
 
       <div className="iv-row iv-wrap iv-mt" role="group" aria-label="Filtrar por categoria">
         <Chip label={`Tudo (${entradas.length})`} active={!filtro} onClick={() => setFiltro(undefined)} />
@@ -112,6 +130,7 @@ export function Diario({ onGerarPost }: { onGerarPost: (p: PedidoEstudio) => voi
               <span className="iv-muted">{e.data}</span>
               <Pill label={CATEGORIA_DIARIO_LABEL[e.categoria]} color={CATEGORIA_COR[e.categoria]} />
               {e.origem === 'voce' && <Pill label="seu registro" icon="pi-user" />}
+              {nomeDoProjeto(projetos, e.projetoId) && <Pill label={nomeDoProjeto(projetos, e.projetoId)} icon="pi-folder" />}
 
             </div>
             <strong className="ca-marco__titulo">{e.titulo}</strong>
@@ -121,8 +140,9 @@ export function Diario({ onGerarPost }: { onGerarPost: (p: PedidoEstudio) => voi
       </ol>
 
       {sel.item && (
-        <MarcoDrawer marco={sel.item} nav={sel.nav}
-          onGerarPost={() => { sel.close(); onGerarPost({ briefing: briefingDoMarco(sel.item!), pilar: PILAR_PROJETO, incluirDiario: true }); }}
+        <MarcoDrawer marco={sel.item} nav={sel.nav} projeto={nomeDoProjeto(projetos, sel.item.projetoId)}
+          onGuardarIdeia={() => guardarIdeia(sel.item!)}
+          onGerarPost={() => { const m = sel.item!; sel.close(); onGerarPost({ briefing: briefingDoMarco(m), pilar: PILAR_PROJETO, incluirDiario: true, projetoId: m.projetoId ?? null }); }}
           onRemover={sel.item.origem === 'voce' ? () => remover(sel.item!.id, sel.item!.titulo) : undefined} />
       )}
     </div>
