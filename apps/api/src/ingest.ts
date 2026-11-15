@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Prisma } from '@prisma/client';
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { IngestBatchSchema } from '@seginfo/shared';
+import { IngestBatchSchema, ambienteDoEvento } from '@seginfo/shared';
 import { prisma, resolveUsuario } from './db.js';
 import { verifyAccessJwt } from './auth.js';
 import { guardarSenhas } from './radar.js';
@@ -131,6 +131,7 @@ export async function registerIngestRoutes(app: FastifyInstance) {
         detalhes: (e.detalhes ?? {}) as Prisma.InputJsonObject,
         dedupKey,
         escopo: escopoDoIp(e.ipOrigem),
+        ambiente: ambienteDoEvento(e),
       };
     });
 

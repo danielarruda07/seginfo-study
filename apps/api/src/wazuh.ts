@@ -1,5 +1,7 @@
 import https from 'node:https';
 import type { FastifyInstance } from 'fastify';
+import { AmbienteFiltroSchema, ambienteDoAtivo, type AmbienteFiltro } from '@seginfo/shared';
+import { z } from 'zod';
 
 const VARIAVEIS = ['WAZUH_API_URL', 'WAZUH_API_USERNAME', 'WAZUH_API_PASSWORD'] as const;
 const ERROS_CERT = ['DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'ERR_TLS_CERT_ALTNAME_INVALID'];
@@ -81,7 +83,7 @@ export async function wazuhApi(method: 'GET' | 'PUT', path: string): Promise<unk
   try { return JSON.parse(raw); } catch { throw new Error('Wazuh API devolveu uma resposta inválida.'); }
 }
 
-async function statusWazuh() {
+async function statusWazuh(ambiente: AmbienteFiltro) {
   const faltando = wazuhFaltando();
   if (faltando.length) return { configurado: false, faltando, erro: null, consultadoEm: null, manager: null, agentes: null };
 
@@ -103,14 +105,14 @@ async function statusWazuh() {
     const [rootResult, statusResult, agentsResult] = await Promise.allSettled([
       consultar('/', token, ca, insecure),
       consultar('/manager/status', token, ca, insecure),
-      consultar('/agents?limit=500&select=id,name,ip,status,version,lastKeepAlive,os.name,os.version', token, ca, insecure),
+      consultar('/agents?limit=500&select=id,name,ip,status,version,lastKeepAlive,os.name,os.version,group', token, ca, insecure),
     ]);
     const failures = [rootResult, statusResult, agentsResult]
       .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
       .map((r) => erroTexto(r.reason));
     const r = rootResult.status === 'fulfilled' ? obj(obj(rootResult.value).data) : {};
     const daemonItems = statusResult.status === 'fulfilled' ? daemons(statusResult.value) : [];
-    const active = agentsResult.status === 'fulfilled' ? items(agentsResult.value) : [];
+    const active = (agentsResult.status === 'fulfilled' ? items(agentsResult.value) : []).filter((a) => ambiente === 'todos' || ambienteDoAtivo(a) === ambiente);
     const counts = { active: 0, disconnected: 0, pending: 0, never_connected: 0, other: 0 };
     const normalized = active.map((a) => {
       const state = text(a.status) ?? 'other';
@@ -119,6 +121,7 @@ async function statusWazuh() {
       const os = obj(a.os);
       return {
         id: text(a.id), name: text(a.name), ip: text(a.ip), status: state,
+        ambiente: ambienteDoAtivo(a),
         version: text(a.version), lastKeepAlive: text(a.lastKeepAlive),
         os: [text(os.name), text(os.version)].filter(Boolean).join(' ') || null,
       };
@@ -137,5 +140,9 @@ async function statusWazuh() {
 }
 
 export async function registerWazuhRoutes(app: FastifyInstance) {
-  app.get('/api/wazuh/status', async () => statusWazuh());
+  app.get('/api/wazuh/status', async (req, reply) => {
+    const q = z.object({ ambiente: AmbienteFiltroSchema }).safeParse(req.query);
+    if (!q.success) return reply.code(400).send({ error: 'Ambiente inválido.' });
+    return statusWazuh(q.data.ambiente);
+  });
 }

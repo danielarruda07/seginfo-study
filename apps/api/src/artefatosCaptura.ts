@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import type { PericiaIn } from '@seginfo/shared';
+import { ambienteDoEvento, type PericiaIn, type AmbienteMonitorado } from '@seginfo/shared';
 import { prisma } from './db.js';
 import { analisarArtefato, hashArtefato } from './artefatosAnalise.js';
 
@@ -30,9 +30,10 @@ export async function preservarPericia(usuarioId: string, referencia: string, d:
   for (const [i, p] of d.processos.entries()) await preservar(usuarioId, { tipo: 'processo', nome: `Linha de processo · ${hashArtefato(p.comando).slice(0, 12)}`, conteudo: p.comando }, { ...origem, contexto: { ...origem.contexto, pid: p.pid, usuario: p.usuario ?? null, inicio: p.inicio ?? null } }, `processo:${i}`);
 }
 
-export type EventoArquivo = { id?: string; dedupKey: string; usuarioId: string; fonte: string; alvo?: string | null; ocorridoEm: Date; ipOrigem?: string | null; acao: string; detalhes: unknown };
+export type EventoArquivo = { id?: string; dedupKey: string; usuarioId: string; fonte: string; ambiente?: string; alvo?: string | null; ocorridoEm: Date; ipOrigem?: string | null; acao: string; detalhes: unknown };
 export async function preservarEventos(eventos: EventoArquivo[]) {
   for (const e of eventos) {
+    if (ambienteDoEvento({ ...e, ambiente: e.ambiente as AmbienteMonitorado | undefined }) === 'producao') continue;
     const d = e.detalhes && typeof e.detalhes === 'object' ? e.detalhes as Record<string, unknown> : {};
     const origem: Origem = { origem: 'radar', referencia: e.dedupKey, alvo: e.alvo, ip: e.ipOrigem, quando: e.ocorridoEm,
       sessao: typeof d.sessao === 'string' ? d.sessao : null, contexto: { fonte: e.fonte, acao: e.acao, eventoId: e.id ?? null } };

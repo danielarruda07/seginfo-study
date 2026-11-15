@@ -103,7 +103,7 @@ export function Investigacoes() {
     if (id && lista.some((p) => p.id === id)) open(id);
   }, [lista, open]);
   return <div>
-    <PageHeader title="Investigações de ataques" subtitle="Dossiês por janela: eventos do Radar, arquivos, persistência, processos, conexões e técnicas observadas." />
+    <PageHeader title="Investigações do laboratório" subtitle="Dossiês do ambiente controlado: eventos do Radar, arquivos, persistência, processos e conexões por janela." />
     <StatusStrip icon="pi-info-circle">A Matriz ATT&amp;CK usa as técnicas registradas nos eventos do Radar. Os laudos ampliam o contexto com evidências do alvo; a correlação temporal não prova, sozinha, que um IP específico criou cada artefato.</StatusStrip>
     <div className="iv-card iv-mt"><div className="iv-toolbar"><SearchInput value={buscaRaw} onChange={setBuscaRaw} placeholder="Buscar alvo ou sensor…" />
       <select aria-label="Filtrar sistema" value={sistema} onChange={(e) => setSistema(e.target.value)}><option value="todos">Todos os sistemas</option><option value="linux">Linux</option><option value="windows">Windows</option></select>

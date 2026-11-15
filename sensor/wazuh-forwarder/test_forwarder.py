@@ -126,5 +126,34 @@ class PromptHoneypotTest(unittest.TestCase):
         self.assertEqual(det['chavesQuery'], ['q'])
 
 
+class ProducaoTest(unittest.TestCase):
+    def test_evento_local_sem_ip_sem_mitre_e_sem_senha(self):
+        a = {'timestamp': '2026-11-15T01:00:00.000-0300', 'agent': {'id': '099', 'name': 'prod-example', 'labels': {'environment': 'production'}},
+             'rule': {'id': '550', 'level': 7, 'groups': ['syscheck'], 'description': 'Integrity changed'},
+             'syscheck': {'path': '/etc/example.conf', 'event': 'modified'}}
+        ev = fw.converter(a)
+        self.assertEqual(ev['ambiente'], 'producao')
+        self.assertEqual(ev['fonte'], 'wazuh')
+        self.assertNotIn('ipOrigem', ev)
+        self.assertNotIn('senhaTentada', ev)
+        self.assertEqual(ev['detalhes']['arquivo'], '/etc/example.conf')
+
+    def test_producao_nao_aplica_lista_de_ips_ignorados_do_lab(self):
+        ignored = fw.IGNORAR
+        import ipaddress
+        fw.IGNORAR = [ipaddress.ip_network('192.0.2.0/24')]
+        try:
+            a = {'agent': {'name': 'prod-example'}, 'rule': {'level': 5, 'groups': ['windows']},
+                 'data': {'win': {'system': {'eventID': '4625'}, 'eventdata': {'ipAddress': '192.0.2.20'}}}}
+            ev = fw.converter(a)
+            self.assertEqual(ev['ipOrigem'], '192.0.2.20')
+            self.assertEqual(ev['acao'], 'login_falha')
+        finally:
+            fw.IGNORAR = ignored
+
+    def test_firewall_nao_herda_ambiente_do_manager(self):
+        self.assertEqual(fw.ambiente_alerta({'agent': {'id': '000', 'name': 'range-wazuh'}}), 'nao_classificado')
+
+
 if __name__ == '__main__':
     unittest.main()

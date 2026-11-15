@@ -171,7 +171,7 @@ export function Laudos() {
   return (
     <div>
       <PageHeader
-        title="Laudos dos alvos reais"
+        title="Laudos do laboratório"
         subtitle="O que os invasores deixaram nas máquinas reais do honeypot, coletado antes de cada reset."
       />
       <StatusStrip icon="pi-info-circle">

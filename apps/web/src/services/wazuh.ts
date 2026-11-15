@@ -1,8 +1,10 @@
 import { http } from './http';
+import type { AmbienteFiltro } from '@seginfo/shared';
 
 export interface WazuhAgent {
   id: string | null; name: string | null; ip: string | null; status: string;
   version: string | null; lastKeepAlive: string | null; os: string | null;
+  ambiente: string;
 }
 export interface WazuhStatus {
   configurado: boolean; faltando: string[]; erro: string | null; consultadoEm: string | null;
@@ -12,8 +14,9 @@ export interface WazuhStatus {
 export interface WazuhAlert {
   id: string; fonte: string; ocorridoEm: string; ipOrigem: string | null; paisOrigem: string | null;
   servico: string | null; acao: string; alvo: string | null; detalhes: Record<string, unknown>;
+  ambiente: string;
 }
 
-export const getWazuhStatus = () => http.get<WazuhStatus>('/wazuh/status').then((r) => r.data);
-export const getWazuhAlerts = (params: { dias: number; q?: string; page: number; limit: number }) =>
+export const getWazuhStatus = (ambiente: AmbienteFiltro = 'todos') => http.get<WazuhStatus>('/wazuh/status', { params: { ambiente } }).then((r) => r.data);
+export const getWazuhAlerts = (params: { dias: number; q?: string; page: number; limit: number; ambiente?: AmbienteFiltro }) =>
   http.get<{ total: number; page: number; limit: number; dias: number; items: WazuhAlert[] }>('/wazuh/alertas', { params }).then((r) => r.data);

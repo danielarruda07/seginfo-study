@@ -10,6 +10,7 @@
 import 'dotenv/config';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
+import { AmbienteSchema, ambienteDoEvento } from '@seginfo/shared';
 
 const [, , arquivo] = process.argv;
 const targetUrl = process.env.RESTORE_TARGET_DATABASE_URL;
@@ -45,6 +46,7 @@ const Biblioteca = z.object({ id: z.string(), usuarioId: z.string(), url: z.stri
 const Cofre = z.object({ usuarioId: z.string(), versao: z.number().int(), salt: z.string(), iv: z.string(), ciphertext: z.string(), autoLockMin: z.number().int(), atualizadoEm: z.coerce.date().optional() }).nullable();
 const Ataque = z.object({ id: z.string(), usuarioId: z.string(), fonte: z.string(), ocorridoEm: z.coerce.date(), ipOrigem: z.string().nullable(), paisOrigem: z.string().nullable(), portaDestino: z.number().int().nullable(), protocolo: z.string().nullable(), servico: z.string().nullable(), acao: z.string(), usuarioTentado: z.string().nullable(), senhaTentada: z.string().nullable(), alvo: z.string().nullable(), detalhes: z.unknown(), dedupKey: z.string(), criadoEm: z.coerce.date().optional() });
 const Memoria = z.object({ id: z.string(), usuarioId: z.string(), titulo: z.string(), conteudo: z.string(), tags: z.array(z.string()), origem: z.string(), urlOrigem: z.string().nullable(), escopo: z.string(), excluirEm: z.coerce.date().nullable(), criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional() });
+const AtaqueComAmbiente = Ataque.extend({ ambiente: AmbienteSchema.optional(), escopo: z.enum(['internet', 'interno']).optional() });
 const LinkedinPost = z.object({ id: z.string(), usuarioId: z.string(), url: z.string(), urlNormalizada: z.string(), publicadoEm: z.string(), texto: z.string(), formato: z.string(), metricas: z.unknown(), origem: z.string(), analise: z.unknown().nullable(), memoriaId: z.string().nullable(), projetoId: z.string().nullable().optional(), urn: z.string().nullable().optional(), criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional() });
 const DiarioEntrada = z.object({ id: z.string(), usuarioId: z.string(), data: z.string(), titulo: z.string(), descricao: z.string(), categoria: z.string(), tags: z.array(z.string()), projetoId: z.string().nullable().optional(), criadoEm: z.coerce.date().optional() });
 const LinkedinEstrategia = z.object({ usuarioId: z.string(), objetivo: z.string(), publico: z.string(), voz: z.string(), pilares: z.array(z.string()), atualizadoEm: z.coerce.date().optional() }).nullable();
@@ -61,7 +63,7 @@ const Exportacao = z.object({
   formato: z.literal('seginfo-export'), versao: z.literal(1), usuario: Identidade.optional(),
   progresso: z.array(Progresso), sessoes: z.array(Sessao), metas: z.array(Meta), posts: z.array(Post),
   arsenal: z.array(Arsenal), biblioteca: z.array(Biblioteca), cofre: Cofre,
-  ataques: z.array(Ataque), memorias: z.array(Memoria),
+  ataques: z.array(AtaqueComAmbiente), memorias: z.array(Memoria),
   // LinkedIn (backups anteriores a 2026-11-11 não têm estas chaves)
   linkedinPosts: z.array(LinkedinPost).default([]), diario: z.array(DiarioEntrada).default([]),
   linkedinEstrategia: LinkedinEstrategia.default(null),
@@ -122,7 +124,7 @@ try {
       prisma.linkedinIdeia.createMany({ data: backup.linkedinIdeias }),
       prisma.arsenalItem.createMany({ data: backup.arsenal.map((i) => ({ ...i, artefatos: i.artefatos as Prisma.InputJsonValue })) }),
       prisma.biblioItem.createMany({ data: backup.biblioteca }),
-      prisma.ataqueEvento.createMany({ data: backup.ataques.map((i) => ({ ...i, detalhes: i.detalhes as Prisma.InputJsonValue })) }),
+      prisma.ataqueEvento.createMany({ data: backup.ataques.map((i) => ({ ...i, ambiente: ambienteDoEvento(i), detalhes: i.detalhes as Prisma.InputJsonValue })) }),
       prisma.memoria.createMany({ data: pessoal }),
     ];
     // memoriaId só é mantido se a nota também foi restaurada

@@ -33,7 +33,7 @@ export function Artefatos() {
     finally { setImportando(false); }
   };
   return <div>
-    <PageHeader title="Biblioteca de artefatos" subtitle="Arquivos, comandos e trechos dos ataques preservados para análise e estudo."
+    <PageHeader title="Biblioteca de artefatos do laboratório" subtitle="Arquivos, comandos e trechos do ambiente controlado preservados para análise e estudo."
       actions={<Button label="Importar histórico existente" icon="pi pi-database" loading={importando} onClick={() => void importar()} />} />
     <StatusStrip icon="pi-info-circle">Novos comandos e laudos alimentam esta biblioteca. Use “Importar histórico existente” para reunir os registros anteriores. Amostras chegam pelo coletor ou pelo botão de anexar na ficha do arquivo.</StatusStrip>
     {progresso && <p role="status">{progresso}</p>}{erro && <Message severity="error" text={erro} />}

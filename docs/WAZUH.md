@@ -2,6 +2,14 @@
 
 ## O que a aplicação mostra
 
+O seletor **Ambiente monitorado** nas telas Wazuh, Radar e Matriz ATT&CK permite **Todos**, **Laboratório**, **Produção** ou **Não classificado**. A preferência acompanha a navegação; os filtros são aplicados no servidor antes dos totais e da paginação. O manager é compartilhado; a lista de agentes e os alertas respeitam o ambiente selecionado. As técnicas observadas na matriz seguem esse filtro; estudo, exercícios e validações manuais continuam sendo registros de aprendizagem pessoais. Laudos e biblioteca forense seguem dedicados ao laboratório.
+
+Cada evento possui `ambiente`, independente de `escopo` (origem pública, privada ou ausente). O coletor usa `agent.labels.environment` e reconhece nomes `prod-*` / `range-*` como compatibilidade; a consulta de agentes também reconhece grupos `prod-*` / `range-*`. O agente local do manager e eventos genéricos do FortiGate não herdam ambiente pelo nome do servidor. Eventos antigos com evidência suficiente são classificados pela migration; os ambíguos ficam em **Não classificado**. Isso organiza as visões e não é uma separação de permissões ou de infraestrutura SIEM.
+
+Alertas de produção chegam como fonte `wazuh`, a partir do nível 3, sem exigir MITRE ou IP remoto. IP ausente não é preenchido com o endereço do agente. A lista `IGNORAR_IPS`, usada para reduzir testes do laboratório, não é aplicada a alertas identificados como produção. A coleta conserva metadados da regra, agente, canal e caminhos de FIM; não encaminha comandos, diffs, senhas ou corpos completos de eventos de produção. A biblioteca não arquiva automaticamente comandos de produção.
+
+Atualizar o app não atualiza o forwarder da VM do Wazuh. Instale a versão publicada de `sensor/wazuh-forwarder/forwarder.py`, comparando o arquivo ativo antes de substituir e preservando seu estado. A mudança não reprocessa automaticamente alertas antigos já ultrapassados pelo cursor do coletor.
+
 A página **Inteligência → Wazuh** reúne duas fontes diferentes:
 
 - **Manager e agentes:** consulta à API REST do Wazuh para exibir versão, estado dos serviços e agentes cadastrados/ativos/desconectados. No Playground, ferramentas aprovadas também podem solicitar reinício de agentes específicos ou do manager.

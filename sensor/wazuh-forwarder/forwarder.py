@@ -444,11 +444,64 @@ def de_reflexao(a, regra, d):
             'servico': SERVICO_UDP.get(p), 'acao': 'reflexao', 'alvo': clip(d.get('devname'), 128), 'detalhes': det}
 
 
+def ambiente_alerta(alerta):
+    agent = alerta.get('agent') or {}
+    labels = agent.get('labels') or {}
+    if isinstance(labels, list):
+        labels = {x.get('key'): x.get('value') for x in labels if isinstance(x, dict)}
+    value = labels.get('environment') if isinstance(labels, dict) else None
+    if value in ('production', 'producao'):
+        return 'producao'
+    if value in ('laboratory', 'laboratorio', 'lab', 'range'):
+        return 'laboratorio'
+    if str(agent.get('id')) == '000':
+        return 'nao_classificado'
+    name = str(agent.get('name', '')).lower()
+    if name.startswith('prod-'):
+        return 'producao'
+    if name.startswith('range-') and name != 'range-wazuh':
+        return 'laboratorio'
+    return 'nao_classificado'
+
+
+def de_producao(a, regra, d):
+    """Metadados de alertas de produção; não exige MITRE nem inventa IP remoto."""
+    if int(regra.get('level', 0)) < 3:
+        return None
+    win = d.get('win') or {}
+    ed, system = win.get('eventdata') or {}, win.get('system') or {}
+    event_id = str(system.get('eventID', ''))
+    acao = {'4625': 'login_falha', '4624': 'login_ok', '1149': 'login_ok', '4740': 'lockout'}.get(event_id, 'outro')
+    groups = set(regra.get('groups') or [])
+    if acao == 'outro' and groups.intersection({'authentication_failed', 'authentication_failures'}):
+        acao = 'login_falha'
+    elif acao == 'outro' and 'authentication_success' in groups:
+        acao = 'login_ok'
+    remote = ed.get('ipAddress') or ed.get('sourceIp') or ed.get('sourceAddress') or d.get('srcip')
+    try:
+        ip = str(ipaddress.ip_address(str(remote)))
+    except ValueError:
+        ip = None
+    det = detalhes_base(a, regra)
+    det.update({'ambiente': 'producao', 'agentId': clip((a.get('agent') or {}).get('id'), 12),
+                'evento': clip(event_id, 12), 'canal': clip(system.get('channel'), 128)})
+    fim = a.get('syscheck') or {}
+    if fim.get('path'):
+        det['arquivo'] = clip(fim.get('path'), 500)
+        det['alteracao'] = clip(fim.get('event'), 32)
+    return {'fonte': 'wazuh', 'ambiente': 'producao', 'ocorridoEm': quando(a), 'ipOrigem': ip,
+            'acao': acao, 'alvo': clip((a.get('agent') or {}).get('name'), 128),
+            'usuarioTentado': clip(ed.get('targetUserName') or d.get('dstuser'), 128),
+            'servico': clip(system.get('channel') or a.get('location'), 32), 'detalhes': det}
+
+
 def converter(alerta):
     regra = alerta.get('rule') or {}
     grupos = set(regra.get('groups') or [])
     d = alerta.get('data') or {}
-    if 'cowrie' in grupos or str(d.get('eventid', '')).startswith('cowrie.'):
+    if ambiente_alerta(alerta) == 'producao':
+        ev = de_producao(alerta, regra, d)
+    elif 'cowrie' in grupos or str(d.get('eventid', '')).startswith('cowrie.'):
         ev = de_cowrie(alerta, regra, d)
     elif 'dionaea' in grupos:
         ev = de_dionaea(alerta, regra, d)
@@ -466,6 +519,13 @@ def converter(alerta):
         ev = de_windows(alerta, regra, d)
     else:
         ev = None
+    if ev and 'ambiente' not in ev:
+        ambiente = ambiente_alerta(alerta)
+        if ev.get('fonte') in ('cowrie', 'dionaea', 'opencanary', 'heralding', 'isca', 'prompt_honeypot') or 'reflexao' in grupos:
+            ambiente = 'laboratorio'
+        elif ev.get('fonte') == 'fortigate':
+            ambiente = 'laboratorio' if str(d.get('policyname', '')).upper().startswith('RANGE-') else 'nao_classificado'
+        ev['ambiente'] = ambiente
     if ev and GEO and ev.get('ipOrigem') and publico(ev['ipOrigem']):
         ev['paisOrigem'] = GEO.pais(ev['ipOrigem'])
     return limpar(ev) if ev else None

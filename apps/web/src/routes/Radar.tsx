@@ -3,6 +3,8 @@ import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from 'primereact/button';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { AmbienteSelector } from '@/components/ui/AmbienteSelector';
+import { useAmbiente } from '@/services/ambiente';
 import { Kpi, StatusStrip, Chip, EmptyState } from '@/components/InfraKit';
 import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -22,8 +24,8 @@ const DIAS_OPTS = [1, 7, 30];
 const ATUALIZAR_MS = 60_000;
 const ESCOPO_OPTS: { value: RadarEscopo; label: string; dica: string }[] = [
   { value: 'internet', label: 'Internet', dica: 'Origem em IP público: o que chega de fora' },
-  { value: 'interno', label: 'Range', dica: 'Origem em rede privada: exercícios da Kali, testes e eventos sem IP' },
-  { value: 'todos', label: 'Tudo', dica: 'Internet e range juntos' },
+  { value: 'interno', label: 'Rede privada / sem IP', dica: 'Origem privada ou não informada, em qualquer ambiente' },
+  { value: 'todos', label: 'Todas as origens', dica: 'Origens públicas, privadas e não informadas' },
 ];
 const hora = (ms: number) => (ms ? new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—');
 const periodoLabel = (d: number) => (d === 1 ? '24 h' : `${d} dias`);
@@ -36,8 +38,9 @@ function indicadores(r: RadarResumo | undefined, dim: Dimensao): TopItem[] {
 }
 
 export function Radar() {
+  const [ambiente, setAmbiente] = useAmbiente();
   const [dias, setDias] = useState(7);
-  const [escopo, setEscopo] = useState<RadarEscopo>('internet');
+  const [escopo, setEscopo] = useState<RadarEscopo>('todos');
   const [ip, setIp] = useState<string | undefined>();
   const [servico, setServico] = useState<string | undefined>();
   const [acao, setAcao] = useState<string | undefined>();
@@ -47,9 +50,9 @@ export function Radar() {
   const q = useDebounce(qRaw, 300);
   const [page, setPage] = useState(0);
 
-  const resumo = useQuery({ queryKey: ['radar-resumo', dias, escopo], queryFn: () => getRadarResumo(dias, escopo), retry: false, refetchInterval: ATUALIZAR_MS });
-  const filtros = useMemo(() => ({ ip, servico, acao, fonte: fonte as RadarEventosFiltro['fonte'], pais, escopo, q: q || undefined, page, limit: ROWS }), [ip, servico, acao, fonte, pais, escopo, q, page]);
-  const eventos = useQuery({ queryKey: ['radar-eventos', filtros], queryFn: () => getRadarEventos(filtros), retry: false, refetchInterval: ATUALIZAR_MS, placeholderData: (anterior) => anterior });
+  const resumo = useQuery({ queryKey: ['radar-resumo', dias, escopo, ambiente], queryFn: () => getRadarResumo(dias, escopo, ambiente), retry: false, refetchInterval: ATUALIZAR_MS });
+  const filtros = useMemo(() => ({ ip, servico, acao, fonte: fonte as RadarEventosFiltro['fonte'], pais, escopo, ambiente, q: q || undefined, page, limit: ROWS }), [ip, servico, acao, fonte, pais, escopo, ambiente, q, page]);
+  const eventos = useQuery({ queryKey: ['radar-eventos', filtros], queryFn: () => getRadarEventos(filtros), retry: false, refetchInterval: ATUALIZAR_MS });
   const r = resumo.data;
 
   // três fichas possíveis (evento, indicador, técnica); abrir uma fecha as outras
@@ -96,7 +99,7 @@ export function Radar() {
 
   return (
     <div>
-      <PageHeader title="Radar de Ataques" subtitle="Tentativas de invasão contra o seu ambiente: o que chega, de onde e o que tentam."
+      <PageHeader title={ambiente === 'producao' ? 'Radar de produção' : 'Radar de segurança'} subtitle="Eventos de segurança por ambiente; um evento recebido não significa, sozinho, um ataque."
         actions={<>
           <span className="in-periodo" role="group" aria-label="Origem dos eventos">
             {ESCOPO_OPTS.map((o) => <span key={o.value} title={o.dica}><Chip label={o.label} active={escopo === o.value} onClick={() => { setEscopo(o.value); setPage(0); fecharTudo(); }} /></span>)}
@@ -105,6 +108,7 @@ export function Radar() {
             {DIAS_OPTS.map((d) => <Chip key={d} label={periodoLabel(d)} active={dias === d} onClick={() => { setDias(d); fecharTudo(); }} />)}
           </span>
         </>} />
+      <AmbienteSelector value={ambiente} onChange={(v) => { setAmbiente(v); limpar(); setEscopo('todos'); fecharTudo(); }} />
       {!resumo.isError && (
         <p className="in-atualizado" aria-live="polite">{resumo.isFetching ? 'atualizando…' : `atualizado às ${hora(resumo.dataUpdatedAt)} · a cada 1 min`}</p>
       )}

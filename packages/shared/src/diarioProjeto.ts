@@ -26,6 +26,18 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-15-ambientes-monitoramento',
+    data: '2026-11-15',
+    titulo: 'Laboratório e produção ganharam visões próprias no monitoramento',
+    descricao:
+      'O ambiente passou a acompanhar cada evento no banco, com filtros no Radar, nos agentes e alertas do Wazuh e nas ' +
+      'observações da matriz. Labels e grupos orientam a classificação, enquanto eventos ambíguos ficam sem atribuição. ' +
+      'Um IP privado não significa laboratório. A coleta de produção conserva metadados para análise e não envia ' +
+      'conteúdo automaticamente para a biblioteca forense do ambiente controlado.',
+    categoria: 'funcionalidade',
+    tags: ['monitoramento', 'wazuh', 'producao', 'laboratorio'],
+  },
+  {
     id: 'proj-2026-11-15-agente-operacao-homelab',
     data: '2026-11-15',
     titulo: 'Agentes passam a operar mais partes da infraestrutura com aprovação',

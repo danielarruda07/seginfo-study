@@ -29,6 +29,7 @@ export const acaoMeta = (acao: string): AcaoMeta =>
   ACAO_META[acao] ?? { label: acao.replaceAll('_', ' '), icon: 'pi-circle', dica: 'Evento sem classificação específica.' };
 
 export const FONTE_LABEL: Record<string, string> = {
+  wazuh: 'Wazuh (produção)',
   fortigate: 'FortiGate', windows: 'Windows', cowrie: 'Cowrie (honeypot SSH)', dionaea: 'Dionaea (honeypot)', heralding: 'Heralding (honeypot de credenciais)',
   isca: 'Iscas (Redis/ES/Docker)', prompt_honeypot: 'Prompt honeypot (HTTP)', opencanary: 'OpenCanary (honeypot)', outro: 'Outro',
 };

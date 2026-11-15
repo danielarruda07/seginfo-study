@@ -23,6 +23,10 @@ import { PericiaInSchema } from '@seginfo/shared';
 beforeEach(() => { db.itens.clear(); db.ocorrencias.clear(); vi.clearAllMocks(); });
 
 describe('biblioteca permanente', () => {
+  it('não arquiva comandos de produção automaticamente na biblioteca do laboratório', async () => {
+    await preservarEventos([{ usuarioId: 'u1', dedupKey: 'prod', fonte: 'wazuh', ambiente: 'producao', ocorridoEm: new Date(), acao: 'comando', detalhes: { comando: 'conteudo privado' } }]);
+    expect(db.itens.size).toBe(0);
+  });
   it('deduplica comandos e preserva cada contexto, sem misturar usuários', async () => {
     const evento = { usuarioId: 'u1', dedupKey: 'evento-1', fonte: 'cowrie', ocorridoEm: new Date(), acao: 'comando', detalhes: { comando: 'uname -a', sessao: 'sessao-1' } };
     await preservarEventos([evento, evento, { ...evento, dedupKey: 'evento-2' }, { ...evento, usuarioId: 'u2' }]);

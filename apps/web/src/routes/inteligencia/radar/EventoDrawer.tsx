@@ -7,6 +7,7 @@ import { Pill, StatusStrip } from '@/components/InfraKit';
 import { copyToClipboard } from '@/lib/clipboard';
 import { getTecnica } from '@/data/attack';
 import type { RadarEvento } from '@/services/radar';
+import { rotuloAmbiente } from '@/services/ambiente';
 import { ExtLink } from '../ExtLink';
 import { SessaoAtacante } from '../../radar/SessaoAtacante';
 import { FONTE_LABEL, FONTES_ISCA, MITRE_POR_ACAO, acaoDoEvento, formatarLocal, formatarUtc } from '../regras';
@@ -77,8 +78,9 @@ export function EventoDrawer({ ev, nav, onFiltrarIp }: { ev: RadarEvento; nav: N
       <section>
         <h3 className="iv-section-label">Origem e alvo</h3>
         <DetailFields items={[
+          ['Ambiente monitorado', rotuloAmbiente(ev.ambiente ?? 'nao_classificado')],
           ['IP de origem', ev.ipOrigem
-            ? <><span className="mono">{ev.ipOrigem}</span>{ev.escopo === 'interno' && <span className="iv-muted"> · rede interna (range)</span>}{ev.acao === 'reflexao' && <span className="iv-muted"> · falsificado (vítima)</span>}</>
+            ? <><span className="mono">{ev.ipOrigem}</span>{ev.escopo === 'interno' && <span className="iv-muted"> · rede privada</span>}{ev.acao === 'reflexao' && <span className="iv-muted"> · falsificado (vítima)</span>}</>
             : ev.acao === 'lockout' ? 'Não informado (o bloqueio de conta do Windows não traz IP)' : ''],
           ['País', ev.paisOrigem ?? ''],
           ['Alvo', ev.alvo ?? ''],

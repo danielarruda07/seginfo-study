@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from 'primereact/button';
 import { Link } from '@tanstack/react-router';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { AmbienteSelector } from '@/components/ui/AmbienteSelector';
+import { useAmbiente } from '@/services/ambiente';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
 import { Kpi, Pill, StatusStrip } from '@/components/InfraKit';
@@ -36,9 +38,10 @@ const NOME_TECNICA_PERICIA: Record<string, string> = {
 };
 
 export function Attack() {
+  const [ambiente, setAmbiente] = useAmbiente();
   // Radar só existe no modo servidor; sem ele a camada "observada" fica vazia.
-  const radar = useQuery({ queryKey: ['radar', 'resumo', 30], queryFn: () => getRadarResumo(30), retry: false });
-  const pericia = useQuery({ queryKey: ['pericia', 'tecnicas'], queryFn: getPericiaTecnicas, retry: false });
+  const radar = useQuery({ queryKey: ['radar', 'resumo', 30, ambiente], queryFn: () => getRadarResumo(30, 'todos', ambiente), retry: false });
+  const pericia = useQuery({ queryKey: ['pericia', 'tecnicas', ambiente], queryFn: getPericiaTecnicas, retry: false, enabled: ambiente === 'todos' || ambiente === 'laboratorio' });
   const observadas = useMemo(() => Object.fromEntries((radar.data?.mitre ?? []).map((m) => [m.id, m.eventos])), [radar.data]);
   const [versao, setVersao] = useState(0); // força recálculo após marcar detecção
   const cobertura = useMemo(() => calcularCobertura(observadas), [observadas, versao]);
@@ -72,6 +75,7 @@ export function Attack() {
           onClick={() => baixarJson('seginfo-attack-layer.json', camadaNavigator(cobertura))} />}
       />
 
+      <AmbienteSelector value={ambiente} onChange={(v) => { setAmbiente(v); sel.close(); }} />
       {radar.isError && (
         <StatusStrip icon="pi-info-circle">Radar indisponível (modo local ou API fora): a camada "Vi no Radar" fica vazia.</StatusStrip>
       )}

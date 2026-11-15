@@ -3,6 +3,7 @@ import { Message } from 'primereact/message';
 import { DetailSection } from '@/components/ui/Detail';
 import { Pill, StatusStrip } from '@/components/InfraKit';
 import { getRadarSessao, type RadarEvento } from '@/services/radar';
+import { useAmbiente } from '@/services/ambiente';
 import { ETAPA, duracaoTexto, etapaDoComando, resumirSessao } from './sessao';
 
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -40,7 +41,8 @@ function Passo({ e }: { e: RadarEvento }) {
  * com o resumo do que ele tentou e cada comando classificado pela intenção.
  */
 export function SessaoAtacante({ sessao, ip }: { sessao: string; ip: string }) {
-  const q = useQuery({ queryKey: ['radar-sessao', sessao, ip], queryFn: () => getRadarSessao(sessao, ip) });
+  const [ambiente] = useAmbiente();
+  const q = useQuery({ queryKey: ['radar-sessao', sessao, ip, ambiente], queryFn: () => getRadarSessao(sessao, ip) });
   if (q.isLoading) return <DetailSection title="Sessão do atacante"><p className="iv-muted">Carregando a sessão…</p></DetailSection>;
   if (q.isError) return <Message severity="warn" text="Não foi possível carregar a sessão." />;
   const itens = q.data?.items ?? [];

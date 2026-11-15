@@ -314,11 +314,13 @@ model AtaqueEvento {
   detalhes       Json     @default("{}")
   dedupKey       String
   escopo         String   @default("internet") // internet | interno (rede privada ou sem IP); ver src/radarEscopo.ts
+  ambiente       String   @default("nao_classificado")
   criadoEm       DateTime @default(now())
 
   @@unique([usuarioId, dedupKey])
   @@index([usuarioId, ocorridoEm])
   @@index([usuarioId, escopo, ocorridoEm])
+  @@index([usuarioId, ambiente, ocorridoEm])
   @@index([usuarioId, ipOrigem])
   @@index([usuarioId, servico])
 }

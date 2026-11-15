@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
-import { AtaqueFonte } from '@seginfo/shared';
+import { AtaqueFonte, AmbienteFiltroSchema, type AmbienteFiltro } from '@seginfo/shared';
 import { prisma } from './db.js';
 import type { AuthedRequest } from './auth.js';
 
@@ -114,9 +114,9 @@ const MITRE_VALIDA = Prisma.raw(
 
 const n = (v: bigint | number | null | undefined) => Number(v ?? 0);
 
-function filtro(usuarioId: string, desde: Date, escopo: Escopo) {
+function filtro(usuarioId: string, desde: Date, escopo: Escopo, ambiente: AmbienteFiltro) {
   return Prisma.sql`"usuarioId" = ${usuarioId} AND "ocorridoEm" >= ${desde}${
-    escopo === 'todos' ? Prisma.empty : Prisma.sql` AND "escopo" = ${escopo}`}`;
+    escopo === 'todos' ? Prisma.empty : Prisma.sql` AND "escopo" = ${escopo}`}${ambiente === 'todos' ? Prisma.empty : Prisma.sql` AND "ambiente" = ${ambiente}`}`;
 }
 
 async function topPor(coluna: keyof typeof COLUNA, where: Prisma.Sql, limite: number) {
@@ -136,16 +136,17 @@ export async function registerRadarRoutes(app: FastifyInstance) {
     dias: z.coerce.number().int().min(1).max(90).default(7),
     tz: z.coerce.number().int().min(-840).max(840).default(0),
     escopo: EscopoQuery,
+    ambiente: AmbienteFiltroSchema,
   });
 
   app.get('/api/radar/resumo', async (req, reply) => {
     const q = ResumoQuery.safeParse(req.query);
     if (!q.success) return reply.status(400).send({ error: 'parâmetros inválidos' });
 
-    const { dias, tz, escopo } = q.data;
+    const { dias, tz, escopo, ambiente } = q.data;
     const desde = new Date(Date.now() - dias * 86_400_000);
     const senhas = guardarSenhas();
-    const where = filtro(uid(req), desde, escopo);
+    const where = filtro(uid(req), desde, escopo, ambiente);
     // granularidade: hora para janelas curtas, dia para janelas longas
     const porHora = dias <= 3;
     const unidade = porHora ? 'hour' : 'day';
@@ -186,6 +187,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
     return {
       dias,
       escopo,
+      ambiente,
       total: n(t?.total),
       /** Mantido por compatibilidade: a agregação no banco não tem limite de linhas. */
       truncado: false,
@@ -213,6 +215,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
     servico: z.string().max(32).optional(),
     acao: z.string().max(16).optional(),
     fonte: AtaqueFonte.optional(),
+    ambiente: AmbienteFiltroSchema,
     pais: z.string().length(2).optional(),
     escopo: EscopoQuery,
     q: z.string().trim().max(100).optional(),
@@ -224,7 +227,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
     const q = EventosQuery.safeParse(req.query);
     if (!q.success) return reply.status(400).send({ error: 'parâmetros inválidos' });
 
-    const { ip, servico, acao, fonte, pais, escopo, q: texto, page, limit } = q.data;
+    const { ip, servico, acao, fonte, pais, escopo, ambiente, q: texto, page, limit } = q.data;
     const where = {
       usuarioId: uid(req),
       ...(ip ? { ipOrigem: ip } : {}),
@@ -233,6 +236,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
       ...(fonte ? { fonte } : {}),
       ...(pais ? { paisOrigem: pais } : {}),
       ...(escopo !== 'todos' ? { escopo } : {}),
+      ...(ambiente !== 'todos' ? { ambiente } : {}),
       ...(texto ? { OR: [
         { ipOrigem: { contains: texto, mode: 'insensitive' as const } },
         { servico: { contains: texto, mode: 'insensitive' as const } },
@@ -250,7 +254,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
         take: limit,
         select: {
           id: true, fonte: true, ocorridoEm: true, ipOrigem: true, paisOrigem: true, portaDestino: true,
-          servico: true, protocolo: true, acao: true, usuarioTentado: true, alvo: true, detalhes: true, escopo: true,
+          servico: true, protocolo: true, acao: true, usuarioTentado: true, alvo: true, detalhes: true, escopo: true, ambiente: true,
         },
       }),
     ]);
@@ -260,6 +264,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
   // Alertas encaminhados pelo Wazuh. São o recorte normalizado do forwarder,
   // não o arquivo bruto alerts.json nem todos os eventos do manager.
   const WazuhAlertQuery = z.object({
+    ambiente: AmbienteFiltroSchema,
     dias: z.coerce.number().int().min(1).max(30).default(7),
     q: z.string().trim().max(100).optional(),
     page: z.coerce.number().int().min(0).default(0),
@@ -268,18 +273,19 @@ export async function registerRadarRoutes(app: FastifyInstance) {
   app.get('/api/wazuh/alertas', async (req, reply) => {
     const parsed = WazuhAlertQuery.safeParse(req.query);
     if (!parsed.success) return reply.status(400).send({ error: 'parâmetros inválidos' });
-    const { dias, q: texto, page, limit } = parsed.data;
+    const { dias, ambiente, q: texto, page, limit } = parsed.data;
     const desde = new Date(Date.now() - dias * 86_400_000);
     const where = Prisma.sql`"usuarioId" = ${uid(req)} AND "ocorridoEm" >= ${desde}
       AND "detalhes" ? 'sensor' AND "detalhes" ? 'regra'
+      ${ambiente === 'todos' ? Prisma.empty : Prisma.sql`AND "ambiente" = ${ambiente}`}
       ${texto ? Prisma.sql`AND ("detalhes"->>'sensor' ILIKE ${`%${texto}%`} OR "detalhes"->>'regra' ILIKE ${`%${texto}%`} OR "detalhes"->>'descricao' ILIKE ${`%${texto}%`} OR "alvo" ILIKE ${`%${texto}%`})` : Prisma.empty}`;
     const [totais, rows] = await Promise.all([
       prisma.$queryRaw<{ total: bigint }[]>`SELECT count(*) AS total FROM "AtaqueEvento" WHERE ${where}`,
       prisma.$queryRaw<{
         id: string; fonte: string; ocorridoEm: Date; ipOrigem: string | null; paisOrigem: string | null;
-        servico: string | null; acao: string; alvo: string | null; detalhes: Prisma.JsonValue;
+        servico: string | null; acao: string; alvo: string | null; detalhes: Prisma.JsonValue; ambiente: string;
       }[]>`
-        SELECT "id", "fonte", "ocorridoEm", "ipOrigem", "paisOrigem", "servico", "acao", "alvo", "detalhes"
+        SELECT "id", "fonte", "ocorridoEm", "ipOrigem", "paisOrigem", "servico", "acao", "alvo", "detalhes", "ambiente"
         FROM "AtaqueEvento" WHERE ${where}
         ORDER BY "ocorridoEm" DESC LIMIT ${limit} OFFSET ${page * limit}`,
     ]);
@@ -299,6 +305,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
       items: rows.map((r) => ({
         id: r.id, fonte: r.fonte, ocorridoEm: r.ocorridoEm.toISOString(), ipOrigem: r.ipOrigem,
         paisOrigem: r.paisOrigem, servico: r.servico, acao: r.acao, alvo: r.alvo,
+        ambiente: r.ambiente,
         detalhes: redigir(r.detalhes),
       })),
     };
@@ -307,6 +314,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
   // Sessão do atacante: todos os eventos com o mesmo detalhes.sessao (Cowrie), em ordem.
   // O IP é obrigatório para a busca usar o índice (usuarioId, ipOrigem) em vez de varrer a tabela.
   const SessaoQuery = z.object({
+    ambiente: AmbienteFiltroSchema,
     id: z.string().trim().min(4).max(32).regex(/^[\w-]+$/),
     ip: z.string().trim().min(3).max(45),
   });
@@ -315,7 +323,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
     const q = SessaoQuery.safeParse(req.query);
     if (!q.success) return reply.status(400).send({ error: 'parâmetros inválidos' });
     const items = await prisma.ataqueEvento.findMany({
-      where: { usuarioId: uid(req), ipOrigem: q.data.ip, detalhes: { path: ['sessao'], equals: q.data.id } },
+      where: { usuarioId: uid(req), ipOrigem: q.data.ip, ...(q.data.ambiente === 'todos' ? {} : { ambiente: q.data.ambiente }), detalhes: { path: ['sessao'], equals: q.data.id } },
       orderBy: { ocorridoEm: 'asc' },
       take: LIMITE_SESSAO,
       select: {

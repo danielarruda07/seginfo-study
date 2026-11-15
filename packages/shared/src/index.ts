@@ -366,7 +366,7 @@ export type BiblioItem = z.infer<typeof BiblioItemSchema>;
 // ===================== RADAR DE ATAQUES (auto-vulnerabilidade / honeypot) =====================
 
 /** Origem do evento: de onde o coletor leu. */
-export const AtaqueFonte = z.enum(['fortigate', 'windows', 'cowrie', 'opencanary', 'dionaea', 'heralding', 'isca', 'prompt_honeypot', 'outro']);
+export const AtaqueFonte = z.enum(['fortigate', 'windows', 'cowrie', 'opencanary', 'dionaea', 'heralding', 'isca', 'prompt_honeypot', 'wazuh', 'outro']);
 export type AtaqueFonte = z.infer<typeof AtaqueFonte>;
 
 /** O que o atacante fez. */
@@ -393,6 +393,7 @@ const IpSchema = z.union([z.ipv4(), z.ipv6()]);
  */
 export const AtaqueEventoInSchema = z.object({
   fonte: AtaqueFonte,
+  ambiente: z.enum(['laboratorio', 'producao', 'nao_classificado']).optional(),
   ocorridoEm: z.string().datetime({ offset: true }),
   /** Obrigatório, exceto em `lockout` (o evento 4740 do Windows não traz IP de origem). */
   ipOrigem: IpSchema.optional(),
@@ -412,11 +413,12 @@ export const AtaqueEventoInSchema = z.object({
     .record(z.string(), z.unknown())
     .refine((d) => JSON.stringify(d).length <= 4096, { message: 'detalhes excede 4KB' })
     .optional(),
-}).refine((e) => e.acao === 'lockout' || e.ipOrigem !== undefined, {
+}).refine((e) => e.acao === 'lockout' || e.ipOrigem !== undefined || (e.fonte === 'wazuh' && e.ambiente === 'producao'), {
   message: 'ipOrigem é obrigatório (exceto em lockout)',
   path: ['ipOrigem'],
 });
 export type AtaqueEventoIn = z.infer<typeof AtaqueEventoInSchema>;
+export * from './ambientes';
 
 /** Lote de eventos (limite de 500 por requisição). */
 export const IngestBatchSchema = z.object({

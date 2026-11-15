@@ -6,6 +6,8 @@ import { Dropdown } from 'primereact/dropdown';
 import { InputText } from 'primereact/inputtext';
 import { Message } from 'primereact/message';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { AmbienteSelector } from '@/components/ui/AmbienteSelector';
+import { useAmbiente, rotuloAmbiente } from '@/services/ambiente';
 import { DetailDrawer } from '@/components/ui/DetailDrawer';
 import { DetailFields } from '@/components/ui/Detail';
 import { Kpi, Pill, StatusStrip } from '@/components/InfraKit';
@@ -20,15 +22,16 @@ const hora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle:
 const campo = (v: unknown) => typeof v === 'string' || typeof v === 'number' ? String(v) : '—';
 
 export function Wazuh() {
+  const [ambiente, setAmbiente] = useAmbiente();
   const [dias, setDias] = useState(7);
   const [buscaRaw, setBuscaRaw] = useState('');
   const [page, setPage] = useState(0);
   const busca = useDebounce(buscaRaw, 300);
-  const status = useQuery({ queryKey: ['wazuh', 'status'], queryFn: getWazuhStatus, refetchInterval: 60_000, retry: false });
+  const status = useQuery({ queryKey: ['wazuh', 'status', ambiente], queryFn: () => getWazuhStatus(ambiente), refetchInterval: 60_000, retry: false });
   const alertas = useQuery({
-    queryKey: ['wazuh', 'alertas', dias, busca, page],
-    queryFn: () => getWazuhAlerts({ dias, q: busca || undefined, page, limit: PAGE_SIZE }),
-    refetchInterval: 60_000, placeholderData: (previous) => previous, retry: false,
+    queryKey: ['wazuh', 'alertas', dias, busca, page, ambiente],
+    queryFn: () => getWazuhAlerts({ dias, q: busca || undefined, page, limit: PAGE_SIZE, ambiente }),
+    refetchInterval: 60_000, retry: false,
   });
   const sel = useDrawerSelection(alertas.data?.items ?? []);
   const s = status.data;
@@ -36,6 +39,7 @@ export function Wazuh() {
   return (
     <div>
       <PageHeader title="Wazuh" subtitle="Saúde do manager e agentes, mais os alertas selecionados que chegam ao Radar." />
+      <AmbienteSelector value={ambiente} onChange={(v) => { setAmbiente(v); setPage(0); setBuscaRaw(''); sel.close(); }} />
 
       {status.isError && <Message severity="warn" text="Não foi possível consultar o estado do Wazuh." />}
       {!s?.configurado && !status.isLoading && (
@@ -87,6 +91,7 @@ export function Wazuh() {
               <article className="wazuh-agent" key={a.id ?? a.name}>
                 <div className="iv-row iv-wrap" style={{ justifyContent: 'space-between' }}>
                   <strong>{a.name ?? `Agente ${a.id ?? 'sem ID'}`}</strong>
+                  <Pill label={rotuloAmbiente(a.ambiente)} />
                   <Pill label={a.status} tone={a.status === 'active' ? 'ok' : a.status === 'disconnected' ? 'danger' : 'warning'} />
                 </div>
                 <small className="iv-muted">ID {a.id ?? '—'} · {a.ip ?? 'IP não informado'} · {a.os ?? 'SO não informado'}</small>
@@ -114,7 +119,7 @@ export function Wazuh() {
           <Column field="ocorridoEm" header="Quando" body={(a: WazuhAlert) => hora(a.ocorridoEm)} />
           <Column header="Nível" body={(a: WazuhAlert) => <Pill label={campo(a.detalhes.nivel)} tone={Number(a.detalhes.nivel) >= 10 ? 'danger' : Number(a.detalhes.nivel) >= 7 ? 'warning' : undefined} />} />
           <Column header="Regra" body={(a: WazuhAlert) => <span className="mono">{campo(a.detalhes.regra)}</span>} />
-          <Column header="Agente" body={(a: WazuhAlert) => campo(a.detalhes.sensor)} />
+          <Column header="Agente / ambiente" body={(a: WazuhAlert) => <>{campo(a.detalhes.sensor)}<div className="iv-muted">{rotuloAmbiente(a.ambiente)}</div></>} />
           <Column header="Alvo / fonte" body={(a: WazuhAlert) => `${a.alvo ?? '—'} · ${a.fonte}`} />
           <Column header="Técnicas" body={(a: WazuhAlert) => {
             const mitre = Array.isArray(a.detalhes.mitre) ? a.detalhes.mitre.map((x) => campo((x as Record<string, unknown>).id)).join(', ') : '—';

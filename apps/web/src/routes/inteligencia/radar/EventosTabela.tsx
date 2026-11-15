@@ -3,6 +3,7 @@ import { Column } from 'primereact/column';
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 import { SearchInput } from '@/components/ui/SearchInput';
+import { rotuloAmbiente } from '@/services/ambiente';
 import { ActiveFiltersBar, type ActiveFilter } from '@/components/ui/ActiveFiltersBar';
 import { EmptyState, Pill } from '@/components/InfraKit';
 import type { RadarEvento } from '@/services/radar';
@@ -55,7 +56,7 @@ export function EventosTabela({ itens, total, loading, page, onPage, onOpen, sel
         <Column header="Quando" style={{ width: 160 }} body={(e: RadarEvento) => <span className="tabular">{formatarLocal(e.ocorridoEm)}</span>} />
         <Column header="Ação" body={(e: RadarEvento) => { const a = acaoDoEvento(e); return <Pill label={a.label} tone={a.tone} icon={a.icon} />; }} />
         <Column header="Origem" body={(e: RadarEvento) => (
-          <span><span className="mono">{e.ipOrigem ?? '—'}</span>{(e.paisOrigem || e.escopo === 'interno') && <><br /><span className="iv-maincell__sub">{e.escopo === 'interno' ? 'rede interna (range)' : e.paisOrigem}</span></>}</span>
+          <span><span className="mono">{e.ipOrigem ?? 'Não informado'}</span>{(e.paisOrigem || e.escopo === 'interno') && <><br /><span className="iv-maincell__sub">{e.escopo === 'interno' ? 'rede privada / sem IP' : e.paisOrigem}</span></>}</span>
         )} />
         <Column header="Serviço" body={(e: RadarEvento) => (
           <span>{e.servico ?? (e.portaDestino ? `porta ${e.portaDestino}` : '—')}
@@ -65,7 +66,7 @@ export function EventosTabela({ itens, total, loading, page, onPage, onOpen, sel
           body={(e: RadarEvento) => { const det = resumoDetalhe(e.detalhes, 48); return e.usuarioTentado || det
             ? <span className="mono in-quebra">{e.usuarioTentado}{e.usuarioTentado && det ? ' · ' : ''}{det}</span>
             : <span className="iv-muted">—</span>; }} />
-        <Column header="Fonte" className="iv-hide-sm" headerClassName="iv-hide-sm" body={(e: RadarEvento) => FONTE_LABEL[e.fonte]?.split(' (')[0] ?? e.fonte} />
+        <Column header="Fonte / ambiente" className="iv-hide-sm" headerClassName="iv-hide-sm" body={(e: RadarEvento) => <>{FONTE_LABEL[e.fonte]?.split(' (')[0] ?? e.fonte}<div className="iv-muted">{rotuloAmbiente(e.ambiente ?? 'nao_classificado')}</div></>} />
       </DataTable>
     </section>
   );
