@@ -20,6 +20,8 @@ export interface EntradaDiario {
   descricao: string;
   categoria: CategoriaDiario;
   tags: string[];
+  /** projeto do LinkedIn a que o marco pertence (só marcos criados pela tela) */
+  projetoId?: string | null;
 }
 
 export const DIARIO_PROJETO: EntradaDiario[] = [

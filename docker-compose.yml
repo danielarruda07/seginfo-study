@@ -40,6 +40,20 @@ services:
       - BACKUP_RETENCAO=${BACKUP_RETENCAO:-14}
       # IA do módulo LinkedIn (Claude API). Secret no Coolify; sem ela a IA fica desligada.
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Opcional: trocar o modelo principal (rascunho completo, planejador, agentes) e o das
+      # tarefas curtas (refinar texto, organizar posts). Vazio = padrão do código.
+      - IA_MODELO=${IA_MODELO:-}
+      - IA_MODELO_RAPIDO=${IA_MODELO_RAPIDO:-}
+      # LinkedIn: publicar pelo servidor (docs/LINKEDIN.md). Secrets do app criado em
+      # developers.linkedin.com; usa também PUBLIC_BASE_URL e STORAGE_TOKEN_KEY (acima).
+      # Sem elas, o agendamento funciona como lembrete e você publica à mão.
+      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID}
+      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET}
+      # Opcionais: fuso do calendário editorial, versão da API (AAAAMM) e domínios próprios que o
+      # servidor nunca deixa sair num post (separados por vírgula).
+      - LINKEDIN_FUSO=${LINKEDIN_FUSO:-America/Fortaleza}
+      - LINKEDIN_API_VERSION=${LINKEDIN_API_VERSION:-}
+      - LINKEDIN_DOMINIOS_BLOQUEADOS=${LINKEDIN_DOMINIOS_BLOQUEADOS:-}
       # Agents: ferramentas do Proxmox (docs/AGENTS.md). Sem elas, as ferramentas avisam que falta configurar.
       #   PROXMOX_URL=https://ENDERECO:8006   PROXMOX_TOKEN=usuario@realm!nome=segredo (Secret)
       #   PROXMOX_CA_B64=pve-root-ca.pem em base64 (recomendado)  ou  PROXMOX_TLS_INSEGURO=true (só laboratório)

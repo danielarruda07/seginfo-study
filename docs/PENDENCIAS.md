@@ -8,6 +8,13 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
 - [ ] **Ligar a IA do LinkedIn.** Criar a chave em console.anthropic.com (com limite de gasto
       mensal) e cadastrar como Secret `ANTHROPIC_API_KEY` no serviço `seginfo-api` do Coolify.
       Nunca colar a chave em chat, issue ou commit.
+- [ ] **Conectar o LinkedIn para publicação pelo servidor.** Criar o app em
+      developers.linkedin.com (produtos "Share on LinkedIn" e "Sign In with LinkedIn using
+      OpenID Connect"), cadastrar `LINKEDIN_CLIENT_ID` e `LINKEDIN_CLIENT_SECRET` no Coolify e
+      conectar em LinkedIn → Marca pessoal & IA (docs/LINKEDIN.md). Depois, **testar com um post
+      curto real** ("Publicar agora"): a integração foi escrita pela documentação pública e
+      ainda não rodou contra o LinkedIn de verdade.
+- [ ] **LinkedIn: upload de imagem e documento pela API** (hoje esses formatos saem pelo lembrete).
 
 - [x] **Tirar o RDP real da WAN.** Feito em 13/11/2026: as regras de RDP vindas da WAN foram desativadas e a administração do FortiGate saiu da WAN (ver docs/RANGE.md). O VIP `10.10.10.100:1401` publicado no IP público é o
       alvo do brute force. Acessar pelo `rdp.criecom.ia.br` (Cloudflare Access). Conferir nos

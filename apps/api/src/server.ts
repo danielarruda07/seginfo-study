@@ -7,6 +7,7 @@ import { registerIngestRoutes } from './ingest.js';
 import { iniciarRetencao } from './radar.js';
 import { iniciarBackupAutomatico } from './backup.js';
 import { iniciarLimpezaMemorias } from './memorias.js';
+import { iniciarAgendadorLinkedin } from './linkedinAgendador.js';
 import { requireIdentity } from './auth.js';
 import { VERSAO } from '@seginfo/shared';
 
@@ -38,6 +39,9 @@ iniciarBackupAutomatico(app);
 
 // apaga de vez as memórias da lixeira cuja carência de 7 dias venceu
 iniciarLimpezaMemorias(app);
+
+// LinkedIn: publica na hora marcada os posts aprovados e agendados para sair pela API
+iniciarAgendadorLinkedin(app);
 
 const ExtractBody = z.object({ url: z.string().url() });
 

@@ -8,6 +8,7 @@ import { registerMemoriaRoutes } from './memorias.js';
 import { origemOk, registerStorageRoutes } from './storage-routes.js';
 import { registerKevRoutes } from './kev.js';
 import { registerLinkedinRoutes } from './linkedin.js';
+import { registerLinkedinPipelineRoutes } from './linkedinPipeline.js';
 import { registerAgenteRoutes } from './agentes.js';
 import { registerIntegracoesRoutes } from './integracoes.js';
 import { registerWazuhRoutes } from './wazuh.js';
@@ -81,28 +82,8 @@ export async function registerStateRoutes(app: FastifyInstance) {
   });
 
   // ---------- Posts ----------
-  app.get('/api/posts', async (req) => prisma.post.findMany({ where: { usuarioId: uid(req) }, orderBy: { criadoEm: 'desc' } }));
-  app.post('/api/posts', async (req, reply) => {
-    const b = z.object({ titulo: z.string(), gancho: z.string().optional(), corpo: z.string().optional(), direcaoVisual: z.string().max(5_000).optional(), textoAlternativo: z.string().max(1_000).optional(), roteiroSlides: z.string().max(10_000).optional(), topicoId: z.string().optional(), publicado: z.boolean().optional() }).safeParse(req.body);
-    if (!b.success) return reply.status(400).send({ error: 'payload inválido' });
-    return prisma.post.create({ data: { titulo: b.data.titulo, gancho: b.data.gancho ?? '', corpo: b.data.corpo ?? '', direcaoVisual: b.data.direcaoVisual ?? '', textoAlternativo: b.data.textoAlternativo ?? '', roteiroSlides: b.data.roteiroSlides ?? '', topicoId: b.data.topicoId, publicado: b.data.publicado ?? false, usuarioId: uid(req) } });
-  });
-  app.patch('/api/posts/:id', async (req, reply) => {
-    const { id } = req.params as { id: string };
-    const b = z.object({
-      titulo: z.string().max(200).optional(), gancho: z.string().max(2_000).optional(),
-      corpo: z.string().max(50_000).optional(), direcaoVisual: z.string().max(5_000).optional(), textoAlternativo: z.string().max(1_000).optional(), roteiroSlides: z.string().max(10_000).optional(), topicoId: z.string().nullable().optional(), publicado: z.boolean().optional(),
-    }).strict().safeParse(req.body);
-    if (!b.success) return reply.status(400).send({ error: 'payload inválido' });
-    const r = await prisma.post.updateMany({ where: { id, usuarioId: uid(req) }, data: b.data });
-    if (!r.count) return reply.status(404).send({ error: 'não encontrado' });
-    return { ok: true };
-  });
-  app.delete('/api/posts/:id', async (req) => {
-    const { id } = req.params as { id: string };
-    await prisma.post.deleteMany({ where: { id, usuarioId: uid(req) } });
-    return { ok: true };
-  });
+  // Os rascunhos (/api/posts) viraram o pipeline do LinkedIn: ficam em linkedinPipeline.ts,
+  // registrado mais abaixo junto com projetos, ideias, agendamento e conta.
 
   // ---------- Arsenal ----------
   app.get('/api/arsenal', async (req) => prisma.arsenalItem.findMany({ where: { usuarioId: uid(req) }, orderBy: [{ favorito: 'desc' }, { atualizadoEm: 'desc' }] }));
@@ -267,8 +248,10 @@ export async function registerStateRoutes(app: FastifyInstance) {
     for (const p of d.posts ?? []) {
       const data = { titulo: p.titulo, gancho: p.gancho ?? '', corpo: p.corpo ?? '', topicoId: p.topicoId, publicado: !!p.publicado };
       if (await salvarPorId(() => prisma.post.findUnique({ where: { id: p.id }, select: { usuarioId: true } }),
-        () => prisma.post.updateMany({ where: { id: p.id, usuarioId: u }, data }),
-        () => prisma.post.create({ data: { ...data, id: p.id, usuarioId: u } }))) counts.posts++;
+        // só sobrescreve o que ainda é rascunho: a importação não pode trocar o texto de um post
+        // aprovado ou agendado (a aprovação vale para um texto) nem reabrir um publicado
+        () => prisma.post.updateMany({ where: { id: p.id, usuarioId: u, status: 'rascunho' }, data: { ...data, ...(p.publicado ? { status: 'publicado' } : {}) } }),
+        () => prisma.post.create({ data: { ...data, id: p.id, usuarioId: u, status: p.publicado ? 'publicado' : 'rascunho' } }))) counts.posts++;
     }
     for (const a of d.arsenal ?? []) {
       const data = { tipo: a.tipo, nome: a.nome, slug: a.slug ?? '', dominio: a.dominio ?? 'geral', resumo: a.resumo ?? '', conteudo: a.conteudo ?? '', quandoUsar: a.quandoUsar ?? '', requisitos: a.requisitos ?? [], tags: a.tags ?? [], artefatos: a.artefatos ?? [], favorito: !!a.favorito };
@@ -302,6 +285,8 @@ export async function registerStateRoutes(app: FastifyInstance) {
 
   // LinkedIn: posts publicados, IA (Claude) e diário do projeto
   await registerLinkedinRoutes(app);
+  // LinkedIn: rascunhos no pipeline, projetos, ideias, agendamento e conexão com a API
+  await registerLinkedinPipelineRoutes(app);
 
   // Agents: projetos de agentes de IA, avaliações e teste da base de conhecimento
   await registerAgenteRoutes(app);

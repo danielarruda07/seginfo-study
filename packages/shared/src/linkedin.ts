@@ -38,9 +38,11 @@ export interface PostPublicado {
   texto: string;
   formato: FormatoPost;
   metricas: Metricas;
-  origem: 'manual' | 'importacao';
+  /** `api`: publicado pelo servidor através da API do LinkedIn */
+  origem: 'manual' | 'importacao' | 'api';
   analise: AnalisePost | null;
   memoriaId: string | null;
+  projetoId: string | null;
 }
 
 export const EstrategiaSchema = z.object({
