@@ -94,12 +94,15 @@ Como o texto é desenhado por template, ele sai sempre correto, com acentos cert
 
 | Motor | Para que serve | Custo estimado |
 |---|---|---|
+| **Claude SVG** (padrão) | Ilustração geométrica (redes, circuitos, grades, ondas) desenhada em código pela Claude, com a mesma chave `ANTHROPIC_API_KEY`. Não faz foto nem cena realista. | centavos por imagem (só tokens) |
 | Gemini rápido | Maioria dos posts | cerca de US$ 0,04 por imagem |
 | Gemini qualidade | Capas importantes | cerca de US$ 0,13 por imagem |
 
 Os valores são estimativas de 2026; confira no AI Studio. A imagem entra sem texto (o estilo pede fundo escuro e nenhuma letra), com um véu escuro por cima para o título continuar legível. Há um limite diário (`IMAGEM_LIMITE_DIARIO`, padrão 30) e a descrição é recusada se citar IP ou domínio do ambiente.
 
-Configuração (uma vez): crie a chave em aistudio.google.com e defina o Secret `GEMINI_API_KEY` na API (Coolify). Gerar imagem pela API exige **faturamento ativo**. Quem tem o plano **Google AI Pro** recebe créditos mensais do Google Developer Program, que se resgatam dentro do AI Studio (Developer Program, vincular faturamento, resgatar). O uso da API pede um pré-pagamento mínimo de US$ 5 para liberar o crédito promocional, e só o titular do plano resgata. Se o plano veio por operadora, confirme no AI Studio se o resgate aparece. Os IDs de modelo mudam com o tempo: se aparecer erro de modelo inexistente, troque `GEMINI_MODELO_RAPIDO` ou `GEMINI_MODELO_QUALIDADE` por um ID de modelo de imagem listado no AI Studio.
+O SVG da Claude passa por uma lista de permissões no servidor antes de chegar à tela: só formas e degradês são aceitos. Texto, imagem, script, estilo, link, comentário e `url()` externo invalidam o arquivo, e o servidor tenta de novo uma vez antes de devolver erro. Os motores sem chave configurada aparecem desativados no seletor.
+
+Gemini (opcional, só se quiser foto ou arte mais rica). Configuração (uma vez): crie a chave em aistudio.google.com e defina o Secret `GEMINI_API_KEY` na API (Coolify). Gerar imagem pela API exige **faturamento ativo**. Quem tem o plano **Google AI Pro** recebe créditos mensais do Google Developer Program, que se resgatam dentro do AI Studio (Developer Program, vincular faturamento, resgatar). O uso da API pede um pré-pagamento mínimo de US$ 5 para liberar o crédito promocional, e só o titular do plano resgata. Se o plano veio por operadora, confirme no AI Studio se o resgate aparece. Os IDs de modelo mudam com o tempo: se aparecer erro de modelo inexistente, troque `GEMINI_MODELO_RAPIDO` ou `GEMINI_MODELO_QUALIDADE` por um ID de modelo de imagem listado no AI Studio.
 
 ### Perfil & Voz (a IA aprende quem escreve)
 

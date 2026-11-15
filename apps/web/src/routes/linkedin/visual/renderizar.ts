@@ -92,9 +92,9 @@ function fundo(ctx: Ctx, w: number, h: number, cor: string, ilustracao?: CanvasI
     cobrir(ctx, ilustracao, w, h);
     // escurece para o texto ficar legível, mais forte embaixo
     const v = ctx.createLinearGradient(0, 0, 0, h);
-    v.addColorStop(0, 'rgba(10,15,31,0.45)');
-    v.addColorStop(0.45, 'rgba(10,15,31,0.78)');
-    v.addColorStop(1, 'rgba(10,15,31,0.94)');
+    v.addColorStop(0, 'rgba(10,15,31,0.15)');
+    v.addColorStop(0.45, 'rgba(10,15,31,0.58)');
+    v.addColorStop(1, 'rgba(10,15,31,0.92)');
     ctx.fillStyle = v;
     ctx.fillRect(0, 0, w, h);
   } else {

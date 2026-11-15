@@ -4,7 +4,7 @@ import {
   type IlustracaoGerada, type OpcaoIlustracao, type OpcaoIlustracaoInfo, type OpcoesImagem, type TamanhoVisual,
 } from '@seginfo/shared';
 import type { AuthedRequest } from './auth.js';
-import { ErroIA, projetarPecaVisual } from './ia.js';
+import { desenharIlustracaoSvg, ErroIA, iaConfigurada, projetarPecaVisual } from './ia.js';
 import { iniciarTarefa } from './linkedinPipeline.js';
 import { contextoDeVoz } from './linkedinPerfilContexto.js';
 
@@ -16,9 +16,13 @@ import { contextoDeVoz } from './linkedinPerfilContexto.js';
 
 const BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
-interface DefOpcao extends OpcaoIlustracaoInfo { env: string; padrao: string }
+interface DefOpcao extends Omit<OpcaoIlustracaoInfo, 'disponivel'> { env: string; padrao: string }
 // IDs de modelo mudam com frequência: ficam em variável de ambiente, com um padrão razoável.
 const DEFS: Record<OpcaoIlustracao, DefOpcao> = {
+  'claude-svg': {
+    id: 'claude-svg', rotulo: 'Claude SVG', env: '', padrao: '',
+    dica: 'Ilustração geométrica (redes, circuitos, grades) desenhada em código pela Claude. Usa a sua chave da Claude; não precisa do Google.', custoEstimado: 'centavos por imagem (só tokens)',
+  },
   'gemini-rapido': {
     id: 'gemini-rapido', rotulo: 'Gemini rápido', env: 'GEMINI_MODELO_RAPIDO', padrao: 'gemini-3.1-flash-image',
     dica: 'Mais barato e rápido. Serve para a maioria dos posts.', custoEstimado: 'cerca de US$ 0,04 por imagem',
@@ -30,7 +34,9 @@ const DEFS: Record<OpcaoIlustracao, DefOpcao> = {
 };
 
 export const geminiConfigurado = () => Boolean(process.env.GEMINI_API_KEY);
-const modeloDe = (o: OpcaoIlustracao) => process.env[DEFS[o].env]?.trim() || DEFS[o].padrao;
+const modeloDe = (o: OpcaoIlustracao) => (DEFS[o].env ? process.env[DEFS[o].env]?.trim() : '') || DEFS[o].padrao;
+const ehGemini = (o: OpcaoIlustracao) => o !== 'claude-svg';
+const disponivel = (o: OpcaoIlustracao) => (ehGemini(o) ? geminiConfigurado() : iaConfigurada());
 export const limiteDiario = () => Math.max(1, Number(process.env.IMAGEM_LIMITE_DIARIO) || 30);
 
 // contador diário em memória (reinicia com a API): é um freio de custo, não um controle de segurança
@@ -46,8 +52,8 @@ function contabilizar(usuarioId: string) {
 
 export function opcoesDeImagem(usuarioId: string): OpcoesImagem {
   return {
-    configurado: geminiConfigurado(),
-    opcoes: Object.values(DEFS).map(({ id, rotulo, dica, custoEstimado }) => ({ id, rotulo, dica, custoEstimado })),
+    configurado: (Object.keys(DEFS) as OpcaoIlustracao[]).some(disponivel),
+    opcoes: Object.values(DEFS).map(({ id, rotulo, dica, custoEstimado }) => ({ id, rotulo, dica, custoEstimado, disponivel: disponivel(id) })),
     limiteDiario: limiteDiario(),
     usadasHoje: usadasHoje(usuarioId),
   };
@@ -123,12 +129,20 @@ export async function registerLinkedinImagemRoutes(app: FastifyInstance) {
   app.post('/api/linkedin/tarefas/ilustracao', async (req, reply) => {
     const b = IlustracaoInSchema.safeParse(req.body);
     if (!b.success) return reply.status(400).send({ error: 'Descreva a ilustração (pelo menos 10 caracteres).' });
-    if (!geminiConfigurado()) return reply.status(503).send({ error: 'Ilustração por IA não configurada: defina o Secret GEMINI_API_KEY na API (Coolify).' });
+    if (!disponivel(b.data.opcao)) {
+      return reply.status(503).send({ error: ehGemini(b.data.opcao)
+        ? 'Este motor não está configurado: defina o Secret GEMINI_API_KEY na API (Coolify) ou use o Claude SVG.'
+        : 'A IA não está configurada (ANTHROPIC_API_KEY).' });
+    }
     if (exposicaoNoTexto(b.data.prompt).length) return reply.status(400).send({ error: 'A descrição cita endereço IP ou domínio do ambiente. Troque por uma descrição genérica.' });
     const u = uid(req);
     if (usadasHoje(u) >= limiteDiario()) return reply.status(429).send({ error: `Limite de ${limiteDiario()} ilustrações por dia atingido. Amanhã libera, ou ajuste IMAGEM_LIMITE_DIARIO.` });
     const tarefa = iniciarTarefa(u, async () => {
       contabilizar(u);
+      if (!ehGemini(b.data.opcao)) {
+        const svg = await desenharIlustracaoSvg(b.data.prompt, b.data.tamanho, b.data.acento);
+        return { mime: 'image/svg+xml', base64: Buffer.from(svg, 'utf8').toString('base64') } satisfies IlustracaoGerada;
+      }
       return gerarIlustracao(b.data.opcao, b.data.prompt, b.data.tamanho, b.data.acento);
     });
     return responder(tarefa, reply);

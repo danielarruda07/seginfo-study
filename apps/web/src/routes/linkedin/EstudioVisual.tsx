@@ -63,7 +63,7 @@ export function EstudioVisual({ tipo, gancho, corpo, roteiro, direcao, rascunho,
   const [docTitulo, setDocTitulo] = useState('');
   const [tamanho, setTamanho] = useState<TamanhoVisual>(TAMANHO_VISUAL_PADRAO);
   const [acento, setAcento] = useState<Acento>('ciano');
-  const [opcao, setOpcao] = useState<OpcaoIlustracao>('gemini-rapido');
+  const [opcao, setOpcao] = useState<OpcaoIlustracao>('claude-svg');
   const [ocupado, setOcupado] = useState('');
   const [erro, setErro] = useState('');
   const [ok, setOk] = useState('');
@@ -72,7 +72,15 @@ export function EstudioVisual({ tipo, gancho, corpo, roteiro, direcao, rascunho,
   const opcoesTamanho = (Object.keys(TAMANHOS_VISUAIS) as TamanhoVisual[])
     .filter((t) => tipo === 'imagem' || t !== 'paisagem')
     .map((t) => ({ value: t, label: TAMANHOS_VISUAIS[t].rotulo }));
-  const opcoesIlustracao = (imagem?.opcoes ?? []).map((o) => ({ value: o.id, label: `${o.rotulo} (${o.custoEstimado})` }));
+  const opcoesIlustracao = (imagem?.opcoes ?? []).map((o) => ({
+    value: o.id, label: `${o.rotulo} (${o.custoEstimado})${o.disponivel ? '' : ' · não configurado'}`, disabled: !o.disponivel,
+  }));
+  // se o motor escolhido não está disponível, passa para o primeiro que está
+  useEffect(() => {
+    const atual = imagem?.opcoes.find((o) => o.id === opcao);
+    const outro = imagem?.opcoes.find((o) => o.disponivel);
+    if (imagem && atual && !atual.disponivel && outro) setOpcao(outro.id);
+  }, [imagem, opcao]);
   const infoOpcao = imagem?.opcoes.find((o) => o.id === opcao);
 
   async function criar() {
@@ -152,7 +160,7 @@ export function EstudioVisual({ tipo, gancho, corpo, roteiro, direcao, rascunho,
     try { const { arquivo } = await exportar(); baixar(arquivo, arquivo.name); } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(''); }
   }
 
-  const geminiPronto = !!imagem?.configurado;
+  const geminiPronto = !!infoOpcao?.disponivel;
   const restantes = imagem ? Math.max(0, imagem.limiteDiario - imagem.usadasHoje) : 0;
 
   return (
@@ -178,13 +186,13 @@ export function EstudioVisual({ tipo, gancho, corpo, roteiro, direcao, rascunho,
         <>
           <div className="iv-row iv-wrap">
             <label className="ca-campo"><strong className="ca-small">Motor da ilustração</strong>
-              <Dropdown value={opcao} options={opcoesIlustracao} onChange={(e) => setOpcao(e.value)} disabled={!geminiPronto} ariaLabel="Motor da ilustração" style={{ minWidth: 300 }}
-                placeholder="Gemini não configurado" />
+              <Dropdown value={opcao} options={opcoesIlustracao} optionDisabled="disabled" onChange={(e) => setOpcao(e.value)} disabled={!imagem?.configurado} ariaLabel="Motor da ilustração" style={{ minWidth: 300 }}
+                placeholder="Nenhum motor configurado" />
             </label>
             <span className="iv-muted ca-small">
               {geminiPronto
                 ? <>Só gera quando você clicar em "Gerar ilustração". {infoOpcao?.dica} Restam {restantes} hoje (limite {imagem?.limiteDiario}).</>
-                : 'Sem GEMINI_API_KEY no servidor: a arte sai só com o template (grátis).'}
+                : 'Nenhum motor de ilustração configurado: a arte sai só com o template (grátis).'}
             </span>
           </div>
           {tipo === 'carrossel' && (
