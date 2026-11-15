@@ -2,6 +2,7 @@ import { AtivoSchema, type Ativo, type Lab, type TipoAtivo, type EstadoAtivo } f
 import { z } from 'zod';
 import { LABS } from '@/data/labs';
 import { read, write, uid, paginate, matchesSearch, todayISO, registerSchema, type Page } from './store';
+import { planejarSincronizacao } from '@/routes/inventario/sincronizacao';
 
 const KEY = 'inventario';
 const LAB_PROGRESS_KEY = 'labs:progresso';
@@ -106,6 +107,20 @@ export function getLab(id: string): Lab | undefined {
 export function labsDoAtivo(ativoId: string): Lab[] {
   return LABS.filter((l) => l.ativosAlvo.includes(ativoId));
 }
+
+/**
+ * Aplica o resultado de "Sincronizar com o ambiente". Refaz o plano sobre o inventário atual
+ * (pode ter mudado desde a prévia) e grava. Nada é apagado; ver routes/inventario/sincronizacao.ts.
+ */
+export function aplicarSincronizacao(descobertos: Ativo[]): { novos: number; atualizados: number } {
+  const plano = planejarSincronizacao(base(), AtivoSchema.array().parse(descobertos), false);
+  write(KEY, plano.resultado);
+  return { novos: plano.novos.length, atualizados: plano.atualizados.length };
+}
+
+/** Plano da sincronização para a prévia, sem gravar nada. */
+export const previaSincronizacao = (descobertos: Ativo[], calcularNaoVistos: boolean) =>
+  planejarSincronizacao(base(), descobertos, calcularNaoVistos);
 
 /**
  * Importa ativos de um arquivo JSON (lista de Ativo). Quem tem o mesmo id é atualizado,

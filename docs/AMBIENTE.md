@@ -38,7 +38,29 @@ O teste `apps/api/src/integracoes.test.ts` confere que nenhum valor secreto apar
 
 Variáveis de cada sistema: ver `docs/AGENTS.md` (seções Proxmox, FortiGate e Catalyst 2960), `docs/WAZUH.md` e `.env.example`.
 
-## Descoberta do ambiente real
+## Sincronizar com o ambiente (botão)
+
+O botão **Sincronizar com o ambiente**, no topo de Meu Ambiente, faz pelo servidor o que os scripts abaixo fazem nesta máquina, sem rodar nada local:
+
+1. A API consulta, **só com leitura**, as integrações configuradas no Coolify (`GET /api/ambiente/descoberta`, código em `apps/api/src/descoberta.ts`):
+   - **Proxmox:** nós, storages compartilhados, VMs e containers, com o IP visto pelo agente QEMU;
+   - **FortiGate:** concessões DHCP, tabela ARP e detecção de dispositivos;
+   - **switch:** tabela MAC, trunks e descrição das portas, só comandos `show`.
+2. A tela mostra a prévia antes de gravar qualquer coisa:
+   - quais fontes responderam;
+   - o que é novo, o que muda (e em quais campos) e o que não foi visto desta vez.
+3. **Aplicar** grava no inventário do navegador. Nada é apagado:
+   - nome, endereço, tipo, estado e detalhes vêm da varredura;
+   - função, criticidade, exposição e labs que você preencheu ficam como estão;
+   - tags são somadas.
+
+Os identificadores são os mesmos dos scripts (`lab-<nó>`, `lab-stg-<storage>`, `lab-vm-<vmid>`, `lab-dev-…`), então a sincronização atualiza o que já foi importado por arquivo em vez de duplicar. Os dados reais só trafegam entre o servidor e o seu navegador; nada vai para o repositório.
+
+O botão não traz interfaces, policies, VIPs, o próprio FortiGate nem o switch como ativo: esses mudam pouco e continuam vindo do `import-inventario.json`.
+
+Com uma fonte em erro, a prévia não calcula os "não vistos" (tudo daquela fonte pareceria ter sumido). Um storage compartilhado que não está montado em algum nó aparece em atenção, com o nome do nó.
+
+## Descoberta do ambiente real (scripts)
 
 O inventário é preenchido a partir dos próprios equipamentos, só com leitura, por scripts que ficam **fora do repositório** (na pasta de trabalho do range nesta máquina, junto com o arquivo de acessos). O resultado é um arquivo JSON importado pelo botão **Importar arquivo** de Meu Ambiente; nenhum endereço real passa pelo GitHub.
 

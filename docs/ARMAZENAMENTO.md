@@ -45,6 +45,8 @@ pelos mesmos IDs. Isso é uma importação pontual, não uma sincronização con
 inclui dados que não estejam no payload local (como eventos do Radar ou memórias do
 Segundo Cérebro).
 
+Os **agentes** também vão para o backup externo: os projetos (`Agente`), as avaliações (`AgenteAvaliacao`) e todas as execuções (`AgenteExecucao`: pedido, passos, conversa e aprovações). A ferramenta de restauração (`apps/api/src/tools/restore-backup.ts`) traz os três de volta; backups antigos sem essas chaves continuam aceitos. A ferramenta `buscar_base` só devolve notas pessoais, então nenhuma execução leva material corporativo para o OneDrive. Para uma cópia avulsa sem o OneDrive, **Agents → Auditoria → Baixar execuções (JSON)** baixa as mesmas execuções.
+
 O backup local inclui o inventário real do homelab em texto legível. Armazene o JSON em
 local privado. No backup externo, memórias marcadas como corporativas ficam fora da
 exportação para o OneDrive pessoal.

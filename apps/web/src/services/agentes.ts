@@ -136,6 +136,18 @@ export interface FiltroAuditoria {
   limite?: number;
 }
 
+/** Baixa todas as execuções (passos, conversa, aprovações) num JSON: a cópia local do que os agentes fizeram. */
+export async function baixarExecucoes(): Promise<void> {
+  const r = await http.get<Blob>('/agentes/execucoes/exportar', { responseType: 'blob', timeout: 60_000 });
+  const nome = /filename="([^"]+)"/.exec(String(r.headers['content-disposition'] ?? ''))?.[1] ?? 'seginfo-agentes-execucoes.json';
+  const url = URL.createObjectURL(r.data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export const listAuditoria = (f: FiltroAuditoria = {}) =>
   http.get<{ total: number; acoes: AcaoAuditoria[] }>('/agentes/auditoria', { params: f }).then((r) => r.data);
 export const executarAgente = (agenteId: string, mensagem: string, continuarDe?: string) =>

@@ -87,5 +87,44 @@ class ConverterTest(unittest.TestCase):
             dirt.cleanup()
 
 
+class PromptHoneypotTest(unittest.TestCase):
+    def test_converte_sinais_sem_valores(self):
+        alerta = {
+            'timestamp': '2026-11-14T21:00:00.000-0300', 'agent': {'name': 'range-honeypot'},
+            'rule': {'id': '100281', 'level': 10, 'groups': ['honeypot', 'prompt_honeypot'], 'description': 'canario'},
+            'data': {'honeypot_type': 'prompt', 'event_type': 'canary_followed', 'src_ip': '8.8.8.8', 'dst_port': '8088',
+                     'method': 'GET', 'path': '/_canary/observed', 'query_keys': ['q'], 'body_fields': ['username', 'password'],
+                     'user_agent_class': 'python', 'canary_followed': True, 'probe_sqli': True, 'gap_seconds': 0.5},
+        }
+        ev = fw.converter(alerta)
+        self.assertEqual(ev['fonte'], 'prompt_honeypot')
+        self.assertEqual(ev['acao'], 'scan')
+        self.assertEqual(ev['portaDestino'], 8088)
+        self.assertTrue(ev['detalhes']['canarioSeguido'])
+        self.assertEqual(ev['detalhes']['sinais'], ['sqli'])
+        self.assertEqual(ev['detalhes']['camposFormulario'], ['username', 'password'])
+        self.assertNotIn('senhaTentada', ev)
+        self.assertNotIn('usuarioTentado', ev)
+
+    def test_login_da_isca_vira_login_falha(self):
+        alerta = {'timestamp': '2026-11-14T21:00:00.000-0300', 'rule': {'groups': ['prompt_honeypot']},
+                  'data': {'event_type': 'login_attempt', 'src_ip': '8.8.4.4', 'path': '/login.php'}}
+        self.assertEqual(fw.converter(alerta)['acao'], 'login_falha')
+
+    def test_formato_real_do_wazuh_com_booleanos_e_numeros_em_texto(self):
+        # o decodificador JSON do Wazuh entrega true/false e números como texto no campo data
+        alerta = {'timestamp': '2026-11-14T22:21:29.998-0300', 'rule': {'id': '100281', 'groups': ['honeypot', 'prompt_honeypot']},
+                  'data': {'honeypot_type': 'prompt', 'event_type': 'canary_followed', 'src_ip': '8.8.8.8', 'dst_port': '8088',
+                           'canary_followed': 'true', 'canary_credential_used': 'false', 'probe_sqli': 'true', 'probe_xss': 'false',
+                           'gap_seconds': '0.512', 'method_count': '2', 'query_keys': 'q'}}
+        det = fw.converter(alerta)['detalhes']
+        self.assertTrue(det['canarioSeguido'])
+        self.assertFalse(det['credencialIscaUsada'])
+        self.assertEqual(det['sinais'], ['sqli'])
+        self.assertEqual(det['intervaloSegundos'], 0.512)
+        self.assertEqual(det['metodosNaSessao'], 2)
+        self.assertEqual(det['chavesQuery'], ['q'])
+
+
 if __name__ == '__main__':
     unittest.main()

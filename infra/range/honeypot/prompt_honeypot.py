@@ -167,9 +167,10 @@ class Handler(BaseHTTPRequestHandler):
         unusual_method = self.command in UNUSUAL_METHODS
         sid, gap, ua_switch, sawtooth = session_state(ip, ua, now)
         with sessions_lock:
-            state = sessions.get(sid, {})
-            state['methods'].add(self.command)
-            method_count = len(state['methods'])
+            # a sessão pode ter sido descartada pelo limite entre as duas chamadas: não falha por isso
+            methods = sessions.get(sid, {}).setdefault('methods', set())
+            methods.add(self.command)
+            method_count = len(methods)
 
         ev = {
             'timestamp': now_iso(), 'honeypot_type': 'prompt', 'event_type': event_type,

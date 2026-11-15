@@ -13,7 +13,7 @@ import { apagarItem, enviarBackup, listarBackups, obterAccessToken } from './one
 const PADRAO_NOME = /^seginfo-\d{8}-\d{6}\.sgb$/;
 
 async function exportarDados(usuarioId: string) {
-  const [usuario, progresso, sessoes, metas, posts, arsenal, biblioteca, cofre, ataques, memorias, linkedinPosts, diario, linkedinEstrategia, agentes, agenteAvaliacoes] = await Promise.all([
+  const [usuario, progresso, sessoes, metas, posts, arsenal, biblioteca, cofre, ataques, memorias, linkedinPosts, diario, linkedinEstrategia, agentes, agenteAvaliacoes, agenteExecucoes] = await Promise.all([
     prisma.usuario.findUnique({ where: { id: usuarioId }, select: { id: true, email: true } }),
     prisma.progresso.findMany({ where: { usuarioId } }),
     prisma.sessao.findMany({ where: { usuarioId } }),
@@ -30,6 +30,9 @@ async function exportarDados(usuarioId: string) {
     prisma.linkedinEstrategia.findUnique({ where: { usuarioId } }),
     prisma.agente.findMany({ where: { usuarioId } }),
     prisma.agenteAvaliacao.findMany({ where: { usuarioId } }),
+    // trilha completa do que os agentes fizeram (passos, conversa, aprovações). buscar_base só
+    // devolve notas pessoais, então nenhuma execução carrega material corporativo.
+    prisma.agenteExecucao.findMany({ where: { usuarioId }, orderBy: { criadoEm: 'asc' } }),
   ]);
   if (!usuario) throw new Error('Usuário do backup não encontrado.');
   return {
@@ -38,7 +41,7 @@ async function exportarDados(usuarioId: string) {
     exportadoEm: new Date().toISOString(),
     usuario,
     progresso, sessoes, metas, posts, arsenal, biblioteca, cofre, ataques, memorias,
-    linkedinPosts, diario, linkedinEstrategia, agentes, agenteAvaliacoes,
+    linkedinPosts, diario, linkedinEstrategia, agentes, agenteAvaliacoes, agenteExecucoes,
   };
 }
 

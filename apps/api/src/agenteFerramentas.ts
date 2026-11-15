@@ -67,6 +67,7 @@ const semParametros = { type: 'object', properties: {}, additionalProperties: fa
 
 // Os valores abaixo entram no caminho da URL: o formato é restrito para não permitir outro caminho.
 const NomeDoNo = z.string().regex(/^[a-zA-Z0-9-]{1,63}$/, 'nome de nó inválido');
+const Armazenamento = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/, 'nome de armazenamento inválido');
 const Vm = z.object({
   no: NomeDoNo,
   tipo: z.enum(['qemu', 'lxc']),
@@ -154,6 +155,37 @@ const PROXMOX: FerramentaReal[] = [
   }),
   definir({
     ...proxmox,
+    nome: 'proxmox_proximo_vmid',
+    descricao: 'Devolve o próximo VMID livre no cluster. Use antes de criar ou clonar uma VM, para escolher o número da nova.',
+    esquema: semParametros,
+    entrada: z.object({}),
+    async executar() {
+      return JSON.stringify({ proximoVmid: Number(await proxmoxGet('/cluster/nextid')) });
+    },
+  }),
+  definir({
+    ...proxmox,
+    nome: 'proxmox_listar_isos',
+    descricao:
+      'Lista as imagens ISO de um armazenamento (o volid de cada uma é o que proxmox_criar_vm espera no campo iso). ' +
+      'Precisa do nó e do armazenamento; descubra quais guardam ISO com proxmox_listar_armazenamento (conteudo com "iso").',
+    esquema: {
+      type: 'object',
+      properties: {
+        no: { type: 'string', description: 'Nó do Proxmox de onde consultar.' },
+        armazenamento: { type: 'string', description: 'Nome do armazenamento (ex.: o NFS com as ISOs).' },
+      },
+      required: ['no', 'armazenamento'],
+      additionalProperties: false,
+    },
+    entrada: z.object({ no: NomeDoNo, armazenamento: Armazenamento }),
+    async executar(_ctx, { no, armazenamento }) {
+      const itens = lista(await proxmoxGet(`/nodes/${no}/storage/${armazenamento}/content?content=iso`));
+      return JSON.stringify(itens.map((i) => ({ iso: i.volid, tamanhoGb: gb(i.size) })));
+    },
+  }),
+  definir({
+    ...proxmox,
     nome: 'proxmox_listar_armazenamento',
     descricao: 'Lista os armazenamentos (storages) do Proxmox por nó, com tipo, estado, espaço total e usado. Use para checar espaço livre.',
     esquema: semParametros,
@@ -182,6 +214,88 @@ const esquemaSnapshot = {
   additionalProperties: false,
 } as const;
 const AVISO = 'Altera o ambiente: o usuário precisa aprovar na tela antes de executar.';
+
+// Criar, clonar e apagar VM: todos os valores vão para a URL ou para os parâmetros da API do
+// Proxmox, então cada um tem formato fechado (nada de texto livre do modelo virar opção da VM).
+const NomeVm = z.string().regex(/^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/, 'nome de VM: letras, números e "-" (vira hostname), sem começar ou terminar com "-"');
+const Bridge = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,15}$/, 'nome de bridge inválido');
+const Iso = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}:iso\/[A-Za-z0-9][A-Za-z0-9_.+-]{0,200}\.iso$/i, 'use o volid da ISO, ex.: nas:iso/debian-12.iso (de proxmox_listar_isos)');
+const NumeroVm = z.number().int().min(100).max(999_999_999);
+export const CriarVm = z.object({
+  no: NomeDoNo,
+  vmid: NumeroVm,
+  nome: NomeVm,
+  memoriaMb: z.number().int().min(256).max(262_144),
+  cores: z.number().int().min(1).max(64),
+  discoGb: z.number().int().min(1).max(4096),
+  armazenamento: Armazenamento,
+  bridge: Bridge,
+  vlan: z.number().int().min(1).max(4094).optional(),
+  iso: Iso.optional(),
+  sistema: z.enum(['linux', 'windows-11', 'windows-10', 'windows-server', 'outro']),
+});
+const ClonarVm = z.object({
+  no: NomeDoNo,
+  vmid: NumeroVm,
+  novoVmid: NumeroVm,
+  nome: NomeVm,
+  completo: z.boolean().optional(),
+  armazenamento: Armazenamento.optional(),
+  noDestino: NomeDoNo.optional(),
+}).refine((v) => v.vmid !== v.novoVmid, { message: 'novoVmid precisa ser diferente do vmid de origem', path: ['novoVmid'] });
+
+const OSTYPE: Record<z.infer<typeof CriarVm>['sistema'], string> = {
+  linux: 'l26', 'windows-11': 'win11', 'windows-10': 'win10', 'windows-server': 'win11', outro: 'other',
+};
+
+/** Parâmetros de POST /nodes/{no}/qemu montados só a partir da entrada validada. */
+export function parametrosCriarVm(v: z.infer<typeof CriarVm>): Record<string, string | number> {
+  return {
+    vmid: v.vmid,
+    name: v.nome,
+    memory: v.memoriaMb,
+    cores: v.cores,
+    sockets: 1,
+    ostype: OSTYPE[v.sistema],
+    scsihw: 'virtio-scsi-single',
+    scsi0: `${v.armazenamento}:${v.discoGb}`,
+    net0: `virtio,bridge=${v.bridge}${v.vlan ? `,tag=${v.vlan}` : ''}`,
+    agent: '1',
+    tags: 'criada-por-agente',
+    ...(v.iso ? { ide2: `${v.iso},media=cdrom`, boot: 'order=scsi0;ide2;net0' } : { boot: 'order=scsi0;net0' }),
+  };
+}
+
+/** VMIDs que nenhum agente pode apagar (PROXMOX_VMS_PROTEGIDAS="100,101"), além da proteção do próprio Proxmox. */
+export const vmsProtegidas = (): number[] =>
+  (process.env.PROXMOX_VMS_PROTEGIDAS ?? '').split(/[\s,;]+/).filter(Boolean).map(Number).filter(Number.isInteger);
+
+/**
+ * Checagens feitas no momento de apagar, com o estado atual do Proxmox (não com o que o modelo disse):
+ * lista de protegidas do servidor, nome conferindo, proteção do Proxmox desligada e VM parada.
+ * Lança com o motivo; nada é apagado se qualquer uma falhar.
+ */
+export async function conferirAntesDeApagar(v: z.infer<typeof Vm> & { nomeConfirmacao: string }): Promise<void> {
+  if (vmsProtegidas().includes(v.vmid)) {
+    throw new Error(`Recusado: a ${v.tipo === 'qemu' ? 'VM' : 'container'} ${v.vmid} está na lista PROXMOX_VMS_PROTEGIDAS do servidor e não pode ser apagada por agentes.`);
+  }
+  const [config, atual] = await Promise.all([
+    proxmoxGet(`/nodes/${v.no}/${v.tipo}/${v.vmid}/config`),
+    proxmoxGet(`/nodes/${v.no}/${v.tipo}/${v.vmid}/status/current`),
+  ]);
+  const c = (config ?? {}) as Record<string, unknown>;
+  const nomeAtual = String((v.tipo === 'qemu' ? c.name : c.hostname) ?? '');
+  if (nomeAtual !== v.nomeConfirmacao) {
+    throw new Error(`Recusado: o nome informado ("${v.nomeConfirmacao}") não confere com o nome atual da ${v.vmid} ("${nomeAtual || 'sem nome'}"). Nada foi apagado.`);
+  }
+  if (Number(c.protection) === 1) {
+    throw new Error(`Recusado: a ${v.vmid} está com a proteção ligada no Proxmox (Options → Protection). Desligue lá se quiser mesmo apagar.`);
+  }
+  const status = String(((atual ?? {}) as Record<string, unknown>).status ?? '');
+  if (status !== 'stopped') {
+    throw new Error(`Recusado: a ${v.vmid} está "${status || 'em estado desconhecido'}". Desligue antes (proxmox_desligar_vm) e peça de novo.`);
+  }
+}
 
 const PROXMOX_ESCRITA: FerramentaReal[] = [
   definir({
@@ -261,6 +375,93 @@ const PROXMOX_ESCRITA: FerramentaReal[] = [
     entrada: VmComSnapshot,
     resumo: (v) => `Apagar o snapshot "${v.nome}" (não dá para desfazer): ${alvo(v)}`,
     executar: (_ctx, v) => proxmoxAlterar('DELETE', v.no, `/nodes/${v.no}/${v.tipo}/${v.vmid}/snapshot/${v.nome}`),
+  }),
+  definir({
+    ...proxmoxEscrita,
+    nome: 'proxmox_criar_vm',
+    descricao:
+      'Cria uma VM nova (vazia) num nó: CPU, memória, um disco, uma placa de rede e, opcionalmente, uma ISO para instalar o sistema. ' +
+      'Antes: proxmox_proximo_vmid (número livre), proxmox_listar_armazenamento (onde pôr o disco) e, se for instalar, proxmox_listar_isos. ' +
+      `A VM é criada desligada e com a tag "criada-por-agente". ${AVISO}`,
+    esquema: {
+      type: 'object',
+      properties: {
+        no: { type: 'string', description: 'Nó onde criar a VM.' },
+        vmid: { type: 'integer', description: 'VMID livre (use proxmox_proximo_vmid).' },
+        nome: { type: 'string', description: 'Nome da VM: letras, números e "-" (vira o hostname).' },
+        memoriaMb: { type: 'integer', description: 'Memória em MB, ex.: 2048.' },
+        cores: { type: 'integer', description: 'Número de vCPUs.' },
+        discoGb: { type: 'integer', description: 'Tamanho do disco em GB.' },
+        armazenamento: { type: 'string', description: 'Armazenamento do disco (ex.: o storage replicado das VMs).' },
+        bridge: { type: 'string', description: 'Bridge de rede, ex.: vmbr0.' },
+        vlan: { type: 'integer', description: 'Tag de VLAN da placa de rede (omita para a VLAN nativa da bridge).' },
+        iso: { type: 'string', description: 'volid da ISO de instalação, ex.: nas:iso/debian-12.iso (de proxmox_listar_isos).' },
+        sistema: { type: 'string', enum: ['linux', 'windows-11', 'windows-10', 'windows-server', 'outro'], description: 'Família do sistema que será instalado.' },
+      },
+      required: ['no', 'vmid', 'nome', 'memoriaMb', 'cores', 'discoGb', 'armazenamento', 'bridge', 'sistema'],
+      additionalProperties: false,
+    },
+    entrada: CriarVm,
+    resumo: (v) =>
+      `Criar a VM ${v.vmid} "${v.nome}" no nó ${v.no}: ${v.cores} vCPU, ${v.memoriaMb} MB de memória, disco de ${v.discoGb} GB em ${v.armazenamento}, ` +
+      `rede ${v.bridge}${v.vlan ? ` (VLAN ${v.vlan})` : ''}${v.iso ? `, instalação pela ISO ${v.iso}` : ', sem ISO'} (fica desligada)`,
+    executar: (_ctx, v) => proxmoxAlterar('POST', v.no, `/nodes/${v.no}/qemu`, parametrosCriarVm(v), 180),
+  }),
+  definir({
+    ...proxmoxEscrita,
+    nome: 'proxmox_clonar_vm',
+    descricao:
+      'Clona uma VM (ou um modelo) para uma VM nova. Por padrão faz cópia completa dos discos (independente da original); ' +
+      'completo=false faz clone ligado, que só funciona a partir de um modelo (template). Use proxmox_proximo_vmid para o número da nova. ' +
+      `Cópia completa de disco grande pode levar minutos. ${AVISO}`,
+    esquema: {
+      type: 'object',
+      properties: {
+        no: { type: 'string', description: 'Nó onde está a VM de origem.' },
+        vmid: { type: 'integer', description: 'VMID da VM ou do modelo de origem.' },
+        novoVmid: { type: 'integer', description: 'VMID livre para a nova VM.' },
+        nome: { type: 'string', description: 'Nome da nova VM: letras, números e "-".' },
+        completo: { type: 'boolean', description: 'true (padrão) copia os discos; false faz clone ligado (só de modelo).' },
+        armazenamento: { type: 'string', description: 'Armazenamento de destino dos discos (só na cópia completa; omita para usar o mesmo).' },
+        noDestino: { type: 'string', description: 'Nó onde a nova VM vai ficar (omita para o mesmo nó).' },
+      },
+      required: ['no', 'vmid', 'novoVmid', 'nome'],
+      additionalProperties: false,
+    },
+    entrada: ClonarVm,
+    resumo: (v) =>
+      `Clonar a VM ${v.vmid} (nó ${v.no}) para a nova VM ${v.novoVmid} "${v.nome}"${v.noDestino ? ` no nó ${v.noDestino}` : ''}: ` +
+      `${v.completo === false ? 'clone ligado (depende do modelo de origem)' : 'cópia completa dos discos'}${v.armazenamento ? ` em ${v.armazenamento}` : ''}`,
+    executar: (_ctx, v) => proxmoxAlterar('POST', v.no, `/nodes/${v.no}/qemu/${v.vmid}/clone`, {
+      newid: v.novoVmid,
+      name: v.nome,
+      full: v.completo === false ? 0 : 1,
+      ...(v.armazenamento && v.completo !== false ? { storage: v.armazenamento } : {}),
+      ...(v.noDestino ? { target: v.noDestino } : {}),
+    }, 300),
+  }),
+  definir({
+    ...proxmoxEscrita,
+    nome: 'proxmox_apagar_vm',
+    descricao:
+      'Apaga DEFINITIVAMENTE uma VM ou container e todos os discos dela. Não dá para desfazer. ' +
+      'Exige: a VM desligada, o nome atual dela em nomeConfirmacao (confira com proxmox_listar_vms), a proteção do Proxmox desligada ' +
+      `e que o VMID não esteja na lista de VMs protegidas do servidor. ${AVISO}`,
+    esquema: {
+      type: 'object',
+      properties: {
+        ...esquemaVm.properties,
+        nomeConfirmacao: { type: 'string', description: 'Nome atual da VM, exatamente como aparece em proxmox_listar_vms. Se não conferir, nada é apagado.' },
+      },
+      required: ['no', 'tipo', 'vmid', 'nomeConfirmacao'],
+      additionalProperties: false,
+    },
+    entrada: Vm.extend({ nomeConfirmacao: z.string().trim().min(1).max(128) }),
+    resumo: (v) => `APAGAR DEFINITIVAMENTE ${alvo(v)} chamada "${v.nomeConfirmacao}", com todos os discos (não dá para desfazer)`,
+    async executar(_ctx, v) {
+      await conferirAntesDeApagar(v);
+      return proxmoxAlterar('DELETE', v.no, `/nodes/${v.no}/${v.tipo}/${v.vmid}?purge=1&destroy-unreferenced-disks=1`, {}, 180);
+    },
   }),
 ];
 

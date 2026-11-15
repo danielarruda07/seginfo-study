@@ -38,8 +38,8 @@ Só roda o que está no `REGISTRO` (`apps/api/src/agenteFerramentas.ts`) **e** f
 | id do catálogo | nomes para o modelo | permissão |
 |---|---|---|
 | `busca-base` | `buscar_base` | leitura |
-| `proxmox-leitura` | `proxmox_listar_nos`, `proxmox_listar_vms`, `proxmox_detalhar_vm`, `proxmox_listar_snapshots`, `proxmox_listar_armazenamento` | leitura |
-| `proxmox-escrita` | `proxmox_ligar_vm`, `proxmox_desligar_vm`, `proxmox_reiniciar_vm`, `proxmox_criar_snapshot`, `proxmox_reverter_snapshot`, `proxmox_remover_snapshot` | escrita (com aprovação) |
+| `proxmox-leitura` | `proxmox_listar_nos`, `proxmox_listar_vms`, `proxmox_detalhar_vm`, `proxmox_listar_snapshots`, `proxmox_listar_armazenamento`, `proxmox_listar_isos`, `proxmox_proximo_vmid` | leitura |
+| `proxmox-escrita` | `proxmox_ligar_vm`, `proxmox_desligar_vm`, `proxmox_reiniciar_vm`, `proxmox_criar_snapshot`, `proxmox_reverter_snapshot`, `proxmox_remover_snapshot`, `proxmox_criar_vm`, `proxmox_clonar_vm`, `proxmox_apagar_vm` | escrita (com aprovação) |
 | `fortigate-leitura` | `fortigate_listar_interfaces`, `fortigate_listar_policies`, `fortigate_listar_enderecos`, `fortigate_contar_sessoes_negadas` | leitura |
 | `fortigate-escrita` | `fortigate_criar_policy` (entra desativada por padrão), `fortigate_definir_status_policy` | escrita (com aprovação) |
 | `catalyst-leitura` | `catalyst_mostrar_vlans`, `catalyst_mostrar_interfaces`, `catalyst_mostrar_trunk`, `catalyst_mostrar_span`, `catalyst_mostrar_running_config_interface` | leitura |
@@ -104,6 +104,23 @@ Cliente em `apps/api/src/proxmox.ts`: `proxmoxGet` lê; `proxmoxAlterar` muda o 
 Criar o token no Proxmox: Datacenter → Permissions → API Tokens → Add. Com "Privilege Separation" marcado, dê a permissão ao próprio token em Datacenter → Permissions → Add → API Token Permission (caminho `/`, role `PVEAuditor` para leitura ou `Administrator` para o que vier depois).
 
 O container da API precisa alcançar o Proxmox na porta 8006. Enquanto faltar variável, o playground mostra as ferramentas em cinza e diz o que falta.
+
+#### Criar, clonar e apagar VM
+
+- **`proxmox_criar_vm`**: VM nova e desligada, com um disco, uma placa de rede (bridge e VLAN opcional) e, se informada, a ISO de instalação. Recebe a tag `criada-por-agente`. Os campos têm formato fechado (nome de bridge, de storage e o volid da ISO), então o modelo não consegue acrescentar outra opção à VM. Espera a tarefa por até 3 min.
+- **`proxmox_clonar_vm`**: cópia completa dos discos por padrão; `completo=false` faz clone ligado, que só funciona a partir de um modelo. Aceita outro nó e outro storage de destino. Espera até 5 min; cópia maior que isso continua no Proxmox e a ferramenta avisa que está em andamento.
+- **`proxmox_apagar_vm`**: apaga a VM ou o container com os discos (`purge`). Antes de apagar, o servidor confere com o estado atual do Proxmox, e recusa se qualquer item falhar:
+  1. o VMID não está em `PROXMOX_VMS_PROTEGIDAS`;
+  2. o nome atual é igual a `nomeConfirmacao`;
+  3. a proteção do Proxmox (Options → Protection) está desligada;
+  4. a VM está parada.
+- Apoio, só leitura: `proxmox_proximo_vmid` (número livre) e `proxmox_listar_isos` (volids de um storage).
+
+| Variável | Valor |
+|---|---|
+| `PROXMOX_VMS_PROTEGIDAS` | VMIDs que nenhum agente pode apagar, separados por vírgula. Coloque aqui a VM que hospeda o próprio app (ex.: `100`). |
+
+Permissões do token para criar e clonar: `VM.Allocate`, `VM.Clone`, `VM.Config.*`, `Datastore.AllocateSpace` e, para usar a bridge, `SDN.Use`. Sem elas, o Proxmox responde 403 e a ferramenta diz qual caminho faltou.
 
 ### FortiGate
 Cliente em `apps/api/src/fortigate.ts`: `fortigateGet` lê `/api/v2/cmdb/...` e `/api/v2/monitor/...`;

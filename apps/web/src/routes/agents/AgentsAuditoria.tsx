@@ -9,7 +9,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
 import { Kpi, Pill, StatusStrip } from '@/components/InfraKit';
 import { useDrawerSelection } from '@/hooks/useDrawerSelection';
-import { listAgentes, listAuditoria } from '@/services/agentes';
+import { Button } from 'primereact/button';
+import { baixarExecucoes, erroApi, listAgentes, listAuditoria } from '@/services/agentes';
 import { DECISAO_META, comIds, duracao, type AcaoComId } from './regras';
 import { MetaPill } from './ficha/comum';
 import { AcaoFicha } from './ficha/AcaoFicha';
@@ -38,13 +39,23 @@ export function AgentsAuditoria() {
   const erros = acoes.filter((a) => a.erro).length;
   const nomeAgente = (agentes.data ?? []).find((a) => a.id === agenteId)?.nome;
   const limpar = () => { setAgenteId(undefined); setSomenteEscrita(false); setSomenteErro(false); };
+  const [baixando, setBaixando] = useState(false);
+  const [erroDownload, setErroDownload] = useState('');
+  const baixar = async () => {
+    setBaixando(true);
+    setErroDownload('');
+    try { await baixarExecucoes(); } catch (e) { setErroDownload(erroApi(e, 'Não foi possível baixar as execuções.')); } finally { setBaixando(false); }
+  };
 
   return (
     <div>
       <PageHeader
         title="Auditoria dos agentes"
         subtitle="Toda ação que um agente executou de verdade: o que pediu, o que o servidor devolveu e se foi aprovada por você."
+        actions={<Button label="Baixar execuções (JSON)" icon="pi pi-download" outlined loading={baixando} onClick={baixar}
+          tooltip="Cópia completa de todas as execuções (passos, conversa e aprovações). O backup cifrado no OneDrive também as inclui." />}
       />
+      {erroDownload && <Message severity="error" className="ag-largo" text={erroDownload} />}
 
       {auditoria.isError && <Message severity="warn" className="ag-largo" text="API indisponível: a auditoria fica no servidor." />}
 

@@ -24,6 +24,7 @@ import { AtivoForm } from './inventario/AtivoForm';
 import { AtivoDrawer } from './inventario/AtivoDrawer';
 import { TipoFiltro } from './inventario/TipoFiltro';
 import { AcessosIntegracoes } from './inventario/AcessosIntegracoes';
+import { SincronizarAmbiente } from './inventario/SincronizarAmbiente';
 
 const NOVO: Ativo = { id: '', ambiente: 'criecomia', tipo: 'servico', nome: '', endereco: '', funcao: '', estado: 'ativo', detalhes: {}, tags: [], labsRelacionados: [] };
 
@@ -35,6 +36,7 @@ export function Inventario() {
   const [menuAtivo, setMenuAtivo] = useState<Ativo | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
   const [form, setForm] = useState<Ativo | null>(null);
+  const [sincronizando, setSincronizando] = useState(false);
 
   const query = useQuery({ queryKey: ['ativos', f.search, f.tipo, f.estado], queryFn: () => listAtivos({ search: f.search, tipo: f.tipo, estado: f.estado, rows: 10_000 }) });
   const resumo = useQuery({ queryKey: ['resumo-inv'], queryFn: resumoInventario }).data;
@@ -85,10 +87,14 @@ export function Inventario() {
     <div>
       <Toast ref={toast} />
       <ConfirmDialog />
+      <SincronizarAmbiente visible={sincronizando} onHide={() => setSincronizando(false)}
+        onAplicado={(r) => { atualizar(); toast.current?.show({ severity: 'success', summary: 'Inventário sincronizado', detail: `${r.novos} novo(s), ${r.atualizados} atualizado(s)`, life: 4000 }); }} />
       <Menu model={menuItens} popup ref={menu} />
 
       <PageHeader title="Meu Ambiente" subtitle="Inventário do homelab: hosts, VMs, rede e serviços, e o mapa de onde ficam endereços e credenciais (as senhas ficam no Cofre)."
         actions={<>
+          <Button label="Sincronizar com o ambiente" icon="pi pi-sync" outlined onClick={() => setSincronizando(true)}
+            tooltip="O servidor consulta Proxmox, FortiGate e switch só com leitura e mostra a prévia antes de aplicar" />
           <label className="p-button p-component p-button-outlined" style={{ cursor: 'pointer' }}>
             <span className="p-button-icon p-button-icon-left pi pi-upload" />
             <span className="p-button-label">Importar arquivo</span>

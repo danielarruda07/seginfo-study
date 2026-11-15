@@ -11,6 +11,7 @@ import { registerLinkedinRoutes } from './linkedin.js';
 import { registerAgenteRoutes } from './agentes.js';
 import { registerIntegracoesRoutes } from './integracoes.js';
 import { registerWazuhRoutes } from './wazuh.js';
+import { registerDescobertaRoutes } from './descoberta.js';
 import { exigirSessaoCofre, registerCofre2faRoutes, registrarEvento } from './cofre2fa.js';
 
 /** Registra todas as rotas de estado do usuário, todas protegidas por requireUser. */
@@ -308,4 +309,6 @@ export async function registerStateRoutes(app: FastifyInstance) {
   // Meu Ambiente: como o servidor se conecta a cada sistema (sem segredos)
   await registerIntegracoesRoutes(app);
   await registerWazuhRoutes(app);
+  // Meu Ambiente: "Sincronizar com o ambiente" (descoberta só com leitura; o navegador aplica)
+  await registerDescobertaRoutes(app);
 }
