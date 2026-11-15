@@ -11,6 +11,7 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { FORMATOS } from '@/services/linkedin';
 import { STATUS_META } from './pipelineRegras';
 import { MidiaRascunho } from './MidiaRascunho';
+import { EstudioVisual } from './EstudioVisual';
 
 const OPCOES_VISIBILIDADE = VISIBILIDADES.map((value) => ({ value, label: ROTULO_VISIBILIDADE[value] }));
 
@@ -26,7 +27,7 @@ export const FORM_VAZIO: FormEstudio = {
 type Opcao = { label: string; value: string };
 
 /** Editor do Estúdio: campos do rascunho, apoio visual e ações de salvar/copiar. O refino entra por `children`. */
-export function EstudioEditor({ form, onCampo, editando, topicos, projetos, erro, salvo, salvando, onSalvar, onLimpar, onCopiar, onVerPipeline, onRascunhoAtualizado, children }: {
+export function EstudioEditor({ form, onCampo, editando, topicos, projetos, erro, salvo, salvando, onSalvar, onLimpar, onCopiar, onVerPipeline, onRascunhoAtualizado, iaPronta, children }: {
   form: FormEstudio;
   onCampo: <K extends keyof FormEstudio>(campo: K, valor: FormEstudio[K]) => void;
   editando: RascunhoLinkedin | null;
@@ -35,6 +36,7 @@ export function EstudioEditor({ form, onCampo, editando, topicos, projetos, erro
   onSalvar: () => void; onLimpar: () => void; onCopiar: () => void; onVerPipeline: () => void;
   /** o servidor mudou o rascunho (arquivo anexado ou trocado): atualizar o que está aberto */
   onRascunhoAtualizado: (r: RascunhoLinkedin) => void;
+  iaPronta: boolean;
   children?: ReactNode;
 }) {
   const tamanho = textoDoPost(form.gancho, form.corpo).length;
@@ -87,6 +89,10 @@ export function EstudioEditor({ form, onCampo, editando, topicos, projetos, erro
             <Button label="Copiar prompt visual" icon="pi pi-copy" outlined disabled={!form.direcaoVisual} onClick={() => copyToClipboard(form.direcaoVisual)} />
             <Button label="Copiar roteiro" icon="pi pi-copy" outlined disabled={!form.roteiroSlides} onClick={() => copyToClipboard(form.roteiroSlides)} />
           </div>
+          {(form.formato === 'imagem' || form.formato === 'carrossel') && (
+            <EstudioVisual tipo={form.formato} gancho={form.gancho} corpo={form.corpo} roteiro={form.roteiroSlides} direcao={form.direcaoVisual}
+              rascunho={editando} iaPronta={iaPronta} onAtualizado={onRascunhoAtualizado} onTextoAlternativo={(t) => onCampo('textoAlternativo', t)} />
+          )}
           <MidiaRascunho rascunho={editando} onAtualizado={onRascunhoAtualizado} />
           <label className="iv-col iv-gap"><strong>Texto alternativo da imagem</strong>
             <InputTextarea value={form.textoAlternativo} onChange={(e) => onCampo('textoAlternativo', e.target.value)} rows={2} autoResize aria-label="Texto alternativo" placeholder="Descreva a informação visual para quem usa leitor de tela." />

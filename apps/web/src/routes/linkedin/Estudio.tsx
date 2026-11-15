@@ -175,7 +175,7 @@ export function Estudio({ pedido, onPedidoConsumido, onVerPipeline }: {
       <div className="posts-workspace iv-mt">
         <EstudioEditor form={form} onCampo={campo} editando={editando} topicos={topicos} projetos={opcoesProjeto}
           erro={erro} salvo={salvo} salvando={salvando} onSalvar={salvar} onLimpar={limpar}
-          onCopiar={() => copiarPost(form.gancho, form.corpo)} onVerPipeline={onVerPipeline}
+          onCopiar={() => copiarPost(form.gancho, form.corpo)} onVerPipeline={onVerPipeline} iaPronta={iaPronta}
           onRascunhoAtualizado={(r) => { setEditando(r); setForm((f) => ({ ...f, formato: formatoValido(r.formato) })); invalidate('linkedin-rascunhos'); }}>
           <Refino gancho={form.gancho} corpo={form.corpo} iaPronta={iaPronta} ultimo={ultimoRefino} podeDesfazer={!!antesDoRefino}
             onResultado={aoRefinar} onEscolherGancho={escolherGancho} onDesfazer={desfazerRefino} />

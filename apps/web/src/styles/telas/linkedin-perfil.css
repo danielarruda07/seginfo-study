@@ -18,6 +18,11 @@
 .pv-voz { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: .25rem 1.5rem; }
 .pv-voz .ca-h4 { margin-top: .5rem; }
 
+/* ===== arte do post (Estúdio) ===== */
+.pv-slide { grid-template-columns: minmax(140px, 220px) minmax(0, 1fr); align-items: start; }
+.pv-previa { width: 100%; height: auto; border-radius: var(--radius-sm); border: 1px solid var(--surface-border); background: var(--surface-section); }
+@media (max-width: 720px) { .pv-slide { grid-template-columns: 1fr; } .pv-previa { max-width: 260px; } }
+
 /* ===== filtro anti-genérico (coluna lateral do Estúdio) ===== */
 .pv-estilo { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
 .pv-estilo__item { display: grid; gap: .15rem; font-size: .85rem; }

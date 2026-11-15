@@ -36,6 +36,9 @@ Gitea/GitHub (ex: `danielarruda07/seginfo-study`), como você já faz com o CRIE
    - `ANTHROPIC_API_KEY` (**Secret**): liga a IA do módulo LinkedIn (organizar posts e gerar
      rascunhos). Crie em console.anthropic.com → API Keys e defina um limite de gasto mensal.
      A chave fica só no container; sem ela o resto do app funciona e a tela avisa.
+   - `GEMINI_API_KEY` (**Secret**, opcional): liga a ilustração por IA nos posts do LinkedIn. Crie em
+     aistudio.google.com; gerar imagem exige faturamento ativo (veja docs/LINKEDIN.md, "Arte do post").
+     Opcionais: `GEMINI_MODELO_RAPIDO`, `GEMINI_MODELO_QUALIDADE` (IDs de modelo) e `IMAGEM_LIMITE_DIARIO` (padrão 30).
    - `LINKEDIN_CLIENT_ID` e `LINKEDIN_CLIENT_SECRET` (**Secret**): app criado em
      developers.linkedin.com, para o servidor publicar posts de texto aprovados e agendados.
      Opcionais; sem elas o agendamento funciona como lembrete. Passo a passo em

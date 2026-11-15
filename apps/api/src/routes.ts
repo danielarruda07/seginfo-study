@@ -11,6 +11,7 @@ import { registerKevRoutes } from './kev.js';
 import { registerLinkedinRoutes } from './linkedin.js';
 import { registerLinkedinPipelineRoutes } from './linkedinPipeline.js';
 import { registerLinkedinPerfilRoutes } from './linkedinPerfil.js';
+import { registerLinkedinImagemRoutes } from './linkedinImagem.js';
 import { registerAgenteRoutes } from './agentes.js';
 import { registerIntegracoesRoutes } from './integracoes.js';
 import { registerWazuhRoutes } from './wazuh.js';
@@ -292,6 +293,8 @@ export async function registerStateRoutes(app: FastifyInstance) {
   await registerLinkedinPipelineRoutes(app);
   // LinkedIn: perfil profissional, inspirações e perfil de voz
   await registerLinkedinPerfilRoutes(app);
+  // LinkedIn: arte dos posts (slides e ilustração por IA)
+  await registerLinkedinImagemRoutes(app);
 
   // Agents: projetos de agentes de IA, avaliações e teste da base de conhecimento
   await registerAgenteRoutes(app);

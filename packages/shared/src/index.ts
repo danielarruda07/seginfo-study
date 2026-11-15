@@ -474,5 +474,6 @@ export * from './linkedin';
 export * from './linkedinPipeline';
 export * from './linkedinPerfil';
 export * from './linkedinEstilo';
+export * from './linkedinVisual';
 export * from './agentes';
 export * from './versao';

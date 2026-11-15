@@ -44,6 +44,12 @@ services:
       # tarefas curtas (refinar texto, organizar posts). Vazio = padrão do código.
       - IA_MODELO=${IA_MODELO:-}
       - IA_MODELO_RAPIDO=${IA_MODELO_RAPIDO:-}
+      # Ilustração por IA nos posts do LinkedIn (Gemini API, opcional). Secret no Coolify; sem ela,
+      # a arte sai só com os templates. Os IDs de modelo mudam: vazio = padrão do código.
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODELO_RAPIDO=${GEMINI_MODELO_RAPIDO:-}
+      - GEMINI_MODELO_QUALIDADE=${GEMINI_MODELO_QUALIDADE:-}
+      - IMAGEM_LIMITE_DIARIO=${IMAGEM_LIMITE_DIARIO:-30}
       # LinkedIn: publicar pelo servidor (docs/LINKEDIN.md). Secrets do app criado em
       # developers.linkedin.com; usa também PUBLIC_BASE_URL e STORAGE_TOKEN_KEY (acima).
       # Sem elas, o agendamento funciona como lembrete e você publica à mão.

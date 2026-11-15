@@ -18,7 +18,7 @@ Não há uma contagem universal que torne um post melhor. Posts de texto servem 
 
 O limite atual de uma publicação comum é 3.000 caracteres. O checklist do Estúdio mostra esse limite, mas não trata um post conciso como inferior. Compare comprimento e formato dentro do seu próprio histórico, anotando métricas alguns dias depois de publicar.
 
-Para imagens, prefira arquivos nítidos e uma ideia visual simples. O LinkedIn recomenda imagem com ao menos 1080 px de largura e aceita proporções de 3:1 a 4:5; a área visual pode cortar imagens fora dessa faixa. Para documento/carrossel, use PDF, título descritivo e texto de acompanhamento que explique por que abrir o material. O Estúdio prepara roteiro, direção visual e texto alternativo, mas a imagem precisa ser criada e revisada antes do upload.
+Para imagens, prefira arquivos nítidos e uma ideia visual simples. O LinkedIn recomenda imagem com ao menos 1080 px de largura e aceita proporções de 3:1 a 4:5; a área visual pode cortar imagens fora dessa faixa. Para documento/carrossel, use PDF, título descritivo e texto de acompanhamento que explique por que abrir o material. O Estúdio prepara roteiro, direção visual e texto alternativo e também cria a arte (veja "Arte do post"); revise a imagem antes de aprovar.
 
 ## Assuntos para a ponte Infra → Segurança
 
@@ -77,6 +77,29 @@ Projeto ─► Ideia (backlog) ─► Rascunho ─► Aprovado ─► Agendado �
 - O arquivo fica no banco (`PostMidia`), fora do backup cifrado: é material de publicação. Quem restaurar um backup reanexa o arquivo.
 - **Visibilidade:** "Público" ou "Só conexões". Use "Só conexões" no primeiro teste real. Mudar a visibilidade também desfaz a aprovação.
 - **Apagar no LinkedIn:** na ficha de um post publicado pela API, o botão apaga o post do perfil (com reações e comentários), tira o registro de Publicados e devolve o rascunho para revisão. Posts publicados à mão continuam sendo apagados direto no LinkedIn.
+
+### Arte do post (imagem e carrossel)
+
+No Estúdio, quando o formato é **imagem** ou **carrossel**, o bloco **Criar a arte** monta a peça:
+
+1. A IA projeta os slides a partir do texto do post (título, texto, itens, número em destaque). Usa só fatos que já estão no post, sem IP, domínio nem nome de empresa, e segue a sua voz.
+2. Você ajusta cada slide, vê a prévia ao vivo e escolhe o tamanho e a cor de destaque. O tema é escuro.
+3. O navegador desenha os slides (canvas) e gera **PNG** (imagem) ou **PDF** (carrossel, uma página por slide). **Anexar ao post** envia o arquivo pelo mesmo caminho da mídia já existente, e o post sai pela API. **Baixar** serve para publicar à mão.
+
+Como o texto é desenhado por template, ele sai sempre correto, com acentos certos e legível no celular. Nenhuma etapa gasta crédito de imagem, só a chamada ao Claude que projeta os slides.
+
+**Tamanhos.** O padrão é **retrato 4:5 (1080×1350)**: ocupa mais tela no feed do celular. Quadrado 1:1 (1080×1080) é a alternativa segura, e paisagem 1,91:1 (1200×627) só para imagem única. No carrossel, todas as páginas do PDF têm o mesmo tamanho. Evite texto pequeno: a arte aparece reduzida no celular.
+
+**Ilustração por IA (opcional).** Cada slide pode ter uma ilustração de fundo, gerada pelo Gemini **somente quando você clica em "Gerar ilustração"**, escolhendo o motor na hora:
+
+| Motor | Para que serve | Custo estimado |
+|---|---|---|
+| Gemini rápido | Maioria dos posts | cerca de US$ 0,04 por imagem |
+| Gemini qualidade | Capas importantes | cerca de US$ 0,13 por imagem |
+
+Os valores são estimativas de 2026; confira no AI Studio. A imagem entra sem texto (o estilo pede fundo escuro e nenhuma letra), com um véu escuro por cima para o título continuar legível. Há um limite diário (`IMAGEM_LIMITE_DIARIO`, padrão 30) e a descrição é recusada se citar IP ou domínio do ambiente.
+
+Configuração (uma vez): crie a chave em aistudio.google.com e defina o Secret `GEMINI_API_KEY` na API (Coolify). Gerar imagem pela API exige **faturamento ativo**. Quem tem o plano **Google AI Pro** recebe créditos mensais do Google Developer Program, que se resgatam dentro do AI Studio (Developer Program, vincular faturamento, resgatar). O uso da API pede um pré-pagamento mínimo de US$ 5 para liberar o crédito promocional, e só o titular do plano resgata. Se o plano veio por operadora, confirme no AI Studio se o resgate aparece. Os IDs de modelo mudam com o tempo: se aparecer erro de modelo inexistente, troque `GEMINI_MODELO_RAPIDO` ou `GEMINI_MODELO_QUALIDADE` por um ID de modelo de imagem listado no AI Studio.
 
 ### Perfil & Voz (a IA aprende quem escreve)
 

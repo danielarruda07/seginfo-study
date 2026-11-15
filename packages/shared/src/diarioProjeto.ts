@@ -26,6 +26,20 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-15-linkedin-arte',
+    data: '2026-11-15',
+    titulo: 'Arte de post sem depender de IA de imagem para o texto',
+    descricao:
+      'IA de imagem erra acento e palavra, o que é inaceitável numa capa profissional. A decisão foi separar as tarefas: ' +
+      'a IA de texto projeta os slides, um template em canvas desenha tudo no navegador (sempre com o texto certo e ' +
+      'legível no celular) e a IA de imagem só entra, sob demanda e com limite diário, para uma ilustração de fundo sem ' +
+      'letras. O PDF do carrossel é montado à mão, sem biblioteca, com uma imagem por página. Testar o desenho em um ' +
+      'navegador sem interface achou texto invadindo o rodapé e itens sumindo em formato baixo, que um teste de tipos ' +
+      'não pegaria.',
+    categoria: 'decisao',
+    tags: ['linkedin', 'imagem', 'canvas', 'custo'],
+  },
+  {
     id: 'proj-2026-11-15-linkedin-perfil-voz',
     data: '2026-11-15',
     titulo: 'A IA do LinkedIn passou a conhecer quem escreve',
