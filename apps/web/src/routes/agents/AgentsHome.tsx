@@ -13,7 +13,7 @@ import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
 import { EmptyState, Kpi, StatusStrip } from '@/components/InfraKit';
 import { useDebounce } from '@/hooks/useDebounce';
 import { listAgentes, createAgente, erroApi, getRuntime } from '@/services/agentes';
-import type { ModeloAgente } from '@/data/agentesModelos';
+import { MODELOS_AGENTE, type ModeloAgente } from '@/data/agentesModelos';
 import { AgenteCard } from './home/AgenteCard';
 import { AgenteFicha } from './ficha/AgenteFicha';
 import { useDrawerSelection } from '@/hooks/useDrawerSelection';
@@ -25,6 +25,7 @@ export { STATUS_LABEL } from './home/regras';
 
 const ORDEM_STATUS: FiltroStatus[] = ['todos', 'ativo', 'teste', 'rascunho', 'arquivado'];
 const ROTULO_FILTRO: Record<FiltroStatus, string> = { todos: 'Todos', ...STATUS_LABEL, ativo: 'Ativos', rascunho: 'Rascunhos', arquivado: 'Arquivados' };
+const MODELO_HOMELAB = MODELOS_AGENTE.find((m) => m.id === 'operador-homelab-integrado');
 
 const PASSOS_ONBOARDING = [
   { icon: 'pi-pencil', titulo: 'Projete', texto: 'Propósito, instruções, ferramentas e limites, pilar a pilar.' },
@@ -63,6 +64,7 @@ export function AgentsHome() {
   const [erro, setErro] = useState('');
 
   const agentes = useMemo(() => lista.data ?? [], [lista.data]);
+  const homelabCriado = agentes.some((a) => a.nome === MODELO_HOMELAB?.nome);
   const contagem = useMemo(() => contarPorStatus(agentes), [agentes]);
   const visiveis = useMemo(
     () => ordenarAgentes(filtrarAgentes(agentes, { status, busca: buscaDebounced, soPendentes })),
@@ -108,6 +110,19 @@ export function AgentsHome() {
           {!vazioTotal && <Button label="Novo agente" icon="pi pi-plus" onClick={() => setDialogo(true)} disabled={!!criando} />}
         </>}
       />
+
+      {!vazioTotal && MODELO_HOMELAB && !homelabCriado && (
+        <section className="iv-card iv-mt ag-homelab-cta" aria-label="Criar operador do homelab">
+          <div>
+            <strong>Quer operar seu homelab por aqui?</strong>
+            <p className="iv-muted" style={{ margin: '.25rem 0 0' }}>
+              Crie o operador integrado para consultar e planejar ações em Proxmox, FortiGate, Catalyst, Wazuh e Zabbix.
+              Ele começa como rascunho; você revisa as ferramentas antes de ativá-lo.
+            </p>
+          </div>
+          <Button label="Criar operador do Homelab" icon="pi pi-sitemap" onClick={() => void criar(MODELO_HOMELAB)} disabled={!!criando} loading={criando === MODELO_HOMELAB.id} />
+        </section>
+      )}
 
       {lista.isError && (
         <Message severity="warn" className="iv-mt" style={{ width: '100%' }}

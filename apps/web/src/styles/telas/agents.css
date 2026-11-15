@@ -5,6 +5,9 @@
 
 /* ---------- cartões ---------- */
 .ag-card--arquivado { opacity: .75; }
+.ag-homelab-cta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-left: 4px solid var(--alvoar-teal-600); }
+.ag-homelab-cta > div { min-width: 0; }
+@media (max-width: 640px) { .ag-homelab-cta { align-items: stretch; flex-direction: column; } }
 .ag-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: .85rem; }
 .ag-cards > .iv-card { margin: 0; min-width: 0; display: flex; flex-direction: column; gap: .5rem; }
 .ag-cards > .iv-card + .iv-card { margin-top: 0; }

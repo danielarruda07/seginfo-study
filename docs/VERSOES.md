@@ -8,6 +8,7 @@ A versão aparece no rodapé do menu lateral (`v0.17.0 · build dd/mm hh:mm`) e 
 
 | Versão | Data | O que entrou |
 |---|---|---|
+| 0.27.1 | 15/11/2026 | Agents: atalho visível para criar o Operador do Homelab como rascunho quando ele ainda não existe na lista |
 | 0.27.0 | 15/11/2026 | Separação entre Laboratório, Produção e Não classificado no Radar, Wazuh e observações ATT&CK; ambiente persistido e filtrado no servidor, independente da origem pública/privada; coletor encaminha metadados de alertas de produção mesmo sem IP ou MITRE, sem aplicar exclusões do laboratório |
 | 0.26.1 | 15/11/2026 | Corrige o repasse das variáveis de conexão do Zabbix para o container da API; atualiza a descrição da integração Wazuh no deploy |
 | 0.26.0 | 15/11/2026 | Agents: operador integrado do homelab; redução de memória/CPU em lote e migração de VMs no Proxmox; consultas e reinícios no Wazuh; consultas e criação de hosts, templates e itens no Zabbix, sempre com aprovação para alterações |

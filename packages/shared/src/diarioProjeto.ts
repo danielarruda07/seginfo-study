@@ -26,6 +26,17 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-15-agente-homelab-visivel',
+    data: '2026-11-15',
+    titulo: 'O operador do homelab ficou visível na central de Agents',
+    descricao:
+      'O operador integrado era um modelo escondido dentro do fluxo de criação, e isso parecia que ele não existia. ' +
+      'A central agora mostra um atalho quando ainda não há um operador com esse nome e cria o agente como rascunho, ' +
+      'para revisar ferramentas e limites antes de ativá-lo.',
+    categoria: 'funcionalidade',
+    tags: ['agents', 'homelab', 'experiencia'],
+  },
+  {
     id: 'proj-2026-11-15-ambientes-monitoramento',
     data: '2026-11-15',
     titulo: 'Laboratório e produção ganharam visões próprias no monitoramento',
