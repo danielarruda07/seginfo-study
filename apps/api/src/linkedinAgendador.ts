@@ -1,10 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import {
-  bloqueiosDoPreflight, diaLocal, FUSO_PADRAO, normalizarUrlLinkedin, preflightLiberado, preflightPost, textoDoPost,
+  bloqueiosDoPreflight, diaLocal, FUSO_PADRAO, motivoSemApi, normalizarUrlLinkedin, preflightLiberado, preflightPost, textoDoPost,
+  type FormatoPost, type TipoMidia,
 } from '@seginfo/shared';
 import { prisma } from './db.js';
-import { ErroLinkedin, publicarTexto } from './linkedinApi.js';
+import { ErroLinkedin, publicar } from './linkedinApi.js';
 
 /**
  * Publicação pela API do LinkedIn e o agendador que a dispara na hora marcada.
@@ -58,13 +59,19 @@ export async function publicarPelaApi(usuarioId: string, postId: string, agendad
     return new ErroPublicacao(status, msg);
   };
 
-  if (post.formato !== 'texto') throw await falhar('Pela API só sai post de texto por enquanto. Publique este formato à mão e registre o link.');
+  const midia = await prisma.postMidia.findUnique({ where: { postId } });
+  const semApi = motivoSemApi(post.formato as FormatoPost, midia ? { tipo: midia.tipo as TipoMidia, titulo: midia.titulo } : null);
+  if (semApi) throw await falhar(semApi);
   const bloqueios = bloqueiosDoServidor(post);
   if (bloqueios.length) throw await falhar(`O texto não passou na verificação antes de publicar: ${bloqueios.join('; ')}.`);
 
   const texto = textoDoPost(post.gancho, post.corpo);
   try {
-    const { urn, url } = await publicarTexto(usuarioId, texto);
+    const { urn, url } = await publicar(usuarioId, {
+      texto,
+      visibilidade: post.visibilidade === 'CONNECTIONS' ? 'CONNECTIONS' : 'PUBLIC',
+      midia: midia ? { tipo: midia.tipo as TipoMidia, mime: midia.mime, titulo: midia.titulo, dados: midia.dados } : undefined,
+    });
     const agora = new Date();
     // o post JÁ saiu: daqui em diante nada pode devolver o rascunho para a fila
     let linkedinPostId: string | null = null;

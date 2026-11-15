@@ -14,11 +14,14 @@ import { avisoMetricas, falaDoProjeto, marcosAntesDe, METRICAS_CAMPOS, primeiraL
 type Nav = Pick<DetailDrawerProps, 'index' | 'total' | 'onIndex' | 'onClose'>;
 
 /** Ficha do post publicado: texto completo, métricas, organização da IA, ideias e marcos do diário. */
-export function PostDrawer({ post: p, nav, diario, ocupado, iaPronta, projetos, onEditar, onOrganizar, onReenviar, onProjeto, onExcluir, onUsarIdeia }: {
+export function PostDrawer({ post: p, nav, diario, ocupado, iaPronta, projetos, onEditar, onOrganizar, onReenviar, onProjeto, onExcluir, onApagarNoLinkedin, onUsarIdeia }: {
   post: PostPublicado; nav: Nav; diario: EntradaDiarioComOrigem[]; ocupado?: string; iaPronta: boolean;
   projetos: { label: string; value: string }[];
   onEditar: () => void; onOrganizar: () => void; onReenviar: () => void; onProjeto: (projetoId: string | null) => void;
-  onExcluir: () => void; onUsarIdeia: (ideia: string) => void;
+  onExcluir: () => void;
+  /** só para posts que o servidor publicou pela API (têm URN) */
+  onApagarNoLinkedin: () => void;
+  onUsarIdeia: (ideia: string) => void;
 }) {
   const [copiado, setCopiado] = useState(false);
   const a = p.analise;
@@ -46,7 +49,9 @@ export function PostDrawer({ post: p, nav, diario, ocupado, iaPronta, projetos, 
         <Button label={copiado ? 'Copiado!' : 'Copiar texto'} icon="pi pi-copy" size="small" outlined onClick={copiar} />
         <a href={p.url} target="_blank" rel="noreferrer" className="p-button p-button-outlined p-button-sm"><i className="pi pi-external-link" aria-hidden="true" />&nbsp; Abrir no LinkedIn</a>
         {a && <Button label="Atualizar no cérebro" icon="pi pi-sitemap" size="small" text disabled={!!ocupado} onClick={onReenviar} />}
-        <Button label="Remover" icon="pi pi-trash" size="small" text severity="danger" onClick={onExcluir} />
+        {p.urn
+          ? <Button label="Apagar no LinkedIn" icon="pi pi-trash" size="small" text severity="danger" disabled={!!ocupado} onClick={onApagarNoLinkedin} />
+          : <Button label="Remover" icon="pi pi-trash" size="small" text severity="danger" onClick={onExcluir} />}
       </>}>
 
       <section>

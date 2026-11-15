@@ -68,8 +68,15 @@ Projeto ─► Ideia (backlog) ─► Rascunho ─► Aprovado ─► Agendado �
 
 | Canal | O que acontece na hora marcada | Quando usar |
 |---|---|---|
-| `lembrete` | O post aparece em "Hora de publicar" na aba Pipeline. Você copia, publica no LinkedIn e registra o link. | Sempre disponível; único canal para imagem, carrossel, vídeo e enquete. |
-| `api` | O servidor publica o texto no seu perfil e cria o registro em Publicados. | Só post de texto, com a conta do LinkedIn conectada. |
+| `lembrete` | O post aparece em "Hora de publicar" na aba Pipeline. Você copia, publica no LinkedIn e registra o link. | Sempre disponível; único canal para vídeo, artigo e enquete. |
+| `api` | O servidor publica no seu perfil (texto, imagem ou PDF) e cria o registro em Publicados. | Conta do LinkedIn conectada. Imagem e carrossel precisam do arquivo anexado. |
+
+### Arquivo do post, visibilidade e "desfazer"
+
+- **Imagem** (PNG, JPG ou GIF, até 8 MB) para o formato `imagem`; **PDF** (até 20 MB, com título) para o formato `carrossel`, que o LinkedIn mostra como documento que se folheia. O arquivo é anexado no Estúdio, depois de salvar o rascunho; o servidor confere o tipo pelo conteúdo (não pelo nome) e ajusta o formato do post. Anexar, trocar ou tirar o arquivo desfaz a aprovação, como mudar o texto.
+- O arquivo fica no banco (`PostMidia`), fora do backup cifrado: é material de publicação. Quem restaurar um backup reanexa o arquivo.
+- **Visibilidade:** "Público" ou "Só conexões". Use "Só conexões" no primeiro teste real. Mudar a visibilidade também desfaz a aprovação.
+- **Apagar no LinkedIn:** na ficha de um post publicado pela API, o botão apaga o post do perfil (com reações e comentários), tira o registro de Publicados e devolve o rascunho para revisão. Posts publicados à mão continuam sendo apagados direto no LinkedIn.
 
 ### IA
 
@@ -85,7 +92,9 @@ O que a API oficial permite para um perfil pessoal, e o que não permite:
 | Recurso | Situação |
 |---|---|
 | Publicar texto no perfil | Sim (produto "Share on LinkedIn"). É o que o app faz. |
-| Imagem, documento (carrossel), vídeo | A API aceita, com upload em etapas. **Ainda não implementado**: use o lembrete. |
+| Imagem e documento (PDF, o "carrossel") | Sim, com upload em duas etapas (`initializeUpload` + envio). Implementado. |
+| Vídeo, enquete, várias imagens | A API aceita, mas **não implementado**: use o lembrete. |
+| Apagar post | Sim (`DELETE /rest/posts/{urn}`). Implementado para o que o servidor publicou. |
 | Agendar | A API não tem agendamento: quem agenda é este servidor. |
 | Métricas de post pessoal | **Não existem na API** (só páginas de empresa). Continue anotando à mão, alguns dias depois. |
 | Validade do acesso | Cerca de 60 dias. Sem refresh token (só apps parceiros têm), é preciso reconectar; a tela avisa quando faltar 7 dias. |

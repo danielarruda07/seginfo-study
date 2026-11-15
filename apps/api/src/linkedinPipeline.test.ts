@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  avaliarAgendamento, bloqueiosDoPreflight, diaLocal, exposicaoNoTexto, horaLocal, pendenciasNoTexto, preflightLiberado,
-  preflightPost, textoDoPost, type SugestaoPauta,
+  avaliarAgendamento, bloqueiosDoPreflight, diaLocal, exposicaoNoTexto, horaLocal, mimeDoConteudo, motivoSemApi, pendenciasNoTexto,
+  preflightLiberado, preflightPost, textoDoPost, type SugestaoPauta,
 } from '@seginfo/shared';
 import { filtrarPauta, fimDoPeriodo } from './ia.js';
-import { paraLittleText, variaveisFaltando, versaoApi } from './linkedinApi.js';
+import { corpoDoPost, paraLittleText, variaveisFaltando, versaoApi } from './linkedinApi.js';
 import { bloqueiosDoServidor } from './linkedinAgendador.js';
 import { briefingDoRadar } from './linkedinRadar.js';
 
@@ -157,5 +157,38 @@ describe('Radar → ideia', () => {
     expect(briefing).toContain('[CONFIRMAR:');
     // nada que pareça endereço
     expect(briefing).not.toMatch(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
+  });
+});
+
+describe('mídia e visibilidade', () => {
+  it('reconhece o arquivo pela assinatura, não pelo nome', () => {
+    expect(mimeDoConteudo(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]))).toBe('image/png');
+    expect(mimeDoConteudo(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]))).toBe('image/jpeg');
+    expect(mimeDoConteudo(new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]))).toBe('image/gif');
+    expect(mimeDoConteudo(new TextEncoder().encode('%PDF-1.7 ...'))).toBe('application/pdf');
+    expect(mimeDoConteudo(new TextEncoder().encode('<svg onload=x>'))).toBeNull();
+    expect(mimeDoConteudo(new Uint8Array([0x4d, 0x5a, 0x90, 0]))).toBeNull(); // executável Windows
+  });
+
+  it('diz o que falta para publicar cada formato pela API', () => {
+    expect(motivoSemApi('texto', null)).toBeNull();
+    expect(motivoSemApi('texto', { tipo: 'imagem', titulo: '' })).toMatch(/remova o arquivo/);
+    expect(motivoSemApi('imagem', null)).toMatch(/Anexe a imagem/);
+    expect(motivoSemApi('imagem', { tipo: 'imagem', titulo: '' })).toBeNull();
+    expect(motivoSemApi('carrossel', { tipo: 'imagem', titulo: '' })).toMatch(/PDF/);
+    expect(motivoSemApi('carrossel', { tipo: 'documento', titulo: '  ' })).toMatch(/título/);
+    expect(motivoSemApi('carrossel', { tipo: 'documento', titulo: 'Zabbix 7' })).toBeNull();
+    expect(motivoSemApi('video', null)).toMatch(/video/);
+  });
+
+  it('monta o corpo do post com visibilidade e mídia', () => {
+    const texto = corpoDoPost({ autor: 'urn:li:person:abc', texto: 'Oi #lab', visibilidade: 'CONNECTIONS' });
+    expect(texto.visibility).toBe('CONNECTIONS');
+    expect(texto.commentary).toBe('Oi {hashtag|\\#|lab}');
+    expect('content' in texto).toBe(false);
+    const doc = corpoDoPost({ autor: 'urn:li:person:abc', texto: 'x', visibilidade: 'PUBLIC', midia: { id: 'urn:li:document:D1', titulo: 'Zabbix 7' } });
+    expect(doc.content).toEqual({ media: { id: 'urn:li:document:D1', title: 'Zabbix 7' } });
+    const img = corpoDoPost({ autor: 'urn:li:person:abc', texto: 'x', visibilidade: 'PUBLIC', midia: { id: 'urn:li:image:I1' } });
+    expect(img.content).toEqual({ media: { id: 'urn:li:image:I1' } });
   });
 });

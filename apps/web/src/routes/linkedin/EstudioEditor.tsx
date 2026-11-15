@@ -4,31 +4,37 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
-import { LIMITE_POST, textoDoPost, type FormatoPost, type RascunhoLinkedin } from '@seginfo/shared';
+import { SelectButton } from 'primereact/selectbutton';
+import { LIMITE_POST, ROTULO_VISIBILIDADE, textoDoPost, VISIBILIDADES, type FormatoPost, type RascunhoLinkedin, type Visibilidade } from '@seginfo/shared';
 import { Pill } from '@/components/InfraKit';
 import { copyToClipboard } from '@/lib/clipboard';
 import { FORMATOS } from '@/services/linkedin';
 import { STATUS_META } from './pipelineRegras';
+import { MidiaRascunho } from './MidiaRascunho';
+
+const OPCOES_VISIBILIDADE = VISIBILIDADES.map((value) => ({ value, label: ROTULO_VISIBILIDADE[value] }));
 
 export interface FormEstudio {
   titulo: string; gancho: string; corpo: string;
   direcaoVisual: string; textoAlternativo: string; roteiroSlides: string;
-  topicoId?: string; projetoId: string | null; formato: FormatoPost;
+  topicoId?: string; projetoId: string | null; formato: FormatoPost; visibilidade: Visibilidade;
 }
 export const FORM_VAZIO: FormEstudio = {
-  titulo: '', gancho: '', corpo: '', direcaoVisual: '', textoAlternativo: '', roteiroSlides: '', topicoId: undefined, projetoId: null, formato: 'texto',
+  titulo: '', gancho: '', corpo: '', direcaoVisual: '', textoAlternativo: '', roteiroSlides: '', topicoId: undefined, projetoId: null, formato: 'texto', visibilidade: 'PUBLIC',
 };
 
 type Opcao = { label: string; value: string };
 
 /** Editor do Estúdio: campos do rascunho, apoio visual e ações de salvar/copiar. O refino entra por `children`. */
-export function EstudioEditor({ form, onCampo, editando, topicos, projetos, erro, salvo, salvando, onSalvar, onLimpar, onCopiar, onVerPipeline, children }: {
+export function EstudioEditor({ form, onCampo, editando, topicos, projetos, erro, salvo, salvando, onSalvar, onLimpar, onCopiar, onVerPipeline, onRascunhoAtualizado, children }: {
   form: FormEstudio;
   onCampo: <K extends keyof FormEstudio>(campo: K, valor: FormEstudio[K]) => void;
   editando: RascunhoLinkedin | null;
   topicos: Opcao[]; projetos: Opcao[];
   erro: string; salvo: boolean; salvando: boolean;
   onSalvar: () => void; onLimpar: () => void; onCopiar: () => void; onVerPipeline: () => void;
+  /** o servidor mudou o rascunho (arquivo anexado ou trocado): atualizar o que está aberto */
+  onRascunhoAtualizado: (r: RascunhoLinkedin) => void;
   children?: ReactNode;
 }) {
   const tamanho = textoDoPost(form.gancho, form.corpo).length;
@@ -55,6 +61,10 @@ export function EstudioEditor({ form, onCampo, editando, topicos, projetos, erro
           showClear emptyMessage="Crie um projeto na aba Projetos" />
         <Dropdown value={form.formato} options={[...FORMATOS]} onChange={(e) => onCampo('formato', e.value)} ariaLabel="Formato do post" />
       </div>
+      <div className="iv-row iv-wrap">
+        <SelectButton value={form.visibilidade} options={OPCOES_VISIBILIDADE} allowEmpty={false} onChange={(e) => onCampo('visibilidade', e.value)} aria-label="Quem vê o post" />
+        <small className="iv-muted">{form.visibilidade === 'CONNECTIONS' ? 'Só as suas conexões veem. Bom para testar a publicação automática.' : 'Qualquer pessoa no LinkedIn vê.'}</small>
+      </div>
       <InputText value={form.gancho} onChange={(e) => onCampo('gancho', e.target.value)} placeholder="Gancho (primeira linha, o que prende a atenção)" aria-label="Gancho" />
       <InputTextarea value={form.corpo} onChange={(e) => onCampo('corpo', e.target.value)} rows={12} autoResize placeholder="Desenvolva a ideia, o que aprendeu e como aplicou..." aria-label="Corpo do post" />
       <small className={tamanho > LIMITE_POST ? 'iv-field__error' : 'iv-muted'} aria-live="polite">
@@ -77,6 +87,7 @@ export function EstudioEditor({ form, onCampo, editando, topicos, projetos, erro
             <Button label="Copiar prompt visual" icon="pi pi-copy" outlined disabled={!form.direcaoVisual} onClick={() => copyToClipboard(form.direcaoVisual)} />
             <Button label="Copiar roteiro" icon="pi pi-copy" outlined disabled={!form.roteiroSlides} onClick={() => copyToClipboard(form.roteiroSlides)} />
           </div>
+          <MidiaRascunho rascunho={editando} onAtualizado={onRascunhoAtualizado} />
           <label className="iv-col iv-gap"><strong>Texto alternativo da imagem</strong>
             <InputTextarea value={form.textoAlternativo} onChange={(e) => onCampo('textoAlternativo', e.target.value)} rows={2} autoResize aria-label="Texto alternativo" placeholder="Descreva a informação visual para quem usa leitor de tela." />
           </label>

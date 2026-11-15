@@ -31,6 +31,7 @@ const formatoValido = (f?: string): FormatoPost => ((FORMATOS_POST as readonly s
 const formDe = (r: RascunhoLinkedin): FormEstudio => ({
   titulo: r.titulo, gancho: r.gancho, corpo: r.corpo, direcaoVisual: r.direcaoVisual ?? '', textoAlternativo: r.textoAlternativo ?? '',
   roteiroSlides: r.roteiroSlides ?? '', topicoId: r.topicoId ?? undefined, projetoId: r.projetoId ?? null, formato: formatoValido(r.formato),
+  visibilidade: r.visibilidade === 'CONNECTIONS' ? 'CONNECTIONS' : 'PUBLIC',
 });
 
 /** Estúdio: escrever à mão, partir de um modelo ou pedir à IA; refinar; salvar no pipeline. */
@@ -174,7 +175,8 @@ export function Estudio({ pedido, onPedidoConsumido, onVerPipeline }: {
       <div className="posts-workspace iv-mt">
         <EstudioEditor form={form} onCampo={campo} editando={editando} topicos={topicos} projetos={opcoesProjeto}
           erro={erro} salvo={salvo} salvando={salvando} onSalvar={salvar} onLimpar={limpar}
-          onCopiar={() => copiarPost(form.gancho, form.corpo)} onVerPipeline={onVerPipeline}>
+          onCopiar={() => copiarPost(form.gancho, form.corpo)} onVerPipeline={onVerPipeline}
+          onRascunhoAtualizado={(r) => { setEditando(r); setForm((f) => ({ ...f, formato: formatoValido(r.formato) })); invalidate('linkedin-rascunhos'); }}>
           <Refino gancho={form.gancho} corpo={form.corpo} iaPronta={iaPronta} ultimo={ultimoRefino} podeDesfazer={!!antesDoRefino}
             onResultado={aoRefinar} onEscolherGancho={escolherGancho} onDesfazer={desfazerRefino} />
         </EstudioEditor>

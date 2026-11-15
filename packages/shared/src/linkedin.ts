@@ -43,6 +43,8 @@ export interface PostPublicado {
   analise: AnalisePost | null;
   memoriaId: string | null;
   projetoId: string | null;
+  /** urn:li:share:... quando o post saiu pela API (permite apagar pelo app) */
+  urn?: string | null;
 }
 
 export const EstrategiaSchema = z.object({

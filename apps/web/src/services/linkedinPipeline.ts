@@ -1,6 +1,6 @@
 import type {
   AcaoRefino, CanalPublicacao, IdeiaIn, IdeiaLinkedin, PostPublicado, ProjetoIn, ProjetoLinkedin, RascunhoIA,
-  RascunhoLinkedin, RefinoIA, StatusContaLinkedin, SugestaoPauta, TarefaIA, VersaoRascunho,
+  RascunhoLinkedin, RefinoIA, StatusContaLinkedin, SugestaoPauta, TarefaIA, VersaoRascunho, Visibilidade,
 } from '@seginfo/shared';
 import { http } from './http';
 import { contextoDoEstudo } from './linkedin';
@@ -37,9 +37,26 @@ export interface RascunhoIn {
   titulo: string; gancho: string; corpo: string;
   direcaoVisual?: string; textoAlternativo?: string; roteiroSlides?: string;
   topicoId?: string | null; formato?: string; projetoId?: string | null; ideiaId?: string | null;
+  visibilidade?: Visibilidade;
   /** rótulo da versão criada quando o texto muda (manual, ia:gerar, ia:encurtar...) */
   origemVersao?: string;
 }
+
+// ----- arquivo do post (imagem ou PDF do carrossel) -----
+/** Envia o arquivo cru (sem base64). O servidor confere o tipo pelo conteúdo e ajusta o formato do post. */
+export const enviarMidia = (id: string, arquivo: File, titulo?: string) =>
+  dados(http.put<RascunhoLinkedin>(`/linkedin/rascunhos/${id}/midia`, arquivo, {
+    params: { nome: arquivo.name.slice(0, 200), ...(titulo ? { titulo } : {}) },
+    headers: { 'Content-Type': 'application/octet-stream' },
+    timeout: 120_000,
+  }));
+export const tituloDaMidia = (id: string, titulo: string) => dados(http.patch<RascunhoLinkedin>(`/linkedin/rascunhos/${id}/midia`, { titulo }));
+export const removerMidia = (id: string) => dados(http.delete<RascunhoLinkedin>(`/linkedin/rascunhos/${id}/midia`));
+/** Endereço da prévia (mesma origem: a sessão do Access vale). `v` evita a prévia antiga em cache. */
+export const urlDaMidia = (id: string, sha256: string) => `${http.defaults.baseURL ?? '/api'}/linkedin/rascunhos/${id}/midia?v=${sha256.slice(0, 12)}`;
+
+/** Apaga no LinkedIn um post publicado pela API; o rascunho volta para revisão. */
+export const apagarNoLinkedin = (postId: string) => dados(http.post<{ ok: true }>(`/linkedin/posts/${postId}/apagar-no-linkedin`, {}, { timeout: 40_000 }));
 export const listRascunhosPipeline = () => dados(http.get<RascunhoLinkedin[]>('/posts'));
 export const criarRascunhoPipeline = (b: RascunhoIn) => dados(http.post<RascunhoLinkedin>('/posts', b));
 /** Mudar gancho ou corpo de um rascunho aprovado/agendado devolve-o para "rascunho" (a aprovação vale para um texto). */

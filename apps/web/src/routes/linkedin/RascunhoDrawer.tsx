@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Button } from 'primereact/button';
 import { confirmDialog } from 'primereact/confirmdialog';
-import { preflightLiberado, textoDoPost, type ProjetoLinkedin, type RascunhoLinkedin } from '@seginfo/shared';
+import { motivoSemApi, preflightLiberado, ROTULO_VISIBILIDADE, textoDoPost, type ProjetoLinkedin, type RascunhoLinkedin } from '@seginfo/shared';
 import { DetailDrawer, type DetailDrawerProps } from '@/components/ui/DetailDrawer';
 import { DetailFields } from '@/components/ui/Detail';
 import { Pill } from '@/components/InfraKit';
 import { getTopico } from '@/services/catalog';
 import { ativosCitados, mensagemErro, preflightLocal, removerRascunho } from '@/services/linkedin';
-import { aprovarRascunho, desagendarRascunho, publicarRascunhoAgora, voltarParaRascunho } from '@/services/linkedinPipeline';
+import { aprovarRascunho, desagendarRascunho, publicarRascunhoAgora, urlDaMidia, voltarParaRascunho } from '@/services/linkedinPipeline';
 import { copiarPost, detalheDoErro } from './dados';
 import { CANAL_CURTO, STATUS_META, dataHoraCurta, fusoDoNavegador, nomeDoProjeto } from './pipelineRegras';
 import { PreflightLista } from './PreflightLista';
@@ -33,8 +33,10 @@ export function RascunhoDrawer({ rascunho: r, nav, projetos, contaConectada, onE
   const projeto = nomeDoProjeto(projetos, r.projetoId);
   const preflight = preflightLocal(r.gancho, r.corpo);
   const liberado = preflightLiberado(preflight);
-  const podeApi = contaConectada && r.formato === 'texto';
-  const motivoApi = !contaConectada ? 'Conecte o LinkedIn na aba "Marca pessoal & IA".' : r.formato !== 'texto' ? 'A API publica só texto por enquanto.' : undefined;
+  const semApi = motivoSemApi(r.formato, r.midia ?? null);
+  const podeApi = contaConectada && !semApi;
+  const motivoApi = !contaConectada ? 'Conecte o LinkedIn na aba "Marca pessoal & IA".' : semApi ?? undefined;
+  const publico = ROTULO_VISIBILIDADE[r.visibilidade ?? 'PUBLIC'];
 
   async function executar(rotulo: string, acao: () => Promise<unknown>) {
     setOcupado(rotulo); setErro(''); setBloqueios([]);
@@ -51,7 +53,7 @@ export function RascunhoDrawer({ rascunho: r, nav, projetos, contaConectada, onE
   function publicarAgora() {
     confirmDialog({
       header: 'Publicar agora no LinkedIn',
-      message: <span>O servidor publica <strong>{r.titulo}</strong> no seu perfil agora, como post público.<br /><small className="iv-muted">Não dá para desfazer por aqui: para apagar, só no LinkedIn.</small></span>,
+      message: <span>O servidor publica <strong>{r.titulo}</strong> no seu perfil agora ({publico.toLowerCase()}{r.midia ? `, com ${r.midia.tipo === 'imagem' ? 'a imagem' : 'o PDF'}` : ''}).<br /><small className="iv-muted">Não dá para desfazer por aqui: para apagar, só no LinkedIn.</small></span>,
       icon: 'pi pi-send', acceptLabel: 'Publicar agora', rejectLabel: 'Cancelar',
       accept: () => executar('Publicando…', () => publicarRascunhoAgora(r.id)),
     });
@@ -76,6 +78,7 @@ export function RascunhoDrawer({ rascunho: r, nav, projetos, contaConectada, onE
         <Pill label={meta.label} tone={meta.tone} icon={meta.icon} />
         {r.agendadoPara && r.status !== 'publicado' && <Pill label={`${dataHoraCurta(r.agendadoPara, fuso)} · ${CANAL_CURTO[r.canal]}`} icon="pi-clock" />}
         <Pill label={r.formato} />
+        <Pill label={publico} icon={r.visibilidade === 'CONNECTIONS' ? 'pi-users' : 'pi-globe'} />
         {projeto && <Pill label={projeto} icon="pi-folder" />}
         {ocupado && <span className="iv-muted ca-small" role="status"><i className="pi pi-spin pi-spinner" aria-hidden="true" /> {ocupado}</span>}
       </>}
@@ -119,6 +122,17 @@ export function RascunhoDrawer({ rascunho: r, nav, projetos, contaConectada, onE
         <section>
           <h3 className="iv-section-label">Verificação antes de liberar</h3>
           <PreflightLista itens={preflight} />
+        </section>
+      )}
+      {r.midia && (
+        <section>
+          <h3 className="iv-section-label">Arquivo do post</h3>
+          <div className="li-midia">
+            {r.midia.tipo === 'imagem'
+              ? <img className="li-midia__previa" src={urlDaMidia(r.id, r.midia.sha256)} alt={r.textoAlternativo || `Imagem anexada: ${r.midia.nome}`} />
+              : <a className="li-midia__pdf" href={urlDaMidia(r.id, r.midia.sha256)} target="_blank" rel="noreferrer"><i className="pi pi-file-pdf" aria-hidden="true" /> Abrir PDF</a>}
+            <span className="iv-col"><span className="mono ca-small">{r.midia.nome}</span>{r.midia.titulo && <span className="iv-muted ca-small">Título: {r.midia.titulo}</span>}</span>
+          </div>
         </section>
       )}
       {(r.direcaoVisual || r.roteiroSlides || r.textoAlternativo) && (

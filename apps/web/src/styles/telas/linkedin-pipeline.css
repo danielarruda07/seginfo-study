@@ -112,3 +112,9 @@
   .lp-ranking > li { grid-template-columns: minmax(0, 1fr) auto; }
   .lp-ranking__barra { display: none; }
 }
+
+/* Arquivo anexado ao post (imagem ou PDF) */
+.li-midia { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.li-midia__previa { max-width: 220px; max-height: 160px; border-radius: 6px; border: 1px solid var(--surface-border); object-fit: contain; background: var(--surface-ground); }
+.li-midia__pdf { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.75rem; border: 1px solid var(--surface-border); border-radius: 6px; color: var(--primary-color); text-decoration: none; }
+.li-midia__pdf:hover { background: color-mix(in srgb, var(--primary-color) 6%, var(--surface-card)); }

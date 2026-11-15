@@ -69,6 +69,7 @@ export function paraDto(p: LinhaPost): PostPublicado {
     analise: (p.analise ?? null) as AnalisePost | null,
     memoriaId: p.memoriaId,
     projetoId: p.projetoId,
+    urn: p.urn,
   };
 }
 

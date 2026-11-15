@@ -14,7 +14,7 @@ Lista viva do que ficou combinado e ainda não foi feito. Marque `[x]` ao conclu
       conectar em LinkedIn → Marca pessoal & IA (docs/LINKEDIN.md). Depois, **testar com um post
       curto real** ("Publicar agora"): a integração foi escrita pela documentação pública e
       ainda não rodou contra o LinkedIn de verdade.
-- [ ] **LinkedIn: upload de imagem e documento pela API** (hoje esses formatos saem pelo lembrete).
+- [x] **LinkedIn: upload de imagem e documento pela API.** Feito em 15/11/2026 (v0.28.0), junto com visibilidade "só conexões" e "Apagar no LinkedIn".
 
 - [x] **Tirar o RDP real da WAN.** Feito em 13/11/2026: as regras de RDP vindas da WAN foram desativadas e a administração do FortiGate saiu da WAN (ver docs/RANGE.md). O VIP `10.10.10.100:1401` publicado no IP público é o
       alvo do brute force. Acessar pelo `rdp.criecom.ia.br` (Cloudflare Access). Conferir nos

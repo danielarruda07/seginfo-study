@@ -1,17 +1,17 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import {
-  AgendarInSchema, avaliarAgendamento, diaLocal, FORMATOS_POST, IdeiaInSchema, isUrlLinkedin, normalizarUrlLinkedin,
-  ProjetoInSchema, RefinarInSchema, RegistrarPublicacaoInSchema, textoDoPost,
-  type TarefaIA,
+  AgendarInSchema, avaliarAgendamento, diaLocal, FORMATOS_POST, IdeiaInSchema, isUrlLinkedin, MIDIA_ACEITA, MidiaTituloInSchema,
+  mimeDoConteudo, motivoSemApi, normalizarUrlLinkedin, ProjetoInSchema, RefinarInSchema, RegistrarPublicacaoInSchema, textoDoPost,
+  VISIBILIDADES, type FormatoPost, type TarefaIA, type TipoMidia,
 } from '@seginfo/shared';
 import { prisma } from './db.js';
 import type { AuthedRequest } from './auth.js';
 import { ErroIA, gerarRascunho, planejarPauta, refinarTexto } from './ia.js';
 import {
-  concluirAutorizacao, contaPronta, desconectar, iniciarAutorizacao, statusDaConta, variaveisFaltando,
+  apagarPost, concluirAutorizacao, contaPronta, desconectar, ErroLinkedin, iniciarAutorizacao, statusDaConta, variaveisFaltando,
 } from './linkedinApi.js';
 import { bloqueiosDoServidor, ErroPublicacao, fusoDoLinkedin, publicarPelaApi } from './linkedinAgendador.js';
 import { contextoDaJornada, estrategiaDe, paraDto } from './linkedin.js';
@@ -40,8 +40,14 @@ const NovoRascunho = z.object({
   formato: Formato.optional(),
   projetoId: Id.nullable().optional(),
   ideiaId: Id.nullable().optional(),
+  visibilidade: z.enum(VISIBILIDADES).optional(),
   origemVersao: z.string().max(40).optional(),
 });
+
+/** Dados descritivos da mídia (nunca os bytes) que acompanham cada rascunho nas respostas. */
+const COM_MIDIA = { midia: { select: { tipo: true, mime: true, nome: true, titulo: true, tamanho: true, sha256: true } } } as const;
+/** Maior arquivo aceito (o proxy web aceita até 25 MB nesta rota). */
+const MAX_MIDIA = Math.max(...Object.values(MIDIA_ACEITA).map((m) => m.max));
 const EditarRascunho = NovoRascunho.partial().strict();
 
 const uid = (req: unknown) => (req as AuthedRequest).usuarioId;
@@ -89,7 +95,7 @@ function iniciarTarefa(usuarioId: string, trabalho: () => Promise<unknown>): { t
 
 export async function registerLinkedinPipelineRoutes(app: FastifyInstance) {
   // ===================== rascunhos (tabela Post) =====================
-  app.get('/api/posts', async (req) => prisma.post.findMany({ where: { usuarioId: uid(req) }, orderBy: { atualizadoEm: 'desc' } }));
+  app.get('/api/posts', async (req) => prisma.post.findMany({ where: { usuarioId: uid(req) }, orderBy: { atualizadoEm: 'desc' }, include: COM_MIDIA }));
 
   app.post('/api/posts', async (req, reply) => {
     const b = NovoRascunho.safeParse(req.body);
@@ -105,8 +111,10 @@ export async function registerLinkedinPipelineRoutes(app: FastifyInstance) {
           usuarioId: u, titulo: d.titulo, gancho: d.gancho ?? '', corpo: d.corpo ?? '', direcaoVisual: d.direcaoVisual ?? '',
           textoAlternativo: d.textoAlternativo ?? '', roteiroSlides: d.roteiroSlides ?? '', topicoId: d.topicoId ?? null,
           formato: d.formato ?? ideia?.formato ?? 'texto', projetoId: d.projetoId ?? ideia?.projetoId ?? null, ideiaId: d.ideiaId ?? null,
+          visibilidade: d.visibilidade ?? 'PUBLIC',
           ...(publicado ? { publicado: true, status: 'publicado', publicadoEm: new Date() } : {}),
         },
+        include: COM_MIDIA,
       });
       if (post.gancho || post.corpo) await guardarVersao(tx, post, origemVersao ?? 'manual');
       if (ideia && ideia.status === 'nova') await tx.linkedinIdeia.update({ where: { id: ideia.id }, data: { status: 'em_rascunho' } });
@@ -125,7 +133,8 @@ export async function registerLinkedinPipelineRoutes(app: FastifyInstance) {
     if (d.ideiaId && !(await prisma.linkedinIdeia.count({ where: { id: d.ideiaId, usuarioId: u } }))) return reply.status(400).send({ error: 'Ideia não encontrada.' });
 
     const mudouTexto = (d.gancho !== undefined && d.gancho !== atual.gancho) || (d.corpo !== undefined && d.corpo !== atual.corpo);
-    const mudouFormato = d.formato !== undefined && d.formato !== atual.formato;
+    // a aprovação vale para um conteúdo e um público: mudar o formato ou a visibilidade também conta
+    const mudouFormato = (d.formato !== undefined && d.formato !== atual.formato) || (d.visibilidade !== undefined && d.visibilidade !== atual.visibilidade);
     if (atual.status === 'publicando') return reply.status(409).send({ error: 'Este rascunho está sendo publicado agora. Espere terminar.' });
     if (atual.status === 'publicado' && (mudouTexto || mudouFormato) && publicado !== false) {
       return reply.status(409).send({ error: 'Este rascunho já foi publicado. Crie um novo para mudar o texto.' });
@@ -137,7 +146,7 @@ export async function registerLinkedinPipelineRoutes(app: FastifyInstance) {
     if (publicado === false && atual.status === 'publicado') Object.assign(estado, { status: 'rascunho', publicado: false, publicadoEm: null, linkedinPostId: null });
 
     return prisma.$transaction(async (tx) => {
-      const post = await tx.post.update({ where: { id: atual.id }, data: { ...d, ...estado } });
+      const post = await tx.post.update({ where: { id: atual.id }, data: { ...d, ...estado }, include: COM_MIDIA });
       if (mudouTexto) await guardarVersao(tx, post, origemVersao ?? 'manual');
       return post;
     });
@@ -186,7 +195,9 @@ export async function registerLinkedinPipelineRoutes(app: FastifyInstance) {
     const bloqueios = bloqueiosDoServidor(post);
     if (bloqueios.length) return reply.status(422).send({ error: 'O texto não passa mais na verificação. Volte para rascunho e corrija.', bloqueios });
     if (b.data.canal === 'api') {
-      if (post.formato !== 'texto') return reply.status(400).send({ error: 'Pela API só sai post de texto por enquanto. Use o lembrete para este formato.' });
+      const midia = await prisma.postMidia.findUnique({ where: { postId: post.id }, select: { tipo: true, titulo: true } });
+      const semApi = motivoSemApi(post.formato as FormatoPost, midia ? { tipo: midia.tipo as TipoMidia, titulo: midia.titulo } : null);
+      if (semApi) return reply.status(400).send({ error: semApi });
       if (!(await contaPronta(u))) return reply.status(409).send({ error: 'Conecte (ou reconecte) o LinkedIn em Marca pessoal & IA para publicar pela API.' });
     }
     const [agendados, publicados] = await Promise.all([
@@ -244,6 +255,94 @@ export async function registerLinkedinPipelineRoutes(app: FastifyInstance) {
       data: { status: 'publicado', publicado: true, publicadoEm: new Date(`${b.data.publicadoEm}T12:00:00.000Z`), linkedinPostId: registro.id, agendadoPara: post.agendadoPara, ultimoErro: '' },
     });
     return { rascunho, post: paraDto(registro) };
+  });
+
+  // ----- mídia (imagem ou PDF do carrossel) -----
+  // O arquivo chega cru (application/octet-stream), sem base64: o nome e o título vão na query.
+  app.addContentTypeParser('application/octet-stream', { parseAs: 'buffer', bodyLimit: MAX_MIDIA + 1024 }, (_req, corpo, feito) => feito(null, corpo));
+
+  const editavel = (status: string) => ['rascunho', 'aprovado', 'agendado', 'falhou'].includes(status);
+  // anexar, trocar ou tirar o arquivo muda o conteúdo: desfaz a aprovação, como mudar o texto
+  const desfazSeAprovado = (status: string): Prisma.PostUpdateInput =>
+    (['aprovado', 'agendado', 'falhou'].includes(status) ? { status: 'rascunho', agendadoPara: null, aprovadoEm: null, ultimoErro: '' } : {});
+
+  app.put('/api/linkedin/rascunhos/:id/midia', { bodyLimit: MAX_MIDIA + 1024 }, async (req, reply) => {
+    const q = z.object({ nome: z.string().trim().min(1).max(200), titulo: z.string().trim().max(200).optional() }).safeParse(req.query);
+    if (!q.success || !Buffer.isBuffer(req.body)) return reply.status(400).send({ error: 'Envie o arquivo como application/octet-stream, com ?nome= na URL.' });
+    const post = await carregar(req);
+    if (!post) return naoAchei(reply);
+    if (!editavel(post.status)) return reply.status(409).send({ error: 'Não dá para trocar o arquivo de um post publicado ou sendo publicado.' });
+    const dados = req.body as Buffer;
+    const mime = mimeDoConteudo(dados);
+    const regra = mime ? MIDIA_ACEITA[mime] : undefined;
+    if (!mime || !regra) return reply.status(415).send({ error: 'Formato não aceito. Use PNG, JPG ou GIF (imagem) ou PDF (carrossel).' });
+    if (dados.length > regra.max) return reply.status(413).send({ error: `Arquivo grande demais: o limite é ${regra.max / 1024 / 1024} MB.` });
+    const titulo = (q.data.titulo ?? '').slice(0, 200) || (regra.tipo === 'documento' ? q.data.nome.replace(/\.pdf$/i, '').slice(0, 200) : '');
+    const midia = {
+      tipo: regra.tipo, mime, nome: q.data.nome, titulo, tamanho: dados.length,
+      sha256: createHash('sha256').update(dados).digest('hex'), dados: new Uint8Array(dados),
+    };
+    return prisma.$transaction(async (tx) => {
+      await tx.postMidia.upsert({ where: { postId: post.id }, update: midia, create: { postId: post.id, usuarioId: post.usuarioId, ...midia } });
+      // o formato acompanha o arquivo: imagem -> "imagem", PDF -> "carrossel"
+      return tx.post.update({ where: { id: post.id }, data: { formato: regra.formato, ...desfazSeAprovado(post.status) }, include: COM_MIDIA });
+    });
+  });
+
+  app.patch('/api/linkedin/rascunhos/:id/midia', async (req, reply) => {
+    const b = MidiaTituloInSchema.safeParse(req.body);
+    if (!b.success) return invalido(reply);
+    const post = await carregar(req);
+    if (!post) return naoAchei(reply);
+    if (!editavel(post.status)) return reply.status(409).send({ error: 'Não dá para mudar o arquivo de um post publicado.' });
+    const r = await prisma.postMidia.updateMany({ where: { postId: post.id, usuarioId: post.usuarioId }, data: { titulo: b.data.titulo } });
+    if (!r.count) return naoAchei(reply);
+    return prisma.post.update({ where: { id: post.id }, data: desfazSeAprovado(post.status), include: COM_MIDIA });
+  });
+
+  app.delete('/api/linkedin/rascunhos/:id/midia', async (req, reply) => {
+    const post = await carregar(req);
+    if (!post) return naoAchei(reply);
+    if (!editavel(post.status)) return reply.status(409).send({ error: 'Não dá para tirar o arquivo de um post publicado.' });
+    return prisma.$transaction(async (tx) => {
+      await tx.postMidia.deleteMany({ where: { postId: post.id } });
+      return tx.post.update({ where: { id: post.id }, data: desfazSeAprovado(post.status), include: COM_MIDIA });
+    });
+  });
+
+  // devolve o arquivo para a prévia na tela (só o dono)
+  app.get('/api/linkedin/rascunhos/:id/midia', async (req, reply) => {
+    const m = await prisma.postMidia.findFirst({ where: { postId: idDe(req), usuarioId: uid(req) } });
+    if (!m) return naoAchei(reply);
+    return reply
+      .header('Content-Type', m.mime)
+      .header('Content-Disposition', `inline; filename="${m.nome.replace(/[^\w.\- ]/g, '_')}"`)
+      .header('Cache-Control', 'private, max-age=60')
+      .header('X-Content-Type-Options', 'nosniff')
+      .send(Buffer.from(m.dados));
+  });
+
+  // ----- apagar no LinkedIn um post publicado pela API (o "desfazer") -----
+  app.post('/api/linkedin/posts/:id/apagar-no-linkedin', async (req, reply) => {
+    const u = uid(req);
+    const reg = await prisma.linkedinPost.findFirst({ where: { id: idDe(req), usuarioId: u } });
+    if (!reg) return naoAchei(reply);
+    if (!reg.urn) return reply.status(409).send({ error: 'Só dá para apagar por aqui o que foi publicado pela API. Apague direto no LinkedIn.' });
+    try {
+      await apagarPost(u, reg.urn);
+    } catch (e) {
+      if (e instanceof ErroLinkedin) return reply.status(e.status).send({ error: e.message });
+      throw e;
+    }
+    // o post não existe mais: sai de Publicados e o rascunho volta para ser revisto (a nota no Segundo Cérebro fica)
+    await prisma.$transaction([
+      prisma.post.updateMany({
+        where: { usuarioId: u, linkedinPostId: reg.id },
+        data: { status: 'rascunho', publicado: false, publicadoEm: null, linkedinPostId: null, agendadoPara: null, aprovadoEm: null, ultimoErro: '' },
+      }),
+      prisma.linkedinPost.delete({ where: { id: reg.id } }),
+    ]);
+    return { ok: true };
   });
 
   // ----- versões -----

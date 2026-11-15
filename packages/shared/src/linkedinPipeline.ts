@@ -108,6 +108,60 @@ export interface RascunhoLinkedin {
   publicadoEm: string | null;
   criadoEm: string;
   atualizadoEm: string;
+  visibilidade: Visibilidade;
+  /** arquivo anexado (só os dados descritivos; os bytes ficam no servidor) */
+  midia: MidiaInfo | null;
+}
+
+// ===================== Visibilidade e mídia =====================
+
+/** PUBLIC: qualquer pessoa. CONNECTIONS: só as suas conexões (bom para o primeiro teste real). */
+export const VISIBILIDADES = ['PUBLIC', 'CONNECTIONS'] as const;
+export type Visibilidade = (typeof VISIBILIDADES)[number];
+export const ROTULO_VISIBILIDADE: Record<Visibilidade, string> = { PUBLIC: 'Público', CONNECTIONS: 'Só conexões' };
+
+export type TipoMidia = 'imagem' | 'documento';
+
+export interface MidiaInfo {
+  tipo: TipoMidia;
+  mime: string;
+  nome: string;
+  /** título que o LinkedIn mostra no documento (PDF) */
+  titulo: string;
+  tamanho: number;
+  sha256: string;
+}
+
+/** Tipos aceitos, o formato de post que cada um exige e o limite de tamanho (o proxy aceita até 25 MB). */
+export const MIDIA_ACEITA: Record<string, { tipo: TipoMidia; formato: FormatoPost; max: number }> = {
+  'image/png': { tipo: 'imagem', formato: 'imagem', max: 8 * 1024 * 1024 },
+  'image/jpeg': { tipo: 'imagem', formato: 'imagem', max: 8 * 1024 * 1024 },
+  'image/gif': { tipo: 'imagem', formato: 'imagem', max: 8 * 1024 * 1024 },
+  'application/pdf': { tipo: 'documento', formato: 'carrossel', max: 20 * 1024 * 1024 },
+};
+
+/** Assinatura binária do arquivo: o tipo declarado pelo navegador não basta. */
+export function mimeDoConteudo(b: Uint8Array): string | null {
+  const ini = (bytes: number[]) => bytes.every((v, i) => b[i] === v);
+  if (ini([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'image/png';
+  if (ini([0xff, 0xd8, 0xff])) return 'image/jpeg';
+  if (ini([0x47, 0x49, 0x46, 0x38])) return 'image/gif';
+  if (ini([0x25, 0x50, 0x44, 0x46, 0x2d])) return 'application/pdf';
+  return null;
+}
+
+/**
+ * O que a API do LinkedIn consegue publicar sozinha para este rascunho. `null` = pode;
+ * texto = o motivo (a tela mostra e o servidor recusa com a mesma frase).
+ */
+export function motivoSemApi(formato: FormatoPost, midia: Pick<MidiaInfo, 'tipo' | 'titulo'> | null): string | null {
+  if (formato === 'texto') return midia ? 'Post de texto com arquivo anexado: remova o arquivo ou mude o formato para imagem ou carrossel.' : null;
+  if (formato === 'imagem') return midia?.tipo === 'imagem' ? null : 'Anexe a imagem (PNG, JPG ou GIF, até 8 MB) antes de publicar pela API.';
+  if (formato === 'carrossel') {
+    if (midia?.tipo !== 'documento') return 'Anexe o PDF do carrossel (até 20 MB) antes de publicar pela API.';
+    return midia.titulo.trim() ? null : 'Dê um título ao documento: o LinkedIn exige para PDF.';
+  }
+  return `Pela API ainda não sai post de ${formato}. Publique à mão e registre o link.`;
 }
 
 export interface VersaoRascunho {
@@ -242,6 +296,8 @@ export function avaliarAgendamento(quando: string, agora: Date, outros: string[]
   const avisos = hora < 6 || hora >= 22 ? ['Horário fora de 6h–22h: pouca gente vê na primeira hora, que é quando o post ganha alcance.'] : [];
   return { erro: null, conflito, avisos };
 }
+
+export const MidiaTituloInSchema = z.object({ titulo: z.string().trim().max(200) });
 
 export const AgendarInSchema = z.object({
   /** instante ISO com fuso (ex.: 2026-11-20T12:00:00.000Z) */

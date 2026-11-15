@@ -153,10 +153,32 @@ model Post {
   aprovadoEm     DateTime?
   publicadoEm    DateTime?
   atualizadoEm   DateTime  @default(now()) @updatedAt
+  visibilidade   String    @default("PUBLIC") // PUBLIC | CONNECTIONS (só as conexões veem)
   versoes        PostVersao[]
+  midia          PostMidia?
 
   @@index([usuarioId])
   @@index([status, agendadoPara])
+}
+
+// Arquivo anexado ao rascunho para publicar pela API: imagem (formato "imagem") ou PDF
+// (formato "carrossel", que o LinkedIn mostra como documento). Tabela separada para a lista
+// de rascunhos não carregar os bytes. Fica fora do backup cifrado (é material de publicação,
+// recriável); quem restaurar um backup reanexa o arquivo.
+model PostMidia {
+  postId    String   @id
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  usuarioId String
+  tipo      String   // imagem | documento
+  mime      String   // image/png | image/jpeg | image/gif | application/pdf
+  nome      String
+  titulo    String   @default("") // título do documento no LinkedIn (obrigatório para PDF)
+  tamanho   Int
+  sha256    String
+  dados     Bytes
+  criadoEm  DateTime @default(now())
+
+  @@index([usuarioId])
 }
 
 // Histórico do texto de um rascunho. Refinar com a IA cria uma versão nova em vez de

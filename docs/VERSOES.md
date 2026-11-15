@@ -8,6 +8,7 @@ A versão aparece no rodapé do menu lateral (`v0.17.0 · build dd/mm hh:mm`) e 
 
 | Versão | Data | O que entrou |
 |---|---|---|
+| 0.28.0 | 15/11/2026 | LinkedIn: publicar pela API também imagem (PNG, JPG, GIF até 8 MB) e PDF como documento/carrossel (até 20 MB), anexados no Estúdio e conferidos pelo conteúdo; visibilidade "Público" ou "Só conexões"; "Apagar no LinkedIn" para posts publicados pelo servidor; aviso claro quando a versão da API for desativada (426) |
 | 0.27.1 | 15/11/2026 | Agents: atalho visível para criar o Operador do Homelab como rascunho quando ele ainda não existe na lista |
 | 0.27.0 | 15/11/2026 | Separação entre Laboratório, Produção e Não classificado no Radar, Wazuh e observações ATT&CK; ambiente persistido e filtrado no servidor, independente da origem pública/privada; coletor encaminha metadados de alertas de produção mesmo sem IP ou MITRE, sem aplicar exclusões do laboratório |
 | 0.26.1 | 15/11/2026 | Corrige o repasse das variáveis de conexão do Zabbix para o container da API; atualiza a descrição da integração Wazuh no deploy |

@@ -36,7 +36,7 @@ const Post = z.object({
   // pipeline do LinkedIn (backups anteriores a 2026-11-15 não têm estes campos)
   status: z.string().optional(), formato: z.string().optional(), projetoId: z.string().nullable().optional(), ideiaId: z.string().nullable().optional(),
   agendadoPara: z.coerce.date().nullable().optional(), canal: z.string().optional(), tentativas: z.number().int().optional(), ultimoErro: z.string().optional(),
-  linkedinPostId: z.string().nullable().optional(), aprovadoEm: z.coerce.date().nullable().optional(), publicadoEm: z.coerce.date().nullable().optional(), atualizadoEm: z.coerce.date().optional(),
+  linkedinPostId: z.string().nullable().optional(), visibilidade: z.string().optional(), aprovadoEm: z.coerce.date().nullable().optional(), publicadoEm: z.coerce.date().nullable().optional(), atualizadoEm: z.coerce.date().optional(),
 });
 const PostVersao = z.object({ id: z.string(), postId: z.string(), usuarioId: z.string(), numero: z.number().int(), gancho: z.string(), corpo: z.string(), origem: z.string(), criadoEm: z.coerce.date().optional() });
 const LinkedinProjeto = z.object({ id: z.string(), usuarioId: z.string(), nome: z.string(), descricao: z.string(), objetivo: z.string(), pilar: z.string().nullable(), status: z.string(), criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional() });

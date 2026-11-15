@@ -26,6 +26,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-15-linkedin-midia',
+    data: '2026-11-15',
+    titulo: 'Imagem, PDF e um "desfazer" de verdade na publicação automática',
+    descricao:
+      'A publicação pelo servidor passou a levar imagem e PDF, que o LinkedIn mostra como documento. Duas decisões ' +
+      'de segurança vieram juntas. O tipo do arquivo é conferido pelos primeiros bytes, não pelo nome nem pelo que o ' +
+      'navegador declara, então um arquivo disfarçado não passa. E anexar, trocar ou tirar o arquivo desfaz a aprovação, ' +
+      'como já acontecia com o texto: a aprovação vale para o conteúdo inteiro. Também entraram a opção de publicar só ' +
+      'para conexões, útil para o primeiro teste real, e o botão que apaga do perfil um post publicado pelo servidor. ' +
+      'Uma referência pronta, escrita para outro framework, serviu de base: em vez de instalar uma segunda versão do ' +
+      'módulo, só a lógica que faltava foi portada para o que já estava no ar.',
+    categoria: 'funcionalidade',
+    tags: ['linkedin', 'api', 'upload', 'seguranca'],
+  },
+  {
     id: 'proj-2026-11-15-agente-homelab-visivel',
     data: '2026-11-15',
     titulo: 'O operador do homelab ficou visível na central de Agents',

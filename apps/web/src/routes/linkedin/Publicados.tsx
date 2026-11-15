@@ -12,6 +12,7 @@ import {
   editarPublicado, getEstrategia, importarPublicados, juntarDiario, lerSharesCsv, listDiarioServidor, mensagemErro,
   organizarPost, removerPublicado, sincronizarCerebro,
 } from '@/services/linkedin';
+import { apagarNoLinkedin as apagarNoLinkedin_ } from '@/services/linkedinPipeline';
 import { useOpcoesDeProjeto, useProjetos, usePublicados, useStatusIA } from './dados';
 import type { PedidoEstudio } from './Estudio';
 import { nomeDoProjeto } from './pipelineRegras';
@@ -101,6 +102,16 @@ export function Publicados({ onUsarIdeia }: { onUsarIdeia: (p: PedidoEstudio) =>
     });
   }
 
+  function apagarNoLinkedin(post: PostPublicado) {
+    confirmDialog({
+      header: 'Apagar o post no LinkedIn',
+      message: <span>O servidor apaga do seu perfil o post de <strong>{post.publicadoEm}</strong>, com reações e comentários. Não dá para desfazer.<br />
+        <small className="iv-muted">O registro sai de Publicados, o rascunho volta para revisão no Pipeline e a nota no Segundo Cérebro continua.</small></span>,
+      icon: 'pi pi-exclamation-triangle', acceptLabel: 'Apagar no LinkedIn', rejectLabel: 'Cancelar', acceptClassName: 'p-button-danger',
+      accept: () => comOcupado(post, 'Apagando...', async () => { await apagarNoLinkedin_(post.id); sel.close(); invalidate('linkedin-rascunhos'); }, 'Post apagado no LinkedIn. O rascunho voltou para o Pipeline.'),
+    });
+  }
+
   return (
     <div>
       <StatusStrip tone={r.pendentes.length ? 'warn' : 'ok'} icon="pi-linkedin">
@@ -164,6 +175,7 @@ export function Publicados({ onUsarIdeia }: { onUsarIdeia: (p: PedidoEstudio) =>
           onReenviar={() => comOcupado(sel.item!, 'Enviando...', () => sincronizarCerebro(sel.item!.id), 'Nota atualizada no Segundo Cérebro.')}
           onProjeto={(projetoId) => comOcupado(sel.item!, 'Salvando...', () => editarPublicado(sel.item!.id, { projetoId }), projetoId ? 'Post ligado ao projeto.' : 'Post sem projeto.')}
           onExcluir={() => excluir(sel.item!)}
+          onApagarNoLinkedin={() => apagarNoLinkedin(sel.item!)}
           onUsarIdeia={(ideia) => { const post = sel.item!; sel.close(); onUsarIdeia({ briefing: ideia, pilar: post.analise?.pilar, projetoId: post.projetoId }); }} />
       )}
 

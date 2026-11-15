@@ -3,7 +3,7 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { SelectButton } from 'primereact/selectbutton';
-import { avaliarAgendamento, type CanalPublicacao, type RascunhoLinkedin } from '@seginfo/shared';
+import { avaliarAgendamento, motivoSemApi, ROTULO_VISIBILIDADE, type CanalPublicacao, type RascunhoLinkedin } from '@seginfo/shared';
 import { FormField } from '@/components/ui/FormField';
 import { mensagemErro } from '@/services/linkedin';
 import { agendarRascunho } from '@/services/linkedinPipeline';
@@ -23,7 +23,7 @@ export function AgendarDialog({ rascunho, ocupados, contaConectada, onClose, onA
   onAgendado: () => void;
 }) {
   const motivoApi = !contaConectada ? 'Conecte o LinkedIn na aba "Marca pessoal & IA" para o servidor publicar.'
-    : rascunho.formato !== 'texto' ? `Por enquanto a API publica só texto; este rascunho é ${rascunho.formato}. Use o lembrete e suba a mídia à mão.` : '';
+    : motivoSemApi(rascunho.formato, rascunho.midia ?? null) ?? '';
   const [valor, setValor] = useState(() => (rascunho.agendadoPara ? paraDatetimeLocal(rascunho.agendadoPara) : sugestaoDeHorario(new Date())));
   const [canal, setCanal] = useState<CanalPublicacao>(rascunho.canal === 'api' && !motivoApi ? 'api' : 'lembrete');
   const [erro, setErro] = useState('');
@@ -65,7 +65,7 @@ export function AgendarDialog({ rascunho, ocupados, contaConectada, onClose, onA
         </div>
       )}>
       <form className="iv-form" onSubmit={(ev) => salvar(ev, !!conflito)}>
-        <p className="iv-muted ca-small ca-mb0"><strong>{rascunho.titulo}</strong></p>
+        <p className="iv-muted ca-small ca-mb0"><strong>{rascunho.titulo}</strong> · {ROTULO_VISIBILIDADE[rascunho.visibilidade ?? 'PUBLIC']}{rascunho.midia ? ` · com ${rascunho.midia.tipo === 'imagem' ? 'imagem' : 'PDF'}` : ''}</p>
         <div className="iv-form__grid">
           <FormField id="ag-quando" label="Data e hora" required full error={erro} hint="No horário deste computador.">
             <InputText id="ag-quando" type="datetime-local" value={valor} min={paraDatetimeLocal(new Date())}

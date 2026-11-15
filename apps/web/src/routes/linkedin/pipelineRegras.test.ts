@@ -11,7 +11,8 @@ const rascunho = (id: string, extra: Partial<RascunhoLinkedin> = {}): RascunhoLi
   id, titulo: `Rascunho ${id}`, gancho: 'g', corpo: 'c', direcaoVisual: '', textoAlternativo: '', roteiroSlides: '',
   topicoId: null, publicado: false, status: 'rascunho', formato: 'texto', projetoId: null, ideiaId: null,
   agendadoPara: null, canal: 'lembrete', tentativas: 0, ultimoErro: '', linkedinPostId: null, aprovadoEm: null,
-  publicadoEm: null, criadoEm: '2026-11-01T10:00:00.000Z', atualizadoEm: '2026-11-01T10:00:00.000Z', ...extra,
+  publicadoEm: null, criadoEm: '2026-11-01T10:00:00.000Z', atualizadoEm: '2026-11-01T10:00:00.000Z',
+  visibilidade: 'PUBLIC', midia: null, ...extra,
 });
 
 const post = (id: string, extra: Partial<PostPublicado> = {}): PostPublicado => ({

@@ -187,30 +187,89 @@ export function paraLittleText(texto: string): string {
 
 export interface Publicado { urn: string; url: string }
 
+const cabecalhos = (token: string, json = true): Record<string, string> => ({
+  Authorization: `Bearer ${token}`,
+  'LinkedIn-Version': versaoApi(),
+  'X-Restli-Protocol-Version': '2.0.0',
+  ...(json ? { 'Content-Type': 'application/json' } : {}),
+});
+
+/** Erro do LinkedIn ANTES de criar o post (upload, por exemplo): nada saiu, então pode tentar de novo. */
+async function erroDeEtapa(res: Response, etapa: string, usuarioId: string): Promise<ErroLinkedin> {
+  const corpo = (await res.json().catch(() => ({}))) as { message?: string };
+  const detalhe = (corpo.message ?? '').slice(0, 200);
+  if (res.status === 401) {
+    const msg = 'O LinkedIn recusou o token (expirado ou revogado). Reconecte em Marca pessoal & IA.';
+    await prisma.linkedinConta.updateMany({ where: { usuarioId }, data: { ultimoErro: msg } });
+    return new ErroLinkedin(401, msg);
+  }
+  if (res.status === 426) return new ErroLinkedin(502, `A versão ${versaoApi()} da API do LinkedIn foi desativada. Defina LINKEDIN_API_VERSION com um mês mais recente.`);
+  return new ErroLinkedin(502, `O LinkedIn recusou ${etapa} (${res.status}${detalhe ? `: ${detalhe}` : ''}).`, res.status >= 500 || res.status === 429);
+}
+
 /**
- * Publica um post de TEXTO no perfil. Mídia (imagem, documento, vídeo) exige upload em etapas
- * e ainda não é feita por aqui: esses formatos seguem pelo canal "lembrete".
+ * Sobe a imagem ou o PDF em duas etapas (initializeUpload + PUT) e devolve a URN do recurso.
+ * Nenhum post é criado aqui, então qualquer falha pode ser repetida com segurança.
  */
-export async function publicarTexto(usuarioId: string, texto: string): Promise<Publicado> {
+async function subirMidia(usuarioId: string, token: string, owner: string, m: MidiaParaPublicar): Promise<string> {
+  const tipo = m.tipo === 'imagem' ? 'images' : 'documents';
+  let res: Response;
+  try {
+    res = await fetch(`${API}/rest/${tipo}?action=initializeUpload`, {
+      method: 'POST', headers: cabecalhos(token),
+      body: JSON.stringify({ initializeUploadRequest: { owner } }),
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch {
+    throw new ErroLinkedin(504, 'O LinkedIn não respondeu ao preparar o envio do arquivo. Tente de novo.', true);
+  }
+  if (!res.ok) throw await erroDeEtapa(res, 'o envio do arquivo', usuarioId);
+  const { value } = (await res.json()) as { value?: { uploadUrl?: string; image?: string; document?: string } };
+  const urn = value?.image ?? value?.document;
+  if (!value?.uploadUrl || !urn) throw new ErroLinkedin(502, 'O LinkedIn não devolveu o endereço de envio do arquivo.', true);
+  let put: Response;
+  try {
+    put = await fetch(value.uploadUrl, {
+      method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': m.mime },
+      body: new Uint8Array(m.dados), signal: AbortSignal.timeout(120_000),
+    });
+  } catch {
+    throw new ErroLinkedin(504, 'O envio do arquivo ao LinkedIn não terminou. Tente de novo.', true);
+  }
+  if (!put.ok) throw await erroDeEtapa(put, 'o arquivo', usuarioId);
+  return urn;
+}
+
+export interface MidiaParaPublicar { tipo: 'imagem' | 'documento'; mime: string; titulo: string; dados: Uint8Array }
+
+/** Corpo do POST /rest/posts (função pura, testada). */
+export function corpoDoPost(p: { autor: string; texto: string; visibilidade: 'PUBLIC' | 'CONNECTIONS'; midia?: { id: string; titulo?: string } }) {
+  return {
+    author: p.autor,
+    commentary: paraLittleText(p.texto),
+    visibility: p.visibilidade,
+    distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] },
+    ...(p.midia ? { content: { media: { id: p.midia.id, ...(p.midia.titulo ? { title: p.midia.titulo } : {}) } } } : {}),
+    lifecycleState: 'PUBLISHED',
+    isReshareDisabledByAuthor: false,
+  };
+}
+
+/**
+ * Publica no perfil: texto e, se houver, a imagem ou o PDF (que o LinkedIn mostra como documento,
+ * o "carrossel" orgânico). O arquivo sobe antes; só depois o post é criado.
+ */
+export async function publicar(usuarioId: string, p: { texto: string; visibilidade: 'PUBLIC' | 'CONNECTIONS'; midia?: MidiaParaPublicar }): Promise<Publicado> {
   const { token, personUrn } = await tokenDe(usuarioId);
+  const midia = p.midia
+    ? { id: await subirMidia(usuarioId, token, personUrn, p.midia), titulo: p.midia.tipo === 'documento' ? p.midia.titulo : undefined }
+    : undefined;
   let res: Response;
   try {
     res = await fetch(`${API}/rest/posts`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'LinkedIn-Version': versaoApi(),
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-      body: JSON.stringify({
-        author: personUrn,
-        commentary: paraLittleText(texto),
-        visibility: 'PUBLIC',
-        distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] },
-        lifecycleState: 'PUBLISHED',
-        isReshareDisabledByAuthor: false,
-      }),
+      headers: cabecalhos(token),
+      body: JSON.stringify(corpoDoPost({ autor: personUrn, texto: p.texto, visibilidade: p.visibilidade, midia })),
       signal: AbortSignal.timeout(45_000),
     });
   } catch {
@@ -230,9 +289,27 @@ export async function publicarTexto(usuarioId: string, texto: string): Promise<P
     throw new ErroLinkedin(401, msg);
   }
   if (res.status === 429) throw new ErroLinkedin(429, 'Limite de publicações da API do LinkedIn atingido. Tente mais tarde.', true);
+  if (res.status === 426) throw new ErroLinkedin(502, `A versão ${versaoApi()} da API do LinkedIn foi desativada. Defina LINKEDIN_API_VERSION com um mês mais recente.`);
   if (res.status === 422 && /duplicate/i.test(detalhe)) throw new ErroLinkedin(409, 'O LinkedIn recusou por ser conteúdo duplicado: este texto já foi publicado.');
   // 5xx: o LinkedIn respondeu com erro, então o post NÃO foi criado; pode tentar de novo
   throw new ErroLinkedin(502, `O LinkedIn recusou a publicação (${res.status}${detalhe ? `: ${detalhe}` : ''}).`, res.status >= 500);
+}
+
+/** Apaga um post publicado pela API (o "desfazer"). Apagar de novo um post já apagado também dá certo. */
+export async function apagarPost(usuarioId: string, urn: string): Promise<void> {
+  if (!/^urn:li:(share|ugcPost):\d+$/.test(urn)) throw new ErroLinkedin(400, 'Identificador de post inválido.');
+  const { token } = await tokenDe(usuarioId);
+  let res: Response;
+  try {
+    res = await fetch(`${API}/rest/posts/${encodeURIComponent(urn)}`, {
+      method: 'DELETE', headers: { ...cabecalhos(token, false), 'X-RestLi-Method': 'DELETE' },
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch {
+    throw new ErroLinkedin(504, 'O LinkedIn não respondeu. Confira no seu perfil se o post ainda está lá.');
+  }
+  if (res.status === 204 || res.status === 404) return;
+  throw await erroDeEtapa(res, 'a exclusão do post', usuarioId);
 }
 
 export async function desconectar(usuarioId: string): Promise<void> {
