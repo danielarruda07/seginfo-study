@@ -37,6 +37,8 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: '/radar', label: 'Radar', icon: 'pi-eye' },
       { to: '/wazuh', label: 'Wazuh', icon: 'pi-shield' },
       { to: '/laudos', label: 'Laudos dos alvos', icon: 'pi-file-check' },
+      { to: '/investigacoes', label: 'Investigações', icon: 'pi-search' },
+      { to: '/artefatos', label: 'Biblioteca de artefatos', icon: 'pi-folder-open' },
       { to: '/attack', label: 'Matriz ATT&CK', icon: 'pi-table' },
       { to: '/ameacas', label: 'Ameaças (KEV)', icon: 'pi-exclamation-triangle' },
     ],

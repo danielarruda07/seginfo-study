@@ -436,14 +436,50 @@ def gravar_estado(st):
     os.replace(p + '.tmp', p)
 
 
-def enviar(laudo):
-    url = (E('INGEST_URL') or '').rstrip('/') + '/pericia'
+def enviar(laudo, rota='pericia'):
+    url = (E('INGEST_URL') or '').rstrip('/') + '/' + rota
     req = urllib.request.Request(url, data=json.dumps(laudo).encode(), method='POST', headers={
         'Content-Type': 'application/json', 'CF-Access-Client-Id': E('CF_ACCESS_CLIENT_ID', ''),
         'CF-Access-Client-Secret': E('CF_ACCESS_CLIENT_SECRET', ''), 'X-Ingest-Token': E('INGEST_TOKEN', ''),
         'User-Agent': 'seginfo-pericia/1'})
     with urllib.request.urlopen(req, timeout=60) as r:
         return json.load(r)
+
+
+def enviar_amostras(laudo):
+    """Somente arquivos já preservados pelo coletor; hash verificado, nunca executa."""
+    for a in laudo.get('amostras', []):
+        sha = a.get('sha256', '')
+        if not a.get('guardada') or len(sha) != 64 or any(c not in '0123456789abcdef' for c in sha):
+            continue
+        caminho = os.path.join(STATE, 'amostras', sha + '.bin')
+        with open(caminho, 'rb') as f:
+            conteudo = f.read(8 * 1_048_576 + 1)
+        if len(conteudo) > 8 * 1_048_576:
+            log('amostra acima do limite da biblioteca:', sha)
+            continue
+        if hashlib.sha256(conteudo).hexdigest() != sha:
+            raise ValueError('amostra local não confere com SHA-256')
+        enviar({'sha256': sha, 'base64': base64.b64encode(conteudo).decode('ascii')}, 'amostra')
+
+
+def importar_biblioteca():
+    """Reenvia laudos e amostras já guardados, sem inspecionar ou resetar VMs."""
+    falhas = 0
+    for caminho in sorted(glob.glob(os.path.join(STATE, 'laudos', '*.json'))):
+        try:
+            with open(caminho) as f:
+                laudo = json.load(f)
+            if DRY:
+                log('[dry-run] biblioteca:', os.path.basename(caminho))
+                continue
+            enviar(laudo)
+            enviar_amostras(laudo)
+            log('biblioteca:', os.path.basename(caminho), 'enviado')
+        except Exception as e:
+            log('biblioteca: falha', os.path.basename(caminho), type(e).__name__)
+            falhas += 1
+    return 1 if falhas else 0
 
 
 def laudo_do_alvo(vmid, sistema, sensor, estado, agora):
@@ -558,6 +594,7 @@ def main():
             r = enviar(laudo)
             log(resumo, '->', 'enviado' if r.get('ok') else r)
             estado[str(vmid)] = agora
+            enviar_amostras(laudo)
         except urllib.error.HTTPError as e:
             log(f'{vmid}: envio recusado {e.code}: {e.read()[:200]!r}')
             falhas += 1
@@ -570,4 +607,4 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(importar_biblioteca() if '--biblioteca' in sys.argv else main())

@@ -4,6 +4,7 @@ import { prisma } from './db.js';
 import { requireUser, type AuthedRequest } from './auth.js';
 import { registerRadarRoutes } from './radar.js';
 import { registerPericiaRoutes } from './pericia.js';
+import { registerArtefatosRoutes } from './artefatos.js';
 import { registerMemoriaRoutes } from './memorias.js';
 import { origemOk, registerStorageRoutes } from './storage-routes.js';
 import { registerKevRoutes } from './kev.js';
@@ -273,6 +274,7 @@ export async function registerStateRoutes(app: FastifyInstance) {
   // ---------- Radar de Ataques (análise; herda o hook de identidade acima) ----------
   await registerRadarRoutes(app);
   await registerPericiaRoutes(app);
+  await registerArtefatosRoutes(app);
 
   // ---------- Armazenamento externo (OneDrive) e backups ----------
   await registerStorageRoutes(app);

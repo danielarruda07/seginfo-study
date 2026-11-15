@@ -71,6 +71,9 @@ const Exportacao = z.object({
   // Pipeline do LinkedIn (backups anteriores a 2026-11-15 não têm estas chaves)
   linkedinProjetos: z.array(LinkedinProjeto).default([]), linkedinIdeias: z.array(LinkedinIdeia).default([]),
   postVersoes: z.array(PostVersao).default([]),
+  artefatosAtaque: z.array(z.object({ id: z.string(), usuarioId: z.string(), chave: z.string(), tipo: z.string(), nome: z.string(), conteudo: z.string(), sha256: z.string().nullable(), formato: z.string(), resumo: z.string(), categoria: z.string(), notas: z.string(), tags: z.array(z.string()), favorito: z.boolean(), amostraBase64: z.string().nullable(), criadoEm: z.coerce.date(), atualizadoEm: z.coerce.date() })).default([]),
+  artefatoOcorrencias: z.array(z.object({ id: z.string(), artefatoId: z.string(), chave: z.string(), alvo: z.string().nullable(), origem: z.string(), referencia: z.string(), caminho: z.string().nullable(), ip: z.string().nullable(), sessao: z.string().nullable(), quando: z.coerce.date(), contexto: z.unknown() })).default([]),
+  pericias: z.array(z.object({ id: z.string(), usuarioId: z.string(), alvo: z.string(), vmid: z.number().int(), sistema: z.string(), sensor: z.string().nullable(), janelaInicio: z.coerce.date(), janelaFim: z.coerce.date(), resumo: z.unknown(), dados: z.unknown(), criadoEm: z.coerce.date() })).default([]),
 });
 
 try {
@@ -81,7 +84,7 @@ try {
   const backup = parsed.data;
   const rows = [...backup.progresso, ...backup.sessoes, ...backup.metas, ...backup.posts,
     ...backup.arsenal, ...backup.biblioteca, ...backup.ataques, ...backup.memorias,
-    ...backup.linkedinPosts, ...backup.diario, ...backup.agentes, ...backup.agenteAvaliacoes, ...backup.agenteExecucoes,
+    ...backup.linkedinPosts, ...backup.diario, ...backup.agentes, ...backup.agenteAvaliacoes, ...backup.agenteExecucoes, ...backup.artefatosAtaque, ...backup.pericias,
     ...backup.linkedinProjetos, ...backup.linkedinIdeias, ...backup.postVersoes];
   const userIds = new Set([...rows.map((r) => r.usuarioId), ...(backup.cofre ? [backup.cofre.usuarioId] : []), ...(backup.linkedinEstrategia ? [backup.linkedinEstrategia.usuarioId] : [])]);
   const userId = backup.usuario?.id ?? [...userIds][0];
@@ -151,6 +154,13 @@ try {
           pendencia: json(e.pendencia),
         })),
       }),
+    );
+    const idsArtefatos = new Set(backup.artefatosAtaque.map((a) => a.id));
+    if (backup.artefatoOcorrencias.some((o) => !idsArtefatos.has(o.artefatoId))) throw new Error('Ocorrência sem artefato no backup.');
+    ops.push(
+      prisma.artefatoAtaque.createMany({ data: backup.artefatosAtaque }),
+      prisma.artefatoOcorrencia.createMany({ data: backup.artefatoOcorrencias.map((o) => ({ ...o, contexto: o.contexto as Prisma.InputJsonValue })) }),
+      prisma.pericia.createMany({ data: backup.pericias.map((p) => ({ ...p, resumo: p.resumo as Prisma.InputJsonValue, dados: p.dados as Prisma.InputJsonValue })) }),
     );
     await prisma.$transaction(ops);
 

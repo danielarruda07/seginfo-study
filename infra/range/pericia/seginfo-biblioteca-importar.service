@@ -1,0 +1,19 @@
+[Unit]
+Description=Importa laudos e amostras preservadas na biblioteca (sem reset de VMs)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=seginfo-fwd
+Group=wazuh
+EnvironmentFile=/etc/seginfo-reset.env
+EnvironmentFile=/etc/seginfo-forwarder.env
+EnvironmentFile=/etc/seginfo-pericia.env
+ExecStart=/usr/bin/python3 /opt/seginfo-pericia/seginfo-pericia.py --biblioteca
+StateDirectory=seginfo-pericia
+StateDirectoryMode=0700
+TimeoutStartSec=2h
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true

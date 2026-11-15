@@ -31,6 +31,8 @@ Se as variáveis estiverem ausentes, o painel ainda lista os alertas que já che
 
 O forwarder no manager lê `/var/ossec/logs/alerts/alerts.json`, transforma fontes suportadas e envia lotes à API com Cloudflare Access Service Token e `X-Ingest-Token`. A API valida as credenciais, normaliza e deduplica os eventos no PostgreSQL. Esse pipeline é separado da consulta REST de saúde acima. A rota `/api/ingest/pericia` também recebe relatórios de perícia dos alvos antes do reset, exibidos em **Laudos dos alvos**.
 
+**Inteligência → Investigações** reúne os laudos por janela e correlaciona eventos significativos do Radar pelo sensor e horário. O dossiê apresenta linha do tempo, arquivos e hashes, persistência, processos, conexões e invasores correlacionados, com filtros por alvo e sistema. A **Matriz ATT&CK** mantém separadas as técnicas vindas dos eventos do Radar e as sugeridas pelos tipos de persistência dos laudos (últimos 90 dias); o segundo mapeamento é uma pista para revisão, não confirmação automática de execução. Amostras continuam na VM do Wazuh; o app guarda metadados e hashes.
+
 Como a origem é `alerts.json`, a cobertura depende das regras e do limiar de alerta do Wazuh e do que o forwarder sabe normalizar. Para investigação completa ou busca de eventos abaixo desse limiar, use o Wazuh Indexer/Dashboard; esta página não substitui essas ferramentas.
 
 ## Fonte nova: prompt honeypot HTTP
