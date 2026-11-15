@@ -30,7 +30,7 @@ export const acaoMeta = (acao: string): AcaoMeta =>
 
 export const FONTE_LABEL: Record<string, string> = {
   fortigate: 'FortiGate', windows: 'Windows', cowrie: 'Cowrie (honeypot SSH)', dionaea: 'Dionaea (honeypot)', heralding: 'Heralding (honeypot de credenciais)',
-  isca: 'Iscas (Redis/ES/Docker)', opencanary: 'OpenCanary (honeypot)', outro: 'Outro',
+  isca: 'Iscas (Redis/ES/Docker)', prompt_honeypot: 'Prompt honeypot (HTTP)', opencanary: 'OpenCanary (honeypot)', outro: 'Outro',
 };
 
 /** Espelho do mapeamento ação → técnica feito pela API do Radar (apps/api/src/radar.ts). */

@@ -18,6 +18,7 @@ const Biblioteca = lazy(async () => ({ default: (await import('@/routes/Bibliote
 const Radar = lazy(async () => ({ default: (await import('@/routes/Radar')).Radar }));
 const Wazuh = lazy(async () => ({ default: (await import('@/routes/Wazuh')).Wazuh }));
 const Laudos = lazy(async () => ({ default: (await import('@/routes/Laudos')).Laudos }));
+const Investigacoes = lazy(async () => ({ default: (await import('@/routes/Investigacoes')).Investigacoes }));
 const Armazenamento = lazy(async () => ({ default: (await import('@/routes/Armazenamento')).Armazenamento }));
 const Cerebro = lazy(async () => ({ default: (await import('@/routes/Cerebro')).Cerebro }));
 const Attack = lazy(async () => ({ default: (await import('@/routes/Attack')).Attack }));
@@ -52,6 +53,7 @@ const bibliotecaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/b
 const radarRoute = createRoute({ getParentRoute: () => rootRoute, path: '/radar', component: Radar });
 const wazuhRoute = createRoute({ getParentRoute: () => rootRoute, path: '/wazuh', component: Wazuh });
 const laudosRoute = createRoute({ getParentRoute: () => rootRoute, path: '/laudos', component: Laudos });
+const investigacoesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/investigacoes', component: Investigacoes });
 const armazenamentoRoute = createRoute({ getParentRoute: () => rootRoute, path: '/armazenamento', component: Armazenamento });
 const cerebroRoute = createRoute({ getParentRoute: () => rootRoute, path: '/cerebro', component: Cerebro });
 const attackRoute = createRoute({ getParentRoute: () => rootRoute, path: '/attack', component: Attack });
@@ -99,6 +101,7 @@ const routeTree = rootRoute.addChildren([
   radarRoute,
   wazuhRoute,
   laudosRoute,
+  investigacoesRoute,
   armazenamentoRoute,
   cerebroRoute,
   portfolioRoute,

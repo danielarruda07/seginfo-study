@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from 'primereact/button';
+import { Link } from '@tanstack/react-router';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
-import { Kpi, StatusStrip } from '@/components/InfraKit';
+import { Kpi, Pill, StatusStrip } from '@/components/InfraKit';
 import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getRadarResumo } from '@/services/radar';
+import { getPericiaTecnicas } from '@/services/pericia';
+import { getTecnica } from '@/data/attack';
 import { listPurpleExercises } from '@/services/exerciciosPurple';
 import { TATICAS, calcularCobertura, resumoCobertura, camadaNavigator, pontuacao, type CoberturaTecnica } from '@/services/attack';
 import { CAMADAS, proximoPassoTecnica, tecnicaVisivel, temCamada, type Camada } from './inteligencia/regras';
@@ -25,10 +28,17 @@ function baixarJson(nome: string, dados: unknown) {
 
 const ORDEM_TATICA = new Map(TATICAS.map((t, i) => [t.id, i]));
 const CAMADA_LABEL: Record<Camada, string> = Object.fromEntries(CAMADAS.map((c) => [c.id, c.label])) as Record<Camada, string>;
+const NOME_TECNICA_PERICIA: Record<string, string> = {
+  'T1053.003': 'Cron', 'T1543.002': 'Systemd Service', 'T1546.004': 'Unix Shell Configuration Modification',
+  'T1098.004': 'SSH Authorized Keys', 'T1574.006': 'Dynamic Linker Hijacking', 'T1037.004': 'RC Scripts',
+  'T1543.003': 'Windows Service', 'T1053.005': 'Scheduled Task', 'T1547.001': 'Registry Run Keys / Startup Folder',
+  'T1546.003': 'WMI Event Subscription', 'T1136.001': 'Local Account', 'T1098.007': 'Additional Local or Domain Groups',
+};
 
 export function Attack() {
   // Radar só existe no modo servidor; sem ele a camada "observada" fica vazia.
   const radar = useQuery({ queryKey: ['radar', 'resumo', 30], queryFn: () => getRadarResumo(30), retry: false });
+  const pericia = useQuery({ queryKey: ['pericia', 'tecnicas'], queryFn: getPericiaTecnicas, retry: false });
   const observadas = useMemo(() => Object.fromEntries((radar.data?.mitre ?? []).map((m) => [m.id, m.eventos])), [radar.data]);
   const [versao, setVersao] = useState(0); // força recálculo após marcar detecção
   const cobertura = useMemo(() => calcularCobertura(observadas), [observadas, versao]);
@@ -65,6 +75,7 @@ export function Attack() {
       {radar.isError && (
         <StatusStrip icon="pi-info-circle">Radar indisponível (modo local ou API fora): a camada "Vi no Radar" fica vazia.</StatusStrip>
       )}
+      {pericia.isError && <StatusStrip icon="pi-info-circle">Não foi possível carregar agora as técnicas sugeridas pelos laudos periciais.</StatusStrip>}
 
       <div className="iv-kpis iv-mt">
         <Kpi label="Observação · Radar real" icon="pi-eye" value={radar.isLoading ? '…' : radar.isError ? '—' : radar.data?.total ?? 0} hint={`${resumo.observadas} técnicas · últimos 30 dias`}
@@ -76,7 +87,17 @@ export function Attack() {
         <Kpi label="Resposta documentada" icon="pi-shield" value={respostas} hint="exercícios com triagem/resposta anotada"
           active={filtro === 'respondida'} onClick={() => alternar('respondida')} />
       </div>
+      {pericia.data && pericia.data.length > 0 && <section className="iv-card iv-mt" aria-label="Técnicas sugeridas por evidências dos laudos">
+        <h2 className="iv-section-label">Evidência pericial · persistência (90 dias)</h2>
+        <p className="iv-muted">Mapeamento baseado no tipo de persistência registrado pelo coletor. Esta camada é distinta de “Vi no Radar” e requer validação da evidência no dossiê.</p>
+        <div className="iv-row iv-wrap">{pericia.data.map((x) => {
+          const tecnica = getTecnica(x.id);
+          return <Pill key={x.id} label={<><span className="mono">{x.id}</span> · {NOME_TECNICA_PERICIA[x.id] ?? tecnica?.nome ?? 'Técnica ATT&CK'} · {x.laudos} laudo(s)</>} />;
+        })}</div>
+        <p><Link to="/investigacoes">Abrir os laudos e revisar cada evidência</Link></p>
+      </section>}
       <p className="iv-muted in-ciclo-nota">Estudo: {resumo.estudadas}/{resumo.total} técnicas · Prática: {resumo.praticadas}/{resumo.total} técnicas. Esses indicadores de aprendizagem não contam como evidência operacional.</p>
+      <p className="iv-muted"><Link to="/investigacoes">Abrir dossiês para percorrer eventos, arquivos e persistência por janela de ataque</Link></p>
 
       {resumo.lacunas.length > 0 && (
         <StatusStrip tone="warn" icon="pi-exclamation-triangle">

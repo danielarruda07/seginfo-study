@@ -68,6 +68,44 @@ Subir (idempotente, chamado também pelo final de `honeypot_setup.sh`):
 bash /opt/honeypot/subir_extras.sh   # ou: HP_IP=... bash honeypot_setup.sh (já inclui os extras)
 ```
 
+## Prompt honeypot HTTP: observar automação que lê a página
+
+O experimento [`infra/range/honeypot/prompt_honeypot.py`](../infra/range/honeypot/prompt_honeypot.py)
+serve uma página-isca HTTP separada do app SegInfo. Um comentário HTML pede a leitores automatizados
+que consultem somente uma rota de canário no mesmo host; credenciais falsas existem apenas nessa
+isca e o login sempre falha. A página não pede prompts, segredos ou dados, nem faz chamadas para
+outros hosts. Ela não executa comandos, SQL, templates ou JavaScript recebido.
+
+O serviço registra IP, porta, classe do User-Agent, método, caminho sem query string, nomes dos campos e
+sinais booleanos de tentativas comuns (SQLi, XSS, SSTI e command injection). Valores do corpo e da
+query não são gravados. A sessão agrega troca de User-Agent, métodos, intervalos e pausas/rajadas;
+esses sinais sugerem automação, mas **não provam que o visitante seja uma IA**. Os logs giram em
+8 MB com três arquivos antigos; o container também tem limites de CPU, memória e processos.
+
+Instalação explícita, sem reiniciar os outros honeypots:
+
+```bash
+PROMPT_HP_HOST_PORT=8088 bash subir_prompt_honeypot.sh
+curl -i http://127.0.0.1:8088/
+curl -i http://127.0.0.1:8088/_canary/observed
+tail -n 2 /opt/honeypot/prompt/logs/events.jsonl
+```
+
+A instalação padrão vincula a porta a `127.0.0.1`: dá para testar localmente, mas não cria VIP nem
+libera acesso externo. Para publicar explicitamente, recrie o serviço com
+`PROMPT_HP_BIND_ADDRESS=0.0.0.0 PROMPT_HP_HOST_PORT=8088 bash subir_prompt_honeypot.sh` e só então
+inclua 8088/TCP nas regras de entrada estritamente necessárias da VM/Proxmox e do FortiGate,
+mantendo bloqueada a saída do segmento. Não use o domínio do app protegido por Cloudflare Access
+para contornar o login. O agente do Wazuh coleta o JSON em
+`/opt/honeypot/prompt/logs/events.jsonl`; regras 100281-100290 destacam canário seguido, uso da
+credencial falsa e sinais de comportamento. O forwarder envia os alertas à fonte `prompt_honeypot`
+no Radar, sem valores de formulários.
+
+O primeiro ensaio deve usar apenas a rota local, confirmar o evento no arquivo do honeypot, no
+`alerts.json` do Wazuh, no Indexer e no Radar. Tráfego comum fica no JSON local, mas não gera alerta
+por padrão. Um canário seguido é evidência de que alguém leu/processou o conteúdo; não é uma
+classificação confiável de IA nem sinal automático de comprometimento.
+
 ## Reflexão UDP: estudar sem virar arma
 Expor serviços UDP que respondem (DNS, NTP, SSDP, memcached) transformaria o IP em refletor de DDoS contra
 terceiros. Aqui as portas são encaminhadas até o firewall e caem numa **regra de bloqueio com registro**:

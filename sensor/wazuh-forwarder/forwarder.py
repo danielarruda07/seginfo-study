@@ -375,6 +375,37 @@ def de_isca(a, regra, d):
             'alvo': clip((a.get('agent') or {}).get('name'), 128), 'detalhes': det}
 
 
+def de_prompt_honeypot(a, regra, d):
+    """Sinais HTTP do prompt-canary; valores de campos e corpo nunca são encaminhados."""
+    ip = ip_ok(d.get('src_ip'))
+    if not ip:
+        return None
+    tipo = clip(d.get('event_type'), 32) or 'request'
+    acao = 'login_falha' if tipo == 'login_attempt' else 'scan'
+    det = detalhes_base(a, regra)
+    det.update({
+        'evento': tipo,
+        'caminho': clip(d.get('path'), 200),
+        'metodo': clip(d.get('method'), 12),
+        'session': clip(d.get('session_id'), 32),
+        'classeUserAgent': clip(d.get('user_agent_class'), 32),
+        'intervaloSegundos': d.get('gap_seconds') if isinstance(d.get('gap_seconds'), (int, float)) else None,
+        'metodosNaSessao': d.get('method_count') if isinstance(d.get('method_count'), int) else None,
+        'chavesQuery': [clip(k, 40) for k in d.get('query_keys', [])[:12] if isinstance(k, str)] if isinstance(d.get('query_keys'), list) else [],
+        'camposFormulario': [clip(k, 40) for k in d.get('body_fields', [])[:12] if isinstance(k, str)] if isinstance(d.get('body_fields'), list) else [],
+        'canarioSeguido': d.get('canary_followed') is True,
+        'credencialIscaUsada': d.get('canary_credential_used') is True,
+        'trocaUserAgent': d.get('ua_switch') is True,
+        'metodoIncomum': d.get('unusual_method') is True,
+        'padraoPausaRajada': d.get('sawtooth_candidate') is True,
+        'sinais': [k for k in ('sqli', 'xss', 'ssti', 'cmd') if d.get(f'probe_{k}') is True],
+        'classificacao': 'sinais comportamentais; não confirma uso de IA',
+    })
+    return {'fonte': 'prompt_honeypot', 'ocorridoEm': quando(a), 'ipOrigem': ip,
+            'portaDestino': porta(d.get('dst_port')), 'protocolo': 'tcp', 'servico': 'http-prompt-canary',
+            'acao': acao, 'alvo': clip((a.get('agent') or {}).get('name'), 128), 'detalhes': det}
+
+
 SERVICO_UDP = {53: 'dns', 123: 'ntp', 1900: 'ssdp', 11211: 'memcached'}
 
 
@@ -404,6 +435,8 @@ def converter(alerta):
         ev = de_heralding(alerta, regra, d)
     elif 'isca' in grupos:
         ev = de_isca(alerta, regra, d)
+    elif 'prompt_honeypot' in grupos:
+        ev = de_prompt_honeypot(alerta, regra, d)
     elif 'reflexao' in grupos:
         ev = de_reflexao(alerta, regra, d)
     elif 'fortigate' in grupos:

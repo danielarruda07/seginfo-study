@@ -22,4 +22,9 @@
     <log_format>json</log_format>
     <label key="honeypot">isca</label>
   </localfile>
+  <localfile>
+    <location>/opt/honeypot/prompt/logs/events.jsonl</location>
+    <log_format>json</log_format>
+    <label key="honeypot">prompt</label>
+  </localfile>
 </agent_config>
