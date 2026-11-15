@@ -3,12 +3,12 @@ import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
-import type { RascunhoIA } from '@seginfo/shared';
+import type { RascunhoGerado } from '@seginfo/shared';
 import { Pill } from '@/components/InfraKit';
 import { FORMATOS } from '@/services/linkedin';
 
 export interface PedidoIA { briefing: string; pilar?: string; incluirDiario: boolean }
-export type SugestaoIA = RascunhoIA & { notasUsadas: number };
+export type SugestaoIA = RascunhoGerado & { notasUsadas: number };
 
 /** Cartão "Rascunho com IA": briefing, pilar, formato e o resumo do que a IA entregou. */
 export function EstudioIA({ pedido, onPedido, formato, onFormato, pilares, iaPronta, iaConhecida, gerando, erro, sugestao, onGerar }: {
@@ -44,6 +44,9 @@ export function EstudioIA({ pedido, onPedido, formato, onFormato, pilares, iaPro
           <Message severity="info" className="ca-w100" content={
             <div className="ca-small">
               <div><strong>Por que funciona:</strong> {sugestao.porQueFunciona}</div>
+              {sugestao.estiloAjustado && sugestao.estiloAjustado.length > 0 && (
+                <div className="iv-mt"><strong>Filtro anti-genérico:</strong> reescrevi sozinho o que soava genérico ({sugestao.estiloAjustado.join('; ').toLowerCase()}). Releia o texto.</div>
+              )}
               {sugestao.dadosParaConfirmar.length > 0 && <div className="iv-mt"><strong>Confira antes de publicar:</strong> {sugestao.dadosParaConfirmar.join(' · ')}</div>}
               <div className="iv-muted iv-mt">Contexto usado: estratégia, estudo, histórico de posts{pedido.incluirDiario ? ', diário do projeto' : ''}{sugestao.notasUsadas ? `, ${sugestao.notasUsadas} notas do Segundo Cérebro` : ''}. O rascunho já está no editor abaixo.</div>
             </div>

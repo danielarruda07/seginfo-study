@@ -14,10 +14,12 @@ import { Projetos } from './linkedin/Projetos';
 import { Publicados } from './linkedin/Publicados';
 import { Diario } from './linkedin/Diario';
 import { EstrategiaIA } from './linkedin/EstrategiaIA';
+import { PerfilVoz } from './linkedin/PerfilVoz';
 import '@/styles/telas/carreira.css';
+import '@/styles/telas/linkedin-perfil.css';
 import '@/styles/telas/linkedin-pipeline.css';
 
-const ABA = { pipeline: 0, estudio: 1, ideias: 2, projetos: 3, publicados: 4, diario: 5, marca: 6 } as const;
+const ABA = { pipeline: 0, estudio: 1, ideias: 2, projetos: 3, publicados: 4, diario: 5, perfil: 6, marca: 7 } as const;
 type Aviso = { sev: 'success' | 'error'; text: string };
 
 /** Volta do OAuth do LinkedIn: `?linkedin=conectado` ou `?linkedin=erro`. Lê e limpa o parâmetro da URL. */
@@ -106,6 +108,9 @@ export function Posts() {
           </TabPanel>
           <TabPanel header="Diário do projeto" leftIcon="pi pi-book mr-2">
             <Diario onGerarPost={abrirEstudio} />
+          </TabPanel>
+          <TabPanel header="Perfil & Voz" leftIcon="pi pi-id-card mr-2">
+            <PerfilVoz />
           </TabPanel>
           <TabPanel header="Marca pessoal & IA" leftIcon="pi pi-compass mr-2">
             <EstrategiaIA />

@@ -6,7 +6,7 @@ import { mensagemErro } from '@/services/linkedin';
 import { refinarTexto } from '@/services/linkedinPipeline';
 
 const ICONE: Record<AcaoRefino, string> = {
-  encurtar: 'pi-arrows-v', concreto: 'pi-bullseye', ganchos: 'pi-bolt', direto: 'pi-forward', carrossel: 'pi-images', livre: 'pi-comment',
+  encurtar: 'pi-arrows-v', concreto: 'pi-bullseye', ganchos: 'pi-bolt', direto: 'pi-forward', humanizar: 'pi-user-edit', carrossel: 'pi-images', livre: 'pi-comment',
 };
 
 export interface UltimoRefino { acao: AcaoRefino; oQueMudou: string; alternativasGancho: string[] }

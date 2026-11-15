@@ -81,6 +81,8 @@ export const RascunhoIASchema = z.object({
   roteiroSlides: z.array(z.string()),
 });
 export type RascunhoIA = z.infer<typeof RascunhoIASchema>;
+/** Rascunho entregue pela API: `estiloAjustado` lista o que o filtro anti-genérico corrigiu sozinho. */
+export type RascunhoGerado = RascunhoIA & { estiloAjustado?: string[] };
 
 /** Catálogo enxuto que o front envia para a IA ligar posts ao estudo. */
 export interface CatalogoIA {

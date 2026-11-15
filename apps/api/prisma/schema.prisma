@@ -40,6 +40,9 @@ model Usuario {
   linkedinProjetos LinkedinProjeto[]
   linkedinIdeias   LinkedinIdeia[]
   linkedinConta    LinkedinConta?
+  linkedinPerfilPro LinkedinPerfilPro?
+  linkedinInspiracoes LinkedinInspiracao[]
+  linkedinVoz      LinkedinVoz?
   agentes      Agente[]
 }
 
@@ -487,6 +490,49 @@ model LinkedinIdeia {
   // repetir a análise de um post não duplica as ideias dele
   @@unique([usuarioId, origem, origemRef, titulo])
   @@index([usuarioId, status])
+}
+
+// Perfil profissional (certificações, cursos, trajetória, projetos e vagas-alvo): os FATOS que a IA
+// pode afirmar nos posts. `dados` é validado por PerfilProSchema (packages/shared). Sem empregador.
+model LinkedinPerfilPro {
+  usuarioId    String    @id
+  usuario      Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  dados        Json
+  importadoEm  DateTime? // última importação do PDF do LinkedIn
+  atualizadoEm DateTime  @updatedAt
+}
+
+// Posts e perfis que o autor admira (texto, visual, frequência, assuntos). Alimentam o perfil de voz.
+model LinkedinInspiracao {
+  id               String   @id @default(cuid())
+  usuarioId        String
+  usuario          Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tipo             String   // post | perfil
+  autor            String
+  url              String   @default("")
+  texto            String   @default("")
+  motivo           String   @default("")
+  aspectos         String[] @default([]) // texto | imagem | frequencia | assunto | carreira
+  observacaoVisual String   @default("")
+  frequencia       String   @default("")
+  criadoEm         DateTime @default(now())
+  atualizadoEm     DateTime @updatedAt
+
+  @@index([usuarioId, tipo])
+}
+
+// Perfil de voz aprendido pela IA a partir dos posts do autor e das inspirações. `ajustes` são
+// regras do próprio autor e têm prioridade sobre o que a IA aprendeu.
+model LinkedinVoz {
+  usuarioId            String    @id
+  usuario              Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  perfil               Json?     // PerfilVozIA
+  ajustes              String    @default("")
+  baseadoEmPosts       Int       @default(0)
+  baseadoEmInspiracoes Int       @default(0)
+  modelo               String    @default("")
+  geradoEm             DateTime?
+  atualizadoEm         DateTime  @updatedAt
 }
 
 // Conexão com a API do LinkedIn (OAuth do app "Share on LinkedIn"). O token fica cifrado
