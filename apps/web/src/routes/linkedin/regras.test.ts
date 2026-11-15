@@ -11,7 +11,7 @@ const analise = (pilar: string) => ({
 
 const post = (id: string, extra: Partial<PostPublicado> = {}): PostPublicado => ({
   id, url: `https://www.linkedin.com/feed/update/urn:li:share:${id}`, publicadoEm: '2026-11-01', texto: 'Texto do post com tamanho suficiente.',
-  formato: 'texto', metricas: {}, origem: 'manual', analise: null, memoriaId: null, ...extra,
+  formato: 'texto', metricas: {}, origem: 'manual', analise: null, memoriaId: null, projetoId: null, ...extra,
 });
 
 describe('primeiraLinha', () => {

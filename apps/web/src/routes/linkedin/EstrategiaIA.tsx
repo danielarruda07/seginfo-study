@@ -7,6 +7,7 @@ import { Message } from 'primereact/message';
 import { Pill } from '@/components/InfraKit';
 import { useInvalidate } from '@/hooks/useInvalidate';
 import { KitPerfil } from './KitPerfil';
+import { ContaLinkedin } from './ContaLinkedin';
 import { ESTRATEGIA_PADRAO, getEstrategia, mensagemErro, saveEstrategia, statusIA, type Estrategia } from '@/services/linkedin';
 
 export function EstrategiaIA() {
@@ -112,6 +113,7 @@ export function EstrategiaIA() {
         </ul>
       </section>
       </div>
+      <ContaLinkedin />
     </>
   );
 }
