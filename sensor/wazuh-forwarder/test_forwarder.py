@@ -111,6 +111,20 @@ class PromptHoneypotTest(unittest.TestCase):
                   'data': {'event_type': 'login_attempt', 'src_ip': '8.8.4.4', 'path': '/login.php'}}
         self.assertEqual(fw.converter(alerta)['acao'], 'login_falha')
 
+    def test_formato_real_do_wazuh_com_booleanos_e_numeros_em_texto(self):
+        # o decodificador JSON do Wazuh entrega true/false e números como texto no campo data
+        alerta = {'timestamp': '2026-11-14T22:21:29.998-0300', 'rule': {'id': '100281', 'groups': ['honeypot', 'prompt_honeypot']},
+                  'data': {'honeypot_type': 'prompt', 'event_type': 'canary_followed', 'src_ip': '8.8.8.8', 'dst_port': '8088',
+                           'canary_followed': 'true', 'canary_credential_used': 'false', 'probe_sqli': 'true', 'probe_xss': 'false',
+                           'gap_seconds': '0.512', 'method_count': '2', 'query_keys': 'q'}}
+        det = fw.converter(alerta)['detalhes']
+        self.assertTrue(det['canarioSeguido'])
+        self.assertFalse(det['credencialIscaUsada'])
+        self.assertEqual(det['sinais'], ['sqli'])
+        self.assertEqual(det['intervaloSegundos'], 0.512)
+        self.assertEqual(det['metodosNaSessao'], 2)
+        self.assertEqual(det['chavesQuery'], ['q'])
+
 
 if __name__ == '__main__':
     unittest.main()
