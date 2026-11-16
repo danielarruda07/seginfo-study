@@ -26,6 +26,17 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-15-linkedin-certificacoes-recolhiveis',
+    data: '2026-11-15',
+    titulo: 'Um perfil profissional mais compacto',
+    descricao:
+      'Na aba Perfil profissional do LinkedIn, a lista de certificações agora começa recolhida e mostra quantas estão cadastradas. ' +
+      'Assim, cursos, experiências, projetos e vagas-alvo ficam mais próximos sem remover nenhuma informação; basta expandir ' +
+      'a seção para revisar ou editar certificações.',
+    categoria: 'funcionalidade',
+    tags: ['linkedin', 'perfil-profissional', 'interface'],
+  },
+  {
     id: 'proj-2026-11-15-exposicao-fontes',
     data: '2026-11-15',
     titulo: 'O que eu publiquei de propósito × o que a internet realmente vê',
