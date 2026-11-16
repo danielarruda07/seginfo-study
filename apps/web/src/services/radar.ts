@@ -47,6 +47,9 @@ export interface RadarEvento {
 }
 
 export interface RadarEventosFiltro {
+  /** coluna de ordenação (lista fixa no servidor) */
+  ordem?: string;
+  direcao?: 'asc' | 'desc';
   ambiente?: AmbienteFiltro;
   ip?: string;
   servico?: string;

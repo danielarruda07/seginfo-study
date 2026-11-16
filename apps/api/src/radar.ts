@@ -131,6 +131,22 @@ async function topPor(coluna: keyof typeof COLUNA, where: Prisma.Sql, limite: nu
   return rows.map((r) => ({ nome: r.nome, total: n(r.total) }));
 }
 
+/** Colunas ordenáveis dos alertas Wazuh: fragmentos fixos do SQL (o usuário só escolhe a chave). */
+const ORDENS_WAZUH: Record<'ocorridoEm' | 'nivel' | 'regra' | 'sensor', Prisma.Sql> = {
+  ocorridoEm: Prisma.sql`"ocorridoEm"`,
+  nivel: Prisma.sql`NULLIF(regexp_replace("detalhes"->>'nivel', '[^0-9]', '', 'g'), '')::int`,
+  regra: Prisma.sql`("detalhes"->>'regra')`,
+  sensor: Prisma.sql`("detalhes"->>'sensor')`,
+};
+
+/** Colunas que a tabela de eventos pode ordenar (lista fixa: nada de texto livre vai para o banco). */
+export const ORDENS_EVENTOS = ['ocorridoEm', 'ipOrigem', 'acao', 'servico', 'fonte', 'usuarioTentado'] as const;
+export type OrdemEvento = (typeof ORDENS_EVENTOS)[number];
+export function ordemDeEventos(campo: OrdemEvento, direcao: 'asc' | 'desc') {
+  // desempate pelo mais recente, para a ordem ser estável entre páginas
+  return campo === 'ocorridoEm' ? [{ ocorridoEm: direcao }] : [{ [campo]: direcao }, { ocorridoEm: 'desc' as const }];
+}
+
 export async function registerRadarRoutes(app: FastifyInstance) {
   const uid = (req: unknown) => (req as AuthedRequest).usuarioId;
 
@@ -213,7 +229,9 @@ export async function registerRadarRoutes(app: FastifyInstance) {
     };
   });
 
-  const EventosQuery = z.object({
+const EventosQuery = z.object({
+  ordem: z.enum(ORDENS_EVENTOS).default('ocorridoEm'),
+  direcao: z.enum(['asc', 'desc']).default('desc'),
     ip: z.string().max(45).optional(),
     servico: z.string().max(32).optional(),
     acao: z.string().max(16).optional(),
@@ -252,7 +270,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
       prisma.ataqueEvento.count({ where }),
       prisma.ataqueEvento.findMany({
         where,
-        orderBy: { ocorridoEm: 'desc' },
+        orderBy: ordemDeEventos(q.data.ordem, q.data.direcao),
         skip: page * limit,
         take: limit,
         select: {
@@ -272,11 +290,15 @@ export async function registerRadarRoutes(app: FastifyInstance) {
     q: z.string().trim().max(100).optional(),
     page: z.coerce.number().int().min(0).default(0),
     limit: z.coerce.number().int().min(1).max(100).default(25),
+    ordem: z.enum(['ocorridoEm', 'nivel', 'regra', 'sensor']).default('ocorridoEm'),
+    direcao: z.enum(['asc', 'desc']).default('desc'),
   });
   app.get('/api/wazuh/alertas', async (req, reply) => {
     const parsed = WazuhAlertQuery.safeParse(req.query);
     if (!parsed.success) return reply.status(400).send({ error: 'parâmetros inválidos' });
-    const { dias, ambiente, q: texto, page, limit } = parsed.data;
+    const { dias, ambiente, q: texto, page, limit, ordem, direcao } = parsed.data;
+    const colunaOrdem = ORDENS_WAZUH[ordem];
+    const sentido = direcao === 'asc' ? Prisma.sql`ASC` : Prisma.sql`DESC`;
     const desde = new Date(Date.now() - dias * 86_400_000);
     const where = Prisma.sql`"usuarioId" = ${uid(req)} AND "ocorridoEm" >= ${desde}
       AND "detalhes" ? 'sensor' AND "detalhes" ? 'regra'
@@ -290,7 +312,7 @@ export async function registerRadarRoutes(app: FastifyInstance) {
       }[]>`
         SELECT "id", "fonte", "ocorridoEm", "ipOrigem", "paisOrigem", "servico", "acao", "alvo", "detalhes", "ambiente"
         FROM "AtaqueEvento" WHERE ${where}
-        ORDER BY "ocorridoEm" DESC LIMIT ${limit} OFFSET ${page * limit}`,
+        ORDER BY ${colunaOrdem} ${sentido}, "ocorridoEm" DESC LIMIT ${limit} OFFSET ${page * limit}`,
     ]);
     const redigirTexto = (v: string): string => v
       .replace(/(\b(?:password|passwd|senha|token|secret|api[_-]?key|authorization)\b\s*[:=]\s*)([^\s,;]+)/gi, '$1[redigido]')

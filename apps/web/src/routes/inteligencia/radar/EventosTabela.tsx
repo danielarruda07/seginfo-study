@@ -30,9 +30,10 @@ function linhaClasse(e: RadarEvento, selId: string | null) {
 }
 
 /** Tabela paginada (no servidor) de eventos do Radar; clique na linha abre a ficha. */
-export function EventosTabela({ itens, total, loading, page, onPage, onOpen, selId, f }: {
+export function EventosTabela({ itens, total, loading, page, onPage, onOpen, selId, f, ordenacao, onOrdenar }: {
   itens: RadarEvento[]; total: number; loading: boolean; page: number; onPage: (p: number) => void;
   onOpen: (id: string) => void; selId: string | null; f: FiltrosUi;
+  ordenacao: { campo: string; direcao: 'asc' | 'desc' }; onOrdenar: (campo: string, direcao: 'asc' | 'desc') => void;
 }) {
   return (
     <section className="iv-card iv-mt" aria-labelledby="radar-eventos-titulo">
@@ -48,25 +49,27 @@ export function EventosTabela({ itens, total, loading, page, onPage, onOpen, sel
       <ActiveFiltersBar filters={f.chips} onClearAll={f.limpar} />
 
       <DataTable value={itens} dataKey="id" lazy paginator={total > ROWS} first={page * ROWS} rows={ROWS} totalRecords={total}
+        className="iv-ordenavel" sortMode="single" sortField={ordenacao.campo} sortOrder={ordenacao.direcao === 'asc' ? 1 : -1}
+        onSort={(e) => onOrdenar(String(e.sortField), e.sortOrder === 1 ? 'asc' : 'desc')}
         onPage={(e) => onPage(e.page ?? 0)} loading={loading} rowHover
         onRowClick={(e) => onOpen((e.data as RadarEvento).id)} rowClassName={(e: RadarEvento) => `in-row-click ${linhaClasse(e, selId)}`}
         emptyMessage={f.chips.length
           ? <EmptyState icon="pi-filter-slash" title="Nenhum evento com estes filtros" action={<Button label="Limpar filtros" text onClick={f.limpar} />} />
           : <EmptyState icon="pi-eye" title="Nenhum evento recebido" text="Quando os coletores enviarem eventos, eles aparecem aqui." />}>
-        <Column header="Quando" style={{ width: 160 }} body={(e: RadarEvento) => <span className="tabular">{formatarLocal(e.ocorridoEm)}</span>} />
-        <Column header="Ação" body={(e: RadarEvento) => { const a = acaoDoEvento(e); return <Pill label={a.label} tone={a.tone} icon={a.icon} />; }} />
-        <Column header="Origem" body={(e: RadarEvento) => (
+        <Column header="Quando" sortable sortField="ocorridoEm" style={{ width: 160 }} body={(e: RadarEvento) => <span className="tabular">{formatarLocal(e.ocorridoEm)}</span>} />
+        <Column header="Ação" sortable sortField="acao" body={(e: RadarEvento) => { const a = acaoDoEvento(e); return <Pill label={a.label} tone={a.tone} icon={a.icon} />; }} />
+        <Column header="Origem" sortable sortField="ipOrigem" body={(e: RadarEvento) => (
           <span><span className="mono">{e.ipOrigem ?? 'Não informado'}</span>{(e.paisOrigem || e.escopo === 'interno') && <><br /><span className="iv-maincell__sub">{e.escopo === 'interno' ? 'rede privada / sem IP' : e.paisOrigem}</span></>}</span>
         )} />
-        <Column header="Serviço" body={(e: RadarEvento) => (
+        <Column header="Serviço" sortable sortField="servico" body={(e: RadarEvento) => (
           <span>{e.servico ?? (e.portaDestino ? `porta ${e.portaDestino}` : '—')}
             {(e.servico && e.portaDestino) || e.protocolo ? <><br /><span className="iv-maincell__sub">{[e.servico && e.portaDestino ? `porta ${e.portaDestino}` : null, e.protocolo].filter(Boolean).join(' · ')}</span></> : null}</span>
         )} />
-        <Column header="Usuário / detalhe" className="iv-hide-sm" headerClassName="iv-hide-sm"
+        <Column header="Usuário / detalhe" sortable sortField="usuarioTentado" className="iv-hide-sm" headerClassName="iv-hide-sm"
           body={(e: RadarEvento) => { const det = resumoDetalhe(e.detalhes, 48); return e.usuarioTentado || det
             ? <span className="mono in-quebra">{e.usuarioTentado}{e.usuarioTentado && det ? ' · ' : ''}{det}</span>
             : <span className="iv-muted">—</span>; }} />
-        <Column header="Fonte / ambiente" className="iv-hide-sm" headerClassName="iv-hide-sm" body={(e: RadarEvento) => <>{FONTE_LABEL[e.fonte]?.split(' (')[0] ?? e.fonte}<div className="iv-muted">{rotuloAmbiente(e.ambiente ?? 'nao_classificado')}</div></>} />
+        <Column header="Fonte / ambiente" sortable sortField="fonte" className="iv-hide-sm" headerClassName="iv-hide-sm" body={(e: RadarEvento) => <>{FONTE_LABEL[e.fonte]?.split(' (')[0] ?? e.fonte}<div className="iv-muted">{rotuloAmbiente(e.ambiente ?? 'nao_classificado')}</div></>} />
       </DataTable>
     </section>
   );

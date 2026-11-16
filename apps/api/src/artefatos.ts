@@ -20,14 +20,15 @@ export async function registerArtefatosRoutes(app: FastifyInstance) {
   app.get('/api/artefatos', async (req, reply) => {
     const q = z.object({ q: z.string().trim().max(200).default(''), tipo: z.enum(['arquivo', 'comando', 'persistencia', 'processo']).optional(),
       categoria: z.string().max(50).optional(), alvo: z.string().max(128).optional(), favorito: z.enum(['true']).optional(),
-      page: z.coerce.number().int().min(0).default(0), limit: z.coerce.number().int().min(1).max(100).default(25) }).safeParse(req.query);
+      page: z.coerce.number().int().min(0).default(0), limit: z.coerce.number().int().min(1).max(100).default(25),
+      ordem: z.enum(['criadoEm', 'nome', 'tipo', 'categoria', 'favorito']).default('criadoEm'), direcao: z.enum(['asc', 'desc']).default('desc') }).safeParse(req.query);
     if (!q.success) return reply.code(400).send({ error: 'Filtros inválidos.' });
-    const { page, limit, tipo, categoria, alvo, favorito, q: busca } = q.data;
+    const { page, limit, tipo, categoria, alvo, favorito, q: busca, ordem, direcao } = q.data;
     const where = { usuarioId: uid(req), ...(tipo ? { tipo } : {}), ...(categoria ? { categoria } : {}), ...(favorito ? { favorito: true } : {}),
       ...(alvo ? { ocorrencias: { some: { alvo: { contains: alvo, mode: 'insensitive' as const } } } } : {}),
       ...(busca ? { OR: ['nome', 'conteudo', 'sha256', 'resumo', 'notas'].map((campo) => ({ [campo]: { contains: busca, mode: 'insensitive' as const } })) } : {}) };
     const [total, items] = await Promise.all([prisma.artefatoAtaque.count({ where }), prisma.artefatoAtaque.findMany({ where,
-      orderBy: [{ criadoEm: 'desc' }, { id: 'desc' }], skip: page * limit, take: limit, select: campos })]);
+      orderBy: [{ [ordem]: direcao }, { id: 'desc' }], skip: page * limit, take: limit, select: campos })]);
     return { total, items };
   });
   app.get('/api/artefatos/:id', async (req, reply) => {

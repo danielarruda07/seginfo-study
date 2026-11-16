@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -10,6 +10,7 @@ import { AmbienteSelector } from '@/components/ui/AmbienteSelector';
 import { useAmbiente, rotuloAmbiente } from '@/services/ambiente';
 import { DetailDrawer } from '@/components/ui/DetailDrawer';
 import { DetailFields } from '@/components/ui/Detail';
+import { ClickCard } from '@/components/ui/ClickCard';
 import { Kpi, Pill, StatusStrip } from '@/components/InfraKit';
 import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import { getWazuhAlerts, getWazuhStatus, type WazuhAlert } from '@/services/wazuh';
@@ -21,20 +22,28 @@ const DIAS = [1, 7, 30].map((value) => ({ value, label: value === 1 ? '24 horas'
 const hora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' });
 const campo = (v: unknown) => typeof v === 'string' || typeof v === 'number' ? String(v) : '—';
 
+const idDoAgente = (a: { id?: string | null; name?: string | null }) => String(a.id ?? a.name ?? '');
+const rolarPara = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+const toneDoAgente = (status?: string | null): 'ok' | 'danger' | 'warning' => (status === 'active' ? 'ok' : status === 'disconnected' ? 'danger' : 'warning');
+
 export function Wazuh() {
   const [ambiente, setAmbiente] = useAmbiente();
   const [dias, setDias] = useState(7);
   const [buscaRaw, setBuscaRaw] = useState('');
   const [page, setPage] = useState(0);
+  const [ordem, setOrdem] = useState<{ campo: string; direcao: 'asc' | 'desc' }>({ campo: 'ocorridoEm', direcao: 'desc' });
+  const [filtroAgente, setFiltroAgente] = useState<'todos' | 'active' | 'disconnected'>('todos');
   const busca = useDebounce(buscaRaw, 300);
   const status = useQuery({ queryKey: ['wazuh', 'status', ambiente], queryFn: () => getWazuhStatus(ambiente), refetchInterval: 60_000, retry: false });
   const alertas = useQuery({
-    queryKey: ['wazuh', 'alertas', dias, busca, page, ambiente],
-    queryFn: () => getWazuhAlerts({ dias, q: busca || undefined, page, limit: PAGE_SIZE, ambiente }),
+    queryKey: ['wazuh', 'alertas', dias, busca, page, ambiente, ordem],
+    queryFn: () => getWazuhAlerts({ dias, q: busca || undefined, page, limit: PAGE_SIZE, ambiente, ordem: ordem.campo, direcao: ordem.direcao }),
     refetchInterval: 60_000, retry: false,
   });
   const sel = useDrawerSelection(alertas.data?.items ?? []);
   const s = status.data;
+  const agentesFiltrados = useMemo(() => (s?.agentes?.items ?? []).filter((a) => filtroAgente === 'todos' || a.status === filtroAgente), [s, filtroAgente]);
+  const agSel = useDrawerSelection(agentesFiltrados, idDoAgente);
 
   return (
     <div>
@@ -74,10 +83,12 @@ export function Wazuh() {
       )}
 
       <div className="iv-kpis iv-mt">
-        <Kpi label="Agentes cadastrados" value={s?.agentes?.total ?? '—'} icon="pi-server" />
-        <Kpi label="Ativos" value={s?.agentes?.contagens.active ?? '—'} icon="pi-check-circle" />
-        <Kpi label="Desconectados" value={s?.agentes?.contagens.disconnected ?? '—'} icon="pi-times-circle" />
-        <Kpi label="Alertas encaminhados" value={alertas.data?.total ?? '—'} icon="pi-bell" hint={`últimos ${dias} dia(s)`} />
+        <Kpi label="Agentes cadastrados" value={s?.agentes?.total ?? '—'} icon="pi-server" active={filtroAgente === 'todos'} onClick={() => setFiltroAgente('todos')} />
+        <Kpi label="Ativos" value={s?.agentes?.contagens.active ?? '—'} icon="pi-check-circle" active={filtroAgente === 'active'}
+          onClick={() => setFiltroAgente(filtroAgente === 'active' ? 'todos' : 'active')} />
+        <Kpi label="Desconectados" value={s?.agentes?.contagens.disconnected ?? '—'} icon="pi-times-circle" active={filtroAgente === 'disconnected'}
+          onClick={() => setFiltroAgente(filtroAgente === 'disconnected' ? 'todos' : 'disconnected')} />
+        <Kpi label="Alertas encaminhados" value={alertas.data?.total ?? '—'} icon="pi-bell" hint={`últimos ${dias} dia(s)`} onClick={() => rolarPara('wazuh-alertas')} />
       </div>
 
       {s?.agentes?.items && s.agentes.items.length > 0 && (
@@ -87,8 +98,15 @@ export function Wazuh() {
             <span className="iv-muted">Visão de saúde consultada diretamente no manager</span>
           </div>
           <div className="wazuh-agent-list iv-mt">
-            {s.agentes.items.map((a) => (
-              <article className="wazuh-agent" key={a.id ?? a.name}>
+            {filtroAgente !== 'todos' && (
+              <p className="iv-muted" style={{ margin: 0 }}>
+                Mostrando {filtroAgente === 'active' ? 'agentes ativos' : 'agentes desconectados'} · <button type="button" className="iv-linkbtn" onClick={() => setFiltroAgente('todos')}>mostrar todos</button>
+              </p>
+            )}
+            {agentesFiltrados.length === 0 && <p className="iv-muted">Nenhum agente com este status.</p>}
+            {agentesFiltrados.map((a) => (
+              <ClickCard as="article" key={a.id ?? a.name} className="wazuh-agent" tone={toneDoAgente(a.status)} selected={agSel.isOpen(idDoAgente(a))}
+                onOpen={() => agSel.open(idDoAgente(a))} label={`Abrir ficha de ${a.name ?? `agente ${a.id ?? ''}`}`}>
                 <div className="iv-row iv-wrap" style={{ justifyContent: 'space-between' }}>
                   <strong>{a.name ?? `Agente ${a.id ?? 'sem ID'}`}</strong>
                   <Pill label={rotuloAmbiente(a.ambiente)} />
@@ -96,15 +114,28 @@ export function Wazuh() {
                 </div>
                 <small className="iv-muted">ID {a.id ?? '—'} · {a.ip ?? 'IP não informado'} · {a.os ?? 'SO não informado'}</small>
                 <small className="iv-muted">Versão {a.version ?? '—'} · último contato {a.lastKeepAlive ? hora(a.lastKeepAlive) : '—'}</small>
-              </article>
+              </ClickCard>
             ))}
           </div>
         </section>
       )}
 
-      <section className="iv-card iv-mt" aria-labelledby="wazuh-alertas">
+      {agSel.item && (
+        <DetailDrawer {...agSel.nav} ariaLabel="Ficha do agente Wazuh" kind={{ icon: 'pi-server', label: 'Agente monitorado' }}
+          status={<Pill label={agSel.item.status ?? 'desconhecido'} tone={toneDoAgente(agSel.item.status)} />}
+          title={agSel.item.name ?? `Agente ${agSel.item.id ?? 'sem ID'}`}
+          subtitle={`ID ${agSel.item.id ?? '—'} · ${rotuloAmbiente(agSel.item.ambiente)}`}>
+          <DetailFields items={[
+            ['Status', agSel.item.status ?? '—'], ['Ambiente', rotuloAmbiente(agSel.item.ambiente)],
+            ['Endereço IP', agSel.item.ip ?? 'não informado'], ['Sistema operacional', agSel.item.os ?? 'não informado'],
+            ['Versão do agente', agSel.item.version ?? '—'], ['Último contato', agSel.item.lastKeepAlive ? hora(agSel.item.lastKeepAlive) : '—'],
+          ]} />
+        </DetailDrawer>
+      )}
+
+      <section id="wazuh-alertas" className="iv-card iv-mt" aria-labelledby="wazuh-alertas-titulo">
         <div className="iv-row iv-wrap" style={{ justifyContent: 'space-between', marginBottom: '.75rem' }}>
-          <div><h3 id="wazuh-alertas" style={{ margin: 0 }}>Alertas encaminhados</h3>
+          <div><h3 id="wazuh-alertas-titulo" style={{ margin: 0 }}>Alertas encaminhados</h3>
             <p className="iv-muted" style={{ margin: '.25rem 0 0' }}>Recorte normalizado pelo forwarder a partir de regras do Wazuh; não é o arquivo bruto nem todos os eventos do SIEM.</p></div>
           <div className="iv-row iv-wrap">
             <Dropdown value={dias} options={DIAS} onChange={(e) => { setDias(e.value); setPage(0); }} aria-label="Período dos alertas" />
@@ -114,12 +145,14 @@ export function Wazuh() {
         {alertas.isError && <Message severity="warn" text="Não foi possível carregar os alertas encaminhados." />}
         <DataTable value={alertas.data?.items ?? []} dataKey="id" lazy paginator rows={PAGE_SIZE}
           first={page * PAGE_SIZE} totalRecords={alertas.data?.total ?? 0} onPage={(e) => setPage(e.page ?? 0)}
+          className="iv-ordenavel" sortMode="single" sortField={ordem.campo} sortOrder={ordem.direcao === 'asc' ? 1 : -1}
+          onSort={(e) => { setOrdem({ campo: String(e.sortField), direcao: e.sortOrder === 1 ? 'asc' : 'desc' }); setPage(0); }}
           selectionMode="single" onSelectionChange={(e) => sel.open((e.value as WazuhAlert).id)}
           emptyMessage="Nenhum alerta encaminhado nesse período." rowHover>
-          <Column field="ocorridoEm" header="Quando" body={(a: WazuhAlert) => hora(a.ocorridoEm)} />
-          <Column header="Nível" body={(a: WazuhAlert) => <Pill label={campo(a.detalhes.nivel)} tone={Number(a.detalhes.nivel) >= 10 ? 'danger' : Number(a.detalhes.nivel) >= 7 ? 'warning' : undefined} />} />
-          <Column header="Regra" body={(a: WazuhAlert) => <span className="mono">{campo(a.detalhes.regra)}</span>} />
-          <Column header="Agente / ambiente" body={(a: WazuhAlert) => <>{campo(a.detalhes.sensor)}<div className="iv-muted">{rotuloAmbiente(a.ambiente)}</div></>} />
+          <Column field="ocorridoEm" header="Quando" sortable sortField="ocorridoEm" body={(a: WazuhAlert) => hora(a.ocorridoEm)} />
+          <Column header="Nível" sortable sortField="nivel" body={(a: WazuhAlert) => <Pill label={campo(a.detalhes.nivel)} tone={Number(a.detalhes.nivel) >= 10 ? 'danger' : Number(a.detalhes.nivel) >= 7 ? 'warning' : undefined} />} />
+          <Column header="Regra" sortable sortField="regra" body={(a: WazuhAlert) => <span className="mono">{campo(a.detalhes.regra)}</span>} />
+          <Column header="Agente / ambiente" sortable sortField="sensor" body={(a: WazuhAlert) => <>{campo(a.detalhes.sensor)}<div className="iv-muted">{rotuloAmbiente(a.ambiente)}</div></>} />
           <Column header="Alvo / fonte" body={(a: WazuhAlert) => `${a.alvo ?? '—'} · ${a.fonte}`} />
           <Column header="Técnicas" body={(a: WazuhAlert) => {
             const mitre = Array.isArray(a.detalhes.mitre) ? a.detalhes.mitre.map((x) => campo((x as Record<string, unknown>).id)).join(', ') : '—';

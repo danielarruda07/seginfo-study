@@ -11,7 +11,7 @@ export interface OcorrenciaArtefato {
 export interface ArtefatoDetalhe extends Artefato {
   conteudo: string; notas: string; temAmostra: boolean; ocorrencias: OcorrenciaArtefato[];
 }
-export interface FiltrosArtefato { q?: string; tipo?: string; categoria?: string; alvo?: string; favorito?: 'true'; page: number; limit: number }
+export interface FiltrosArtefato { q?: string; tipo?: string; categoria?: string; alvo?: string; favorito?: 'true'; page: number; limit: number; ordem?: string; direcao?: 'asc' | 'desc' }
 export const listarArtefatos = (params: FiltrosArtefato) => http.get<{ total: number; items: Artefato[] }>('/artefatos', { params }).then((r) => r.data);
 export const obterArtefato = (id: string) => http.get<ArtefatoDetalhe>(`/artefatos/${encodeURIComponent(id)}`).then((r) => r.data);
 export const obterOcorrencias = (id: string, page: number) => http.get<OcorrenciaArtefato[]>(`/artefatos/${encodeURIComponent(id)}/ocorrencias`, { params: { page } }).then((r) => r.data);

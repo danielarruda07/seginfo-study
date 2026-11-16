@@ -82,7 +82,7 @@ export function Ameacas() {
       {kev.data?.desatualizado && <StatusStrip tone="warn" icon="pi-clock">A CISA não respondeu agora; mostrando o último catálogo baixado.</StatusStrip>}
 
       <div className="iv-kpis iv-mt">
-        <Kpi label="Encontradas" icon="pi-shield" value={kev.isLoading ? '…' : doProduto.length} hint={kev.data ? `de ${kev.data.totalCatalogo} no catálogo` : undefined} />
+        <Kpi label="Encontradas" icon="pi-shield" onClick={limpar} value={kev.isLoading ? '…' : doProduto.length} hint={kev.data ? `de ${kev.data.totalCatalogo} no catálogo` : undefined} />
         <Kpi label="Ativo possivelmente afetado" icon="pi-server" tone="serious" value={conta((l) => l.ativos.length > 0)} hint="sugestão por nome/tag"
           active={recorte === 'ativos'} onClick={() => alternar('ativos')} />
         <Kpi label="Usadas por ransomware" icon="pi-exclamation-triangle" tone="danger" value={conta((l) => l.item.ransomware)} hint="campanhas conhecidas"

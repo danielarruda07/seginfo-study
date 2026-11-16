@@ -4,8 +4,9 @@ import { Bar } from '@/components/InfraKit';
 export interface TopItem { id: string; rotulo: string; extra?: string | null; total: number }
 
 /** "Top N" com barras proporcionais ao maior valor. Com `onOpen`, cada linha abre a ficha. */
-export function TopList({ titulo, itens, onOpen, selId, aviso, acao, selo }: {
+export function TopList({ titulo, itens, onOpen, selId, aviso, acao, selo, id }: {
   titulo: string;
+  id?: string;
   itens: TopItem[];
   onOpen?: (id: string) => void;
   selId?: string | null;
@@ -17,7 +18,7 @@ export function TopList({ titulo, itens, onOpen, selId, aviso, acao, selo }: {
 }) {
   const max = Math.max(1, ...itens.map((i) => i.total));
   return (
-    <section className="iv-card in-top" aria-label={titulo}>
+    <section id={id} className="iv-card in-top" aria-label={titulo}>
       {acao ? <div className="in-top__cabeca"><h3 className="iv-section-label">{titulo}</h3>{acao}</div> : <h3 className="iv-section-label">{titulo}</h3>}
       {aviso && <p className="in-top__aviso"><i className="pi pi-lock" aria-hidden="true" /> {aviso}</p>}
       {itens.length === 0 && <p className="in-muted-p">Sem dados no período.</p>}

@@ -21,8 +21,9 @@ export function Artefatos() {
   const client = useQueryClient(); const [busca, setBusca] = useState(''); const [alvo, setAlvo] = useState('');
   const [tipo, setTipo] = useState<string | undefined>(); const [categoria, setCategoria] = useState<string | undefined>();
   const [favorito, setFavorito] = useState(false); const [pagina, setPagina] = useState(0);
+  const [ordem, setOrdem] = useState<{ campo: string; direcao: 'asc' | 'desc' }>({ campo: 'criadoEm', direcao: 'desc' });
   const [importando, setImportando] = useState(false); const [progresso, setProgresso] = useState(''); const [erro, setErro] = useState('');
-  const filtros = { q: useDebounce(busca, 300), alvo: useDebounce(alvo, 300), tipo, categoria, favorito: favorito ? 'true' as const : undefined, page: pagina, limit: 25 };
+  const filtros = { q: useDebounce(busca, 300), alvo: useDebounce(alvo, 300), tipo, categoria, favorito: favorito ? 'true' as const : undefined, page: pagina, limit: 25, ordem: ordem.campo, direcao: ordem.direcao };
   const q = useQuery({ queryKey: ['artefatos', 'lista', filtros], queryFn: () => listarArtefatos(filtros) });
   const sel = useDrawerSelection(q.data?.items ?? []);
   const mudar = (fn: () => void) => { fn(); setPagina(0); };
@@ -54,10 +55,12 @@ export function Artefatos() {
     ]} />
     {q.isError && <Message severity="error" text="Não foi possível carregar a biblioteca." />}
     <DataTable value={q.data?.items ?? []} loading={q.isLoading} lazy paginator={(q.data?.total ?? 0) > 25} first={pagina * 25} rows={25}
+      className="iv-ordenavel" sortMode="single" sortField={ordem.campo} sortOrder={ordem.direcao === 'asc' ? 1 : -1}
+      onSort={(e) => { setOrdem({ campo: String(e.sortField), direcao: e.sortOrder === 1 ? 'asc' : 'desc' }); setPagina(0); }}
       totalRecords={q.data?.total ?? 0} onPage={(e) => setPagina(e.page ?? 0)} dataKey="id" selectionMode="single"
       onRowClick={(e) => sel.open((e.data as Artefato).id)} emptyMessage="Nenhum artefato encontrado. Importe o histórico ou aguarde novos eventos.">
-      <Column header="Tipo" body={(a: Artefato) => <Pill label={a.tipo} />} style={{ width: '8rem' }} />
-      <Column header="Arquivo / comando" body={(a: Artefato) => <div style={{ maxWidth: '38rem', overflowWrap: 'anywhere' }}><strong>{a.nome}</strong><div className="iv-muted">{a.formato} · {a.sha256 ? `SHA-256 ${a.sha256.slice(0, 16)}…` : a.categoria}</div></div>} />
+      <Column header="Tipo" sortable sortField="tipo" body={(a: Artefato) => <Pill label={a.tipo} />} style={{ width: '8rem' }} />
+      <Column header="Arquivo / comando" sortable sortField="nome" body={(a: Artefato) => <div style={{ maxWidth: '38rem', overflowWrap: 'anywhere' }}><strong>{a.nome}</strong><div className="iv-muted">{a.formato} · {a.sha256 ? `SHA-256 ${a.sha256.slice(0, 16)}…` : a.categoria}</div></div>} />
       <Column header="Resumo estático" body={(a: Artefato) => <span>{a.resumo.slice(0, 180)}</span>} />
       <Column header="Ocorrências" body={(a: Artefato) => a._count.ocorrencias} style={{ width: '8rem' }} />
     </DataTable></div>
