@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { combinarMitre } from './radar.js';
+import { combinarMitre, ordemDeEventos, ORDENS_EVENTOS } from './radar.js';
 import { escopoDoIp } from './radarEscopo.js';
 
 describe('combinarMitre', () => {
@@ -42,5 +42,21 @@ describe('escopoDoIp', () => {
   it('172.32.x e 192.169.x ficam fora das faixas privadas', () => {
     expect(escopoDoIp('172.32.0.1')).toBe('internet');
     expect(escopoDoIp('192.169.0.1')).toBe('internet');
+  });
+});
+
+describe('ordenação da tabela de eventos', () => {
+  it('ordena pela coluna escolhida e desempata pelo mais recente', () => {
+    expect(ordemDeEventos('ipOrigem', 'asc')).toEqual([{ ipOrigem: 'asc' }, { ocorridoEm: 'desc' }]);
+    expect(ordemDeEventos('acao', 'desc')).toEqual([{ acao: 'desc' }, { ocorridoEm: 'desc' }]);
+  });
+
+  it('quando a coluna é a data, ordena só pela data', () => {
+    expect(ordemDeEventos('ocorridoEm', 'asc')).toEqual([{ ocorridoEm: 'asc' }]);
+  });
+
+  it('aceita só as colunas da lista (nada de texto livre vai para o banco)', () => {
+    expect(ORDENS_EVENTOS).toContain('ocorridoEm');
+    expect(ORDENS_EVENTOS).not.toContain('detalhes');
   });
 });

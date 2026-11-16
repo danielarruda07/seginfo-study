@@ -37,6 +37,19 @@ export const DIARIO_PROJETO: EntradaDiario[] = [
     tags: ['linkedin', 'perfil-profissional', 'interface'],
   },
   {
+    id: 'proj-2026-11-15-inteligencia-ui',
+    data: '2026-11-15',
+    titulo: 'Tela de inteligência que responde ao clique',
+    descricao:
+      'Na área de inteligência, parte dos cartões parecia botão e não fazia nada, e as tabelas não tinham ordenação: ' +
+      'a seta de ordenar só aparecia no hover e, nas tabelas paginadas no servidor, ordenar a página atual seria enganoso. ' +
+      'Agora a ordenação acontece no servidor, com uma lista fixa de colunas, e a seta fica sempre visível. Cada cartão ' +
+      'que parece filtro filtra de fato ou abre o detalhe do que ele resume. Lição: se um elemento tem cara de botão, o ' +
+      'clique precisa produzir alguma coisa; e ordenar tabela paginada é uma questão de dados, não de visual.',
+    categoria: 'funcionalidade',
+    tags: ['ui', 'ux', 'inteligencia', 'tabelas', 'wazuh'],
+  },
+  {
     id: 'proj-2026-11-15-linkedin-certificacoes-recolhiveis',
     data: '2026-11-15',
     titulo: 'Um perfil profissional mais compacto',

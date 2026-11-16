@@ -38,6 +38,9 @@ function indicadores(r: RadarResumo | undefined, dim: Dimensao): TopItem[] {
   return src.map((i) => ({ id: `${dim}:${i.nome}`, rotulo: i.nome, total: i.total }));
 }
 
+/** Rola até um bloco da tela (os cartões de topo levam à lista correspondente). */
+const rolarPara = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
 export function Radar() {
   const [ambiente, setAmbiente] = useAmbiente();
   const [dias, setDias] = useState(7);
@@ -50,6 +53,7 @@ export function Radar() {
   const [qRaw, setQRaw] = useState('');
   const q = useDebounce(qRaw, 300);
   const [page, setPage] = useState(0);
+  const [ordenacao, setOrdenacao] = useState<{ campo: string; direcao: 'asc' | 'desc' }>({ campo: 'ocorridoEm', direcao: 'desc' });
   // GreyNoise sob demanda: a cota comunitária é pequena, então só classifica quando pedido
   const [greynoise, setGreynoise] = useState<Record<string, ClassificacaoGreynoise>>({});
   const classificar = useMutation({
@@ -58,7 +62,7 @@ export function Radar() {
   });
 
   const resumo = useQuery({ queryKey: ['radar-resumo', dias, escopo, ambiente], queryFn: () => getRadarResumo(dias, escopo, ambiente), retry: false, refetchInterval: ATUALIZAR_MS });
-  const filtros = useMemo(() => ({ ip, servico, acao, fonte: fonte as RadarEventosFiltro['fonte'], pais, escopo, ambiente, q: q || undefined, page, limit: ROWS }), [ip, servico, acao, fonte, pais, escopo, ambiente, q, page]);
+  const filtros = useMemo(() => ({ ip, servico, acao, fonte: fonte as RadarEventosFiltro['fonte'], pais, escopo, ambiente, q: q || undefined, page, limit: ROWS, ordem: ordenacao.campo, direcao: ordenacao.direcao }), [ip, servico, acao, fonte, pais, escopo, ambiente, q, page, ordenacao]);
   const eventos = useQuery({ queryKey: ['radar-eventos', filtros], queryFn: () => getRadarEventos(filtros), retry: false, refetchInterval: ATUALIZAR_MS });
   const r = resumo.data;
 
@@ -137,8 +141,8 @@ export function Radar() {
 
         <div className="iv-summary iv-mt">
           <div className="iv-kpis in-kpis-5">
-            <Kpi label="Eventos" icon="pi-bolt" value={v(r?.total)} hint={`em ${periodo}`} />
-            <Kpi label="IPs únicos" icon="pi-globe" value={v(r?.ipsUnicos)} />
+            <Kpi label="Eventos" icon="pi-bolt" value={v(r?.total)} hint={`em ${periodo}`} onClick={() => { limpar(); rolarPara('radar-eventos-titulo'); }} />
+            <Kpi label="IPs únicos" icon="pi-globe" value={v(r?.ipsUnicos)} onClick={() => rolarPara('radar-ips')} />
             <Kpi label="Falhas de login" icon="pi-user-minus" tone="warning" value={v(r?.falhasLogin)} active={acao === 'login_falha'} onClick={() => alternarAcao('login_falha')} />
             <Kpi label="Contas bloqueadas" icon="pi-lock" tone="serious" value={v(r?.lockouts)} active={acao === 'lockout'} onClick={() => alternarAcao('lockout')} />
             <Kpi label="Logins aceitos" icon="pi-unlock" tone="danger" value={v(loginsOk)} active={acao === 'login_ok'} onClick={() => alternarAcao('login_ok')} />
@@ -147,7 +151,7 @@ export function Radar() {
         </div>
 
         <div className="in-tops iv-mt">
-          <TopList titulo="IPs mais ativos" itens={indicadores(r, 'ip')} onOpen={abrirIndicador('ip')} selId={indSel.selId}
+          <TopList id="radar-ips" titulo="IPs mais ativos" itens={indicadores(r, 'ip')} onOpen={abrirIndicador('ip')} selId={indSel.selId}
             selo={(i) => (greynoise[i.rotulo] ? <SeloGreynoise c={greynoise[i.rotulo]} /> : null)}
             acao={(r?.topIps.length ?? 0) > 0 && (
               <Button label="Classificar com GreyNoise" icon="pi pi-filter" size="small" text loading={classificar.isPending}
@@ -178,7 +182,8 @@ export function Radar() {
         </section>
 
         <EventosTabela itens={eventos.data?.items ?? []} total={eventos.data?.total ?? 0} loading={eventos.isLoading} page={page} onPage={setPage}
-          onOpen={(id) => { fecharTudo(); evSel.open(id); }} selId={evSel.selId} f={f} />
+          onOpen={(id) => { fecharTudo(); evSel.open(id); }} selId={evSel.selId} f={f}
+          ordenacao={ordenacao} onOrdenar={(campo, direcao) => { setOrdenacao({ campo, direcao }); setPage(0); }} />
 
         <p className="in-rodape">Este painel resume eventos reais recebidos pelos coletores. Simulações ficam em <Link to="/labs">Labs</Link> e a cobertura em <Link to="/attack">ATT&amp;CK</Link>. Países: <a href="https://db-ip.com" target="_blank" rel="noopener noreferrer">IP Geolocation by DB-IP</a>.</p>
       </>)}

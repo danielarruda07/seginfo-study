@@ -18,5 +18,5 @@ export interface WazuhAlert {
 }
 
 export const getWazuhStatus = (ambiente: AmbienteFiltro = 'todos') => http.get<WazuhStatus>('/wazuh/status', { params: { ambiente } }).then((r) => r.data);
-export const getWazuhAlerts = (params: { dias: number; q?: string; page: number; limit: number; ambiente?: AmbienteFiltro }) =>
+export const getWazuhAlerts = (params: { dias: number; q?: string; page: number; limit: number; ambiente?: AmbienteFiltro; ordem?: string; direcao?: 'asc' | 'desc' }) =>
   http.get<{ total: number; page: number; limit: number; dias: number; items: WazuhAlert[] }>('/wazuh/alertas', { params }).then((r) => r.data);

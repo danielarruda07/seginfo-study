@@ -344,3 +344,8 @@
   .ac-barra__ver { margin-left: 0; }
   .ac-integ__dl { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Tabelas da Inteligência: seta de ordenação sempre visível e com o estado destacado */
+.iv-ordenavel .p-sortable-column-icon { opacity: 1 !important; color: var(--text-color-secondary); }
+.iv-ordenavel .p-sortable-column.p-highlight .p-sortable-column-icon { color: var(--primary-color); }
+.iv-ordenavel .p-sortable-column:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -2px; }
