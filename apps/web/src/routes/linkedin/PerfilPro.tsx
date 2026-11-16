@@ -142,6 +142,7 @@ export function PerfilPro() {
       </section>
 
       <ListaEditavel<Certificacao> titulo="Certificações" itens={perfil.certificacoes} max={40}
+        recolhivel
         descricao={`${obtidas} obtida${obtidas === 1 ? '' : 's'}. Marque o status com cuidado: a IA só trata como conquista o que está obtida.`}
         vazio="Nenhuma certificação ainda. Importe o PDF ou adicione."
         rotuloItem={(c) => c.nome} onChange={(v) => mudar({ certificacoes: v })}
