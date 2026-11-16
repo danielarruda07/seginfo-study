@@ -26,6 +26,17 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-15-linkedin-perfil-blocos-recolhidos',
+    data: '2026-11-15',
+    titulo: 'O perfil profissional cabe melhor na tela',
+    descricao:
+      'Os blocos do perfil profissional no LinkedIn agora começam recolhidos: dados do perfil e importação, headline e Sobre, ' +
+      'certificações, cursos, experiência, projetos e vagas. Os títulos e as contagens permanecem visíveis; cada seção abre ' +
+      'quando é hora de revisar ou editar, reduzindo a rolagem sem remover conteúdo.',
+    categoria: 'funcionalidade',
+    tags: ['linkedin', 'perfil-profissional', 'interface'],
+  },
+  {
     id: 'proj-2026-11-15-linkedin-certificacoes-recolhiveis',
     data: '2026-11-15',
     titulo: 'Um perfil profissional mais compacto',

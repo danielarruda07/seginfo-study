@@ -12,7 +12,7 @@ import { Pill } from '@/components/InfraKit';
 import { useInvalidate } from '@/hooks/useInvalidate';
 import { mensagemErro } from '@/services/linkedin';
 import { extrairVagaDoTexto, getPerfilPro, importarPdfDoPerfil, salvarPerfilPro } from '@/services/linkedinPerfil';
-import { CampoLista, ListaEditavel } from './ListaEditavel';
+import { BlocoRecolhivel, CampoLista, ListaEditavel } from './ListaEditavel';
 
 const novoId = () => crypto.randomUUID();
 const OPCOES_STATUS = STATUS_CERTIFICACAO.map((s) => ({ value: s, label: ROTULO_STATUS_CERTIFICACAO[s] }));
@@ -106,13 +106,10 @@ export function PerfilPro() {
 
   return (
     <div className="iv-col iv-gap">
-      <section className="iv-card pv-secao">
-        <div className="ca-toolbar">
-          <h3 className="ca-h3"><i className="pi pi-id-card" aria-hidden="true" /> Perfil profissional</h3>
-          <div className="iv-row iv-wrap">
-            {registro?.importadoEm && <Pill label={`PDF importado em ${new Date(registro.importadoEm).toLocaleDateString('pt-BR')}`} tone="muted" />}
-            {sujo && <Pill label="Alterações sem salvar" tone="serious" icon="pi-exclamation-circle" />}
-          </div>
+      <BlocoRecolhivel titulo="Perfil profissional">
+        <div className="iv-row iv-wrap">
+          {registro?.importadoEm && <Pill label={`PDF importado em ${new Date(registro.importadoEm).toLocaleDateString('pt-BR')}`} tone="muted" />}
+          {sujo && <Pill label="Alterações sem salvar" tone="serious" icon="pi-exclamation-circle" />}
         </div>
         <p className="iv-muted ca-small">
           Estes são os fatos que a IA pode afirmar sobre você. O que está como <em>obtida</em> ou concluído entra nos posts como conquista;
@@ -125,10 +122,9 @@ export function PerfilPro() {
           <span className="iv-muted ca-small">No LinkedIn: seu perfil, Mais, Salvar como PDF. O arquivo vai à IA só para leitura e não fica guardado.</span>
         </div>
         {msg && <Message severity={msg.sev} text={msg.text} className="ca-w100" />}
-      </section>
+      </BlocoRecolhivel>
 
-      <section className="iv-card pv-secao">
-        <h3 className="ca-h3">Headline e Sobre</h3>
+      <BlocoRecolhivel titulo="Headline e Sobre">
         <label className="ca-campo">
           <strong className="ca-small">Headline atual ({perfil.headline.length}/220)</strong>
           <InputTextarea value={perfil.headline} rows={2} autoResize maxLength={220} onChange={(e) => mudar({ headline: e.target.value })} />
@@ -139,7 +135,7 @@ export function PerfilPro() {
         </label>
         <CampoLista value={perfil.competencias} separador="virgula" rotulo="Competências (separe por vírgula)" linhas={3}
           placeholder="Ex.: Proxmox, FortiGate, Wazuh, resposta a incidentes" onChange={(v) => mudar({ competencias: v })} />
-      </section>
+      </BlocoRecolhivel>
 
       <ListaEditavel<Certificacao> titulo="Certificações" itens={perfil.certificacoes} max={40}
         recolhivel
@@ -155,7 +151,7 @@ export function PerfilPro() {
           { chave: 'credencial', rotulo: 'ID ou link da credencial', larga: true },
         ]} />
 
-      <ListaEditavel<Curso> titulo="Cursos" itens={perfil.cursos} max={60} vazio="Nenhum curso ainda."
+      <ListaEditavel<Curso> titulo="Cursos" itens={perfil.cursos} max={60} recolhivel vazio="Nenhum curso ainda."
         rotuloItem={(c) => c.nome} onChange={(v) => mudar({ cursos: v })}
         novo={() => ({ id: novoId(), nome: '', instituicao: '', concluidoEm: '', cargaHoraria: '' })}
         campos={[
@@ -164,6 +160,7 @@ export function PerfilPro() {
         ]} />
 
       <ListaEditavel<Experiencia> titulo="Experiência" itens={perfil.experiencias} max={20}
+        recolhivel
         descricao='Descreva o cargo e o que você fez. Em "Contexto" use só setor ou porte, sem o nome da empresa.'
         vazio="Nenhuma experiência ainda." rotuloItem={(e) => `${e.cargo}${e.periodo ? ` · ${e.periodo}` : ''}`} onChange={(v) => mudar({ experiencias: v })}
         novo={() => ({ id: novoId(), cargo: '', contexto: '', periodo: '', resumo: '', destaques: [] })}
@@ -174,7 +171,7 @@ export function PerfilPro() {
           { chave: 'destaques', rotulo: 'Resultados e entregas (um por linha, só os que são verdade)', tipo: 'linhas', larga: true },
         ]} />
 
-      <ListaEditavel<ProjetoPortfolio> titulo="Projetos de portfólio" itens={perfil.projetos} max={30}
+      <ListaEditavel<ProjetoPortfolio> titulo="Projetos de portfólio" itens={perfil.projetos} max={30} recolhivel
         vazio="Nenhum projeto ainda. Labs e a própria SegInfo Study contam." rotuloItem={(p) => p.nome} onChange={(v) => mudar({ projetos: v })}
         novo={() => ({ id: novoId(), nome: '', descricao: '', tecnologias: [], url: '' })}
         campos={[
@@ -183,18 +180,15 @@ export function PerfilPro() {
           { chave: 'tecnologias', rotulo: 'Tecnologias (separe por vírgula)', tipo: 'virgulas', larga: true },
         ]} />
 
-      <section className="iv-card pv-secao">
-        <div className="ca-toolbar">
-          <h3 className="ca-h3"><i className="pi pi-bullseye" aria-hidden="true" /> Vagas-alvo <span className="iv-muted ca-small">({perfil.vagasAlvo.length})</span></h3>
-          <div className="iv-row iv-wrap">
-            <Button label="Ler uma vaga" icon="pi pi-sparkles" size="small" outlined disabled={perfil.vagasAlvo.length >= 15} onClick={() => setVagaAberta(true)} />
-          </div>
+      <BlocoRecolhivel titulo="Vagas-alvo" contagem={perfil.vagasAlvo.length}>
+        <div className="iv-row iv-wrap">
+          <Button label="Ler uma vaga" icon="pi pi-sparkles" size="small" outlined disabled={perfil.vagasAlvo.length >= 15} onClick={() => setVagaAberta(true)} />
         </div>
         <p className="iv-muted ca-small ca-mb0">
           Cole a descrição de vagas que você quer. A IA ajusta a ênfase e o vocabulário dos posts a esses requisitos, sem inventar experiência que você não tem.
         </p>
-      </section>
-      <ListaEditavel<VagaAlvo> titulo="Vagas cadastradas" itens={perfil.vagasAlvo} max={15} vazio="Nenhuma vaga-alvo. Use “Ler uma vaga” ou adicione à mão."
+      </BlocoRecolhivel>
+      <ListaEditavel<VagaAlvo> titulo="Vagas cadastradas" itens={perfil.vagasAlvo} max={15} recolhivel vazio="Nenhuma vaga-alvo. Use “Ler uma vaga” ou adicione à mão."
         rotuloItem={(v) => `${v.titulo}${v.nivel ? ` · ${v.nivel}` : ''}`} onChange={(v) => mudar({ vagasAlvo: v })}
         novo={() => ({ id: novoId(), titulo: '', nivel: '', requisitos: [], observacao: '' })}
         campos={[

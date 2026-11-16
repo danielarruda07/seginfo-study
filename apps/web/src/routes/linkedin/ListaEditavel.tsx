@@ -3,6 +3,7 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
+import type { ReactNode } from 'react';
 
 /** Campo de lista de textos (um por linha ou separados por vírgula). Mantém o que você digita enquanto edita. */
 export function CampoLista({ value, onChange, separador, rotulo, placeholder, linhas = 2 }: {
@@ -32,6 +33,19 @@ export interface CampoDef {
   placeholder?: string;
   /** ocupa a linha inteira */
   larga?: boolean;
+}
+
+/** Cartão recolhível para manter telas de perfil compactas sem esconder sua estrutura. */
+export function BlocoRecolhivel({ titulo, contagem, children }: { titulo: string; contagem?: number; children: ReactNode }) {
+  return (
+    <details className="iv-card pv-secao pv-lista-recolhivel">
+      <summary className="pv-lista-recolhivel__resumo">
+        <span>{titulo} {contagem !== undefined && <span className="iv-muted ca-small">({contagem})</span>}</span>
+        <i className="pi pi-chevron-down" aria-hidden="true" />
+      </summary>
+      <div className="pv-lista-recolhivel__conteudo">{children}</div>
+    </details>
+  );
 }
 
 /** Lista de itens com campos editáveis, botão de adicionar e de remover. */
@@ -90,15 +104,7 @@ export function ListaEditavel<T extends { id: string }>({ titulo, descricao, ite
   );
 
   if (recolhivel) {
-    return (
-      <details className="iv-card pv-secao pv-lista-recolhivel">
-        <summary className="pv-lista-recolhivel__resumo">
-          <span>{titulo} <span className="iv-muted ca-small">({itens.length})</span></span>
-          <i className="pi pi-chevron-down" aria-hidden="true" />
-        </summary>
-        <div className="pv-lista-recolhivel__conteudo">{conteudo}</div>
-      </details>
-    );
+    return <BlocoRecolhivel titulo={titulo} contagem={itens.length}>{conteudo}</BlocoRecolhivel>;
   }
 
   return (
