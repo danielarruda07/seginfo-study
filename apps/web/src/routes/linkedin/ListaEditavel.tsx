@@ -35,14 +35,14 @@ export interface CampoDef {
 }
 
 /** Lista de itens com campos editáveis, botão de adicionar e de remover. */
-export function ListaEditavel<T extends { id: string }>({ titulo, descricao, itens, campos, novo, onChange, max, rotuloItem, vazio }: {
+export function ListaEditavel<T extends { id: string }>({ titulo, descricao, itens, campos, novo, onChange, max, rotuloItem, vazio, recolhivel = false }: {
   titulo: string; descricao?: string; itens: T[]; campos: CampoDef[]; novo: () => T; onChange: (itens: T[]) => void;
-  max: number; rotuloItem: (i: T) => string; vazio: string;
+  max: number; rotuloItem: (i: T) => string; vazio: string; recolhivel?: boolean;
 }) {
   const alterar = (id: string, chave: string, valor: unknown) =>
     onChange(itens.map((i) => (i.id === id ? ({ ...i, [chave]: valor } as T) : i)));
-  return (
-    <section className="iv-card pv-secao">
+  const conteudo = (
+    <>
       <div className="ca-toolbar">
         <h3 className="ca-h3">{titulo} <span className="iv-muted ca-small">({itens.length})</span></h3>
         <Button label="Adicionar" icon="pi pi-plus" size="small" outlined disabled={itens.length >= max} onClick={() => onChange([...itens, novo()])} />
@@ -86,6 +86,24 @@ export function ListaEditavel<T extends { id: string }>({ titulo, descricao, ite
           );
         })}
       </ul>
+    </>
+  );
+
+  if (recolhivel) {
+    return (
+      <details className="iv-card pv-secao pv-lista-recolhivel">
+        <summary className="pv-lista-recolhivel__resumo">
+          <span>{titulo} <span className="iv-muted ca-small">({itens.length})</span></span>
+          <i className="pi pi-chevron-down" aria-hidden="true" />
+        </summary>
+        <div className="pv-lista-recolhivel__conteudo">{conteudo}</div>
+      </details>
+    );
+  }
+
+  return (
+    <section className="iv-card pv-secao">
+      {conteudo}
     </section>
   );
 }

@@ -3,6 +3,15 @@
  * Só variáveis de tokens.css (nada de hex). Utilitários ca-* e iv-* continuam valendo.
  */
 .pv-secao.iv-card { display: grid; gap: .75rem; margin: 0; }
+.pv-lista-recolhivel > .pv-lista-recolhivel__resumo {
+  display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+  cursor: pointer; list-style: none; font-weight: 600;
+}
+.pv-lista-recolhivel > .pv-lista-recolhivel__resumo::-webkit-details-marker { display: none; }
+.pv-lista-recolhivel > .pv-lista-recolhivel__resumo::marker { content: ''; }
+.pv-lista-recolhivel[open] > .pv-lista-recolhivel__resumo { margin-bottom: .1rem; }
+.pv-lista-recolhivel[open] > .pv-lista-recolhivel__resumo > .pi { transform: rotate(180deg); }
+.pv-lista-recolhivel__conteudo { display: grid; gap: .75rem; }
 .pv-itens { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
 .pv-item {
   display: grid; gap: .5rem; padding: .7rem .8rem; min-width: 0;
