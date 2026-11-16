@@ -50,7 +50,7 @@ própria, num segmento só dela:
   sem autenticação, leitura de arquivos, SQLi), usuário admin com senha fraca de propósito.
 - **Wazuh**: grupo próprio que lê o log do nginx e vigia a pasta do site em tempo real (FIM). Regras próprias:
   PHP novo no site (webshell, T1505.003), tentativa nos endpoints dos plugins vulneráveis (T1190) e POST no
-  `xmlrpc.php` (T1110). O coletor do Radar converte esses alertas em eventos de fonte `isca` (serviço =
+  `xmlrpc.php` (T1110), enumeração de usuários (T1589) e uma regra de nível baixo que transforma **todo acesso não estático** em alerta (o Wazuh, por padrão, só alerta o que parece ataque; na isca queremos ver tudo). O coletor do Radar converte esses alertas em eventos de fonte `isca` (serviço =
   wordpress/dvwa/juice-shop); o arquivo detectado pelo FIM entra sem IP, porque o monitor não sabe quem gravou.
 - **IPS do firewall em modo só registro** na regra de entrada: a assinatura fica no log, o ataque chega ao alvo.
 - **Sem saída para a internet**: um invasor que consiga shell não baixa ferramentas nem ataca terceiros pelo IP

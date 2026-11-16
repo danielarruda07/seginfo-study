@@ -1,4 +1,4 @@
-<!-- Isca web (agente range-isca-web): regras proprias 100320-100329 -->
+<!-- Isca web (agente range-isca-web): regras proprias 100320-100329 (100325/100326: todo acesso) -->
 <group name="range,isca_web,">
   <rule id="100320" level="12">
     <if_sid>554</if_sid>
@@ -32,5 +32,26 @@
     <regex type="pcre2">"POST </regex>
     <description>Isca web: POST no xmlrpc.php (forca bruta ou pingback)</description>
     <mitre><id>T1110</id></mitre>
+  </rule>
+  <!-- todo acesso nao estatico vira alerta (o Wazuh so alerta padrao de ataque; aqui queremos ver tudo) -->
+  <rule id="100325" level="3">
+    <if_sid>31100, 31101, 31108</if_sid>
+    <location>/var/log/isca-web/access.log</location>
+    <url negate="yes" type="pcre2">(?i)\.(css|js|png|jpe?g|gif|svg|webp|woff2?|ttf|ico|map)(\?|$)|^/\.well-known/acme-challenge/</url>
+    <description>Isca web: acesso registrado</description>
+    <group>isca_web_acesso,</group>
+  </rule>
+  <rule id="100326" level="6">
+    <if_sid>100325</if_sid>
+    <regex type="pcre2">"POST </regex>
+    <description>Isca web: POST recebido</description>
+    <group>isca_web_acesso,</group>
+  </rule>
+  <rule id="100327" level="8">
+    <if_sid>100325</if_sid>
+    <url type="pcre2">(?i)[?&amp;]author=\d|wp(/|%2F)v2(/|%2F)users</url>
+    <description>Isca web: enumeracao de usuarios do WordPress</description>
+    <mitre><id>T1589</id></mitre>
+    <group>isca_web_acesso,recon,</group>
   </rule>
 </group>
