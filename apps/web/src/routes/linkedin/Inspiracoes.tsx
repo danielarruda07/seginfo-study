@@ -7,14 +7,14 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Message } from 'primereact/message';
 import {
-  ASPECTOS_INSPIRACAO, MAX_INSPIRACOES, ROTULO_ASPECTO, TIPOS_INSPIRACAO,
+  ASPECTOS_INSPIRACAO, MAX_INSPIRACOES, ROTULO_ASPECTO, TIPOS_INSPIRACAO, lerUrlLinkedin,
   type AspectoInspiracao, type InspiracaoLinkedin,
 } from '@seginfo/shared';
 import { Chip, EmptyState, Pill } from '@/components/InfraKit';
 import { useInvalidate } from '@/hooks/useInvalidate';
 import { mensagemErro } from '@/services/linkedin';
 import {
-  criarInspiracao, descreverImagemDeInspiracao, editarInspiracao, listInspiracoes, removerInspiracao,
+  criarInspiracao, editarInspiracao, lerPrintDeInspiracao, listInspiracoes, removerInspiracao,
 } from '@/services/linkedinPerfil';
 
 type Form = {
@@ -49,6 +49,21 @@ export function Inspiracoes() {
   }
 
   const campo = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const dadosUrl = lerUrlLinkedin(form.url);
+
+  /** Ao colar o link: o endereço já diz se é post ou perfil e, em geral, o nome da pessoa. */
+  function aoMudarUrl(url: string) {
+    const d = lerUrlLinkedin(url);
+    setForm((f) => ({ ...f, url, ...(d.valida && d.tipo ? { tipo: d.tipo } : {}), ...(d.valida && d.autor && !f.autor.trim() ? { autor: d.autor } : {}) }));
+  }
+
+  /** Ctrl+V com um print na área de transferência equivale a escolher o arquivo. */
+  function aoColar(e: React.ClipboardEvent) {
+    const arquivo = [...e.clipboardData.files].find((f) => f.type.startsWith('image/'));
+    if (!arquivo) return;
+    e.preventDefault();
+    void aoEscolherImagem(arquivo);
+  }
   const alternarAspecto = (a: AspectoInspiracao) =>
     campo('aspectos', form.aspectos.includes(a) ? form.aspectos.filter((x) => x !== a) : [...form.aspectos, a]);
 
@@ -74,8 +89,20 @@ export function Inspiracoes() {
     if (f.size > 5 * 1024 * 1024) return setErro('A imagem tem mais de 5 MB.');
     setLendoImagem(true); setErro('');
     try {
-      const descricao = await descreverImagemDeInspiracao(f);
-      setForm((x) => ({ ...x, observacaoVisual: x.observacaoVisual ? `${x.observacaoVisual}\n\n${descricao}` : descricao, aspectos: x.aspectos.includes('imagem') ? x.aspectos : [...x.aspectos, 'imagem'] }));
+      const r = await lerPrintDeInspiracao(f);
+      // preenche só o que está vazio: o que você já escreveu não é sobrescrito
+      setForm((x) => {
+        const aspectos = new Set(x.aspectos);
+        aspectos.add('imagem');
+        if (!x.texto.trim() && r.texto) aspectos.add('texto');
+        return {
+          ...x,
+          autor: x.autor.trim() ? x.autor : r.autor,
+          texto: x.texto.trim() ? x.texto : r.texto,
+          observacaoVisual: x.observacaoVisual ? `${x.observacaoVisual}\n\n${r.descricao}` : r.descricao,
+          aspectos: [...aspectos],
+        };
+      });
     } catch (e) {
       setErro(mensagemErro(e));
     } finally {
@@ -137,14 +164,24 @@ export function Inspiracoes() {
             <Button label="Cancelar" text onClick={() => setEditando(null)} />
           </div>
         )}>
-        <div className="iv-col iv-gap">
+        <div className="iv-col iv-gap" onPaste={aoColar}>
+          <label className="ca-campo"><strong className="ca-small">Link do post ou do perfil</strong>
+            <InputText value={form.url} maxLength={500} onChange={(e) => aoMudarUrl(e.target.value)} placeholder="https://www.linkedin.com/posts/…" /></label>
+          <div className="iv-row iv-wrap">
+            {dadosUrl.valida && linkSeguro(form.url.trim()) && (
+              <a className="ca-small" href={form.url.trim()} target="_blank" rel="noopener noreferrer"><i className="pi pi-external-link" aria-hidden="true" /> Abrir no LinkedIn para tirar o print</a>
+            )}
+            <Button label={lendoImagem ? 'Lendo o print…' : 'Ler um print com a IA'} icon="pi pi-image" size="small" outlined loading={lendoImagem} onClick={() => imagem.current?.click()} />
+          </div>
+          <p className="iv-muted ca-small ca-mb0">
+            O app não acessa o LinkedIn (a API oficial não permite ler posts de outras pessoas). Cole o link, tire um print do post e envie ou cole aqui (Ctrl+V):
+            a IA lê o autor, o texto e o visual e preenche os campos vazios. {form.url && !dadosUrl.valida ? 'Este link não parece ser do LinkedIn.' : ''}
+          </p>
           <div className="pv-grade">
             <label className="ca-campo"><strong className="ca-small">Tipo</strong>
               <Dropdown value={form.tipo} options={OPCOES_TIPO} onChange={(e) => campo('tipo', e.value)} /></label>
             <label className="ca-campo"><strong className="ca-small">Quem é</strong>
               <InputText value={form.autor} maxLength={120} onChange={(e) => campo('autor', e.target.value)} placeholder="Nome da pessoa" /></label>
-            <label className="ca-campo pv-grade__larga"><strong className="ca-small">Link (opcional)</strong>
-              <InputText value={form.url} maxLength={500} onChange={(e) => campo('url', e.target.value)} placeholder="https://www.linkedin.com/…" /></label>
           </div>
           <div>
             <strong className="ca-small">O que me chama atenção</strong>
@@ -169,8 +206,7 @@ export function Inspiracoes() {
           <div className="iv-row iv-wrap">
             <input ref={imagem} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden aria-label="Print do post"
               onChange={(e) => void aoEscolherImagem(e.target.files?.[0])} />
-            <Button label={lendoImagem ? 'Analisando…' : 'Analisar um print'} icon="pi pi-image" size="small" outlined loading={lendoImagem} onClick={() => imagem.current?.click()} />
-            <span className="iv-muted ca-small">A IA descreve o estilo; a imagem não fica guardada. Evite prints com dados pessoais.</span>
+            <span className="iv-muted ca-small">A imagem do print não fica guardada, só o que a IA leu. Evite prints com dados pessoais.</span>
           </div>
           {erro && <Message severity="error" text={erro} className="ca-w100" />}
         </div>

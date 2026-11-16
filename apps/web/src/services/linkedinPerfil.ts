@@ -1,5 +1,5 @@
 import type {
-  InspiracaoIn, InspiracaoLinkedin, PerfilImportado, PerfilPro, PerfilProRegistro, VagaImportada, VozLinkedin,
+  InspiracaoIn, InspiracaoLinkedin, LeituraPrint, PerfilImportado, PerfilPro, PerfilProRegistro, VagaImportada, VozLinkedin,
 } from '@seginfo/shared';
 import { http } from './http';
 import { aguardarTarefa } from './linkedinPipeline';
@@ -51,13 +51,13 @@ export const removerInspiracao = (id: string) => dados(http.delete<{ ok: true }>
 const TIPOS_IMAGEM = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;
 type TipoImagem = (typeof TIPOS_IMAGEM)[number];
 
-/** A IA descreve o visual de um print. A imagem não fica guardada, só a descrição. */
-export async function descreverImagemDeInspiracao(arquivo: File): Promise<string> {
+/** A IA lê um print de post: autor, texto e visual. A imagem não fica guardada, só o que foi lido. */
+export async function lerPrintDeInspiracao(arquivo: File): Promise<LeituraPrint> {
   const tipo = TIPOS_IMAGEM.find((t) => t === arquivo.type) as TipoImagem | undefined;
   if (!tipo) throw new Error('Use uma imagem JPG, PNG, WebP ou GIF.');
   const imagemBase64 = await arquivoParaBase64(arquivo);
   const { tarefaId } = await iniciar('imagem-inspiracao', { imagemBase64, tipo }, 60_000);
-  return (await aguardarTarefa<{ descricao: string }>(tarefaId)).descricao;
+  return aguardarTarefa<LeituraPrint>(tarefaId);
 }
 
 // ----- voz -----

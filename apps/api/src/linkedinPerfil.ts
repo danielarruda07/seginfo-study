@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client';
 import { InspiracaoInSchema, MAX_INSPIRACOES, PerfilProSchema, VozAjustesInSchema, podeGerarVoz } from '@seginfo/shared';
 import { prisma } from './db.js';
 import type { AuthedRequest } from './auth.js';
-import { descreverVisualInspiracao, extrairVaga, gerarPerfilVoz, importarPerfilDoPdf, MODELO } from './ia.js';
+import { extrairVaga, lerPrintDeInspiracao, gerarPerfilVoz, importarPerfilDoPdf, MODELO } from './ia.js';
 import { estrategiaDe } from './linkedin.js';
 import { iniciarTarefa } from './linkedinPipeline.js';
 import { inspiracaoParaDto, perfilDe, pontos, vozDe } from './linkedinPerfilContexto.js';
@@ -113,7 +113,7 @@ export async function registerLinkedinPerfilRoutes(app: FastifyInstance) {
   app.post('/api/linkedin/tarefas/imagem-inspiracao', { bodyLimit: 9 * MB }, async (req, reply) => {
     const b = ImagemIn.safeParse(req.body);
     if (!b.success || bytesDeBase64(b.data.imagemBase64) > 5 * MB) return reply.status(400).send({ error: 'Envie uma imagem JPG, PNG, WebP ou GIF de até 5 MB.' });
-    return responder(iniciarTarefa(uid(req), async () => ({ descricao: await descreverVisualInspiracao(b.data.imagemBase64, b.data.tipo) })), reply);
+    return responder(iniciarTarefa(uid(req), () => lerPrintDeInspiracao(b.data.imagemBase64, b.data.tipo)), reply);
   });
 
   // ===================== perfil de voz =====================

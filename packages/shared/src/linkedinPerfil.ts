@@ -199,8 +199,38 @@ export interface InspiracaoLinkedin {
 
 export const MAX_INSPIRACOES = 60;
 
-/** Descrição de um print (post de inspiração) feita pela IA. */
-export const AnaliseVisualSchema = z.object({ descricao: z.string() });
+/** O que a IA lê de um print de post: quem escreveu, o texto e como é o visual. */
+export const LeituraPrintSchema = z.object({
+  autor: z.string(),
+  texto: z.string(),
+  descricao: z.string(),
+});
+export type LeituraPrint = z.infer<typeof LeituraPrintSchema>;
+
+export interface DadosDaUrlLinkedin {
+  valida: boolean;
+  tipo: 'post' | 'perfil' | null;
+  /** nome tirado do endereço (ex.: "Daniel Arruda"); é um palpite, confira */
+  autor: string;
+}
+
+/** Tira do endereço o que ele já diz: se é post ou perfil e o nome da pessoa. Não acessa o LinkedIn. */
+export function lerUrlLinkedin(url: string): DadosDaUrlLinkedin {
+  const vazio: DadosDaUrlLinkedin = { valida: false, tipo: null, autor: '' };
+  let u: URL;
+  try { u = new URL(url.trim()); } catch { return vazio; }
+  if (!/^https?:$/.test(u.protocol) || !/(^|\.)linkedin\.com$/i.test(u.hostname)) return vazio;
+  const caminho = decodeURIComponent(u.pathname);
+  const post = /^\/posts\/([^/_]+)_/i.exec(caminho);
+  const perfil = /^\/in\/([^/]+)/i.exec(caminho);
+  const vanity = post?.[1] ?? perfil?.[1] ?? '';
+  const partes = vanity.split('-').filter(Boolean);
+  // o LinkedIn acrescenta um sufixo de letras e números ao final do nome (ex.: "-1a2b3c4d")
+  if (partes.length > 1 && /^(?=.*\d)[a-z0-9]{5,12}$/i.test(partes[partes.length - 1])) partes.pop();
+  const autor = partes.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ').slice(0, 120);
+  const ehPost = !!post || /^\/(feed\/update|pulse)\//i.test(caminho);
+  return { valida: true, tipo: ehPost ? 'post' : perfil ? 'perfil' : null, autor };
+}
 
 // ===================== Perfil de voz =====================
 
