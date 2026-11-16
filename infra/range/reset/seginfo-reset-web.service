@@ -1,0 +1,8 @@
+[Unit]
+Description=Reset diario da isca web para o snapshot limpo
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/seginfo-reset.env
+ExecStart=/bin/sh -c 'exec /usr/bin/python3 /opt/seginfo-reset/seginfo-reset.py "$VMIDS_WEB"'

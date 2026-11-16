@@ -26,6 +26,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-16-isca-web',
+    data: '2026-11-16',
+    titulo: 'Um site de verdade para ser atacado, longe do app',
+    descricao:
+      'A ideia inicial era abrir o próprio app de estudo para ver ataques web. Ele guarda tokens do firewall, do ' +
+      'hipervisor e do SIEM: invadido, entregaria a chave do homelab inteiro. A saída foi um domínio separado, sem ' +
+      'proxy, apontando para uma VM num segmento só dela, com WordPress antigo e plugins vulneráveis, DVWA e Juice ' +
+      'Shop. Sem saída para a internet, para que um invasor com shell não use o IP de casa contra terceiros, e com ' +
+      'reset diário. Minutos depois de abrir a porta, um scanner já procurava /sse, o endpoint típico de servidor ' +
+      'MCP: os robôs já caçam agentes de IA expostos. Lição: o alvo de estudo e o painel de controle nunca são a ' +
+      'mesma máquina.',
+    categoria: 'infra',
+    tags: ['honeypot', 'wordpress', 'wazuh', 'blue-team', 'range'],
+  },
+  {
     id: 'proj-2026-11-16-attack-alertas-wazuh',
     data: '2026-11-16',
     titulo: 'A matriz dizia "sem alerta" com centenas de milhares de alertas no SIEM',

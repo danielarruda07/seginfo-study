@@ -413,8 +413,10 @@ export const AtaqueEventoInSchema = z.object({
     .record(z.string(), z.unknown())
     .refine((d) => JSON.stringify(d).length <= 4096, { message: 'detalhes excede 4KB' })
     .optional(),
-}).refine((e) => e.acao === 'lockout' || e.ipOrigem !== undefined || (e.fonte === 'wazuh' && e.ambiente === 'producao'), {
-  message: 'ipOrigem é obrigatório (exceto em lockout)',
+}).refine((e) => e.acao === 'lockout' || e.ipOrigem !== undefined || (e.fonte === 'wazuh' && e.ambiente === 'producao')
+  // arquivo novo na isca web visto pelo FIM do Wazuh (webshell): o monitor de arquivos não sabe quem gravou
+  || (e.fonte === 'isca' && e.acao === 'download' && typeof e.detalhes?.arquivo === 'string'), {
+  message: 'ipOrigem é obrigatório (exceto em lockout e em arquivo detectado na isca)',
   path: ['ipOrigem'],
 });
 export type AtaqueEventoIn = z.infer<typeof AtaqueEventoInSchema>;

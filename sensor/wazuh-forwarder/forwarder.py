@@ -444,6 +444,61 @@ def de_reflexao(a, regra, d):
             'servico': SERVICO_UDP.get(p), 'acao': 'reflexao', 'alvo': clip(d.get('devname'), 128), 'detalhes': det}
 
 
+# Isca web (WordPress/DVWA/Juice Shop atras de um nginx): o nginx grava o log no formato combinado mais
+# "host=<vhost> scheme=<http|https>" no fim; o decoder web-accesslog do Wazuh entrega srcip, protocol (metodo),
+# url e id (status). O resto sai do full_log.
+WEB_LINHA = re.compile(r'"(?P<metodo>[A-Z]{3,10}) (?P<url>\S+)[^"]*" (?P<status>\d{3}) \S+ "[^"]*" "(?P<ua>[^"]*)"'
+                       r'(?: host=(?P<host>\S+))?(?: scheme=(?P<scheme>https?))?')
+WEB_GRUPOS_ATAQUE = {'attack', 'sql_injection', 'xss', 'web_attack', 'exploit_attempt', 'webshell'}
+WEB_LOGIN = re.compile(r'/(wp-login\.php|xmlrpc\.php)|/login(\.php)?\b|/rest/user/login', re.I)
+
+
+def servico_web(host):
+    h = (host or '').lower()
+    if h.startswith('dvwa.'):
+        return 'dvwa'
+    if h.startswith('shop.'):
+        return 'juice-shop'
+    return 'wordpress'
+
+
+def de_web(a, regra, d):
+    grupos = set(regra.get('groups') or [])
+    det = detalhes_base(a, regra)
+    fim = a.get('syscheck') or {}
+    if fim.get('path'):
+        # arquivo novo/alterado no site: webshell ou alteracao feita pelo invasor (o FIM nao tem IP)
+        det['arquivo'] = clip(fim.get('path'), 500)
+        det['alteracao'] = clip(fim.get('event'), 32)
+        return {'fonte': 'isca', 'ocorridoEm': quando(a), 'acao': 'download', 'servico': 'wordpress',
+                'alvo': clip((a.get('agent') or {}).get('name'), 128), 'detalhes': det}
+    ip = ip_ok(d.get('srcip'))
+    if not ip:
+        return None
+    m = WEB_LINHA.search(a.get('full_log') or '')
+    metodo = (m.group('metodo') if m else None) or d.get('protocol') or ''
+    url = (m.group('url') if m else None) or d.get('url') or ''
+    det['url'] = clip(f'{metodo} {url}'.strip(), 300)
+    if m and m.group('ua') not in (None, '', '-'):
+        det['userAgent'] = clip(m.group('ua'), 200)
+    status = (m.group('status') if m else None) or d.get('id')
+    if status:
+        det['status'] = clip(status, 3)
+    https = bool(m and m.group('scheme') == 'https')
+    if grupos & WEB_GRUPOS_ATAQUE:
+        acao = 'comando'
+    elif 'authentication_failed' in grupos or 'authentication_failures' in grupos or (
+            metodo == 'POST' and WEB_LOGIN.search(url)):
+        acao = 'login_falha'
+    elif grupos & {'web_scan', 'recon', 'invalid_access'} or str(status).startswith('4'):
+        acao = 'scan'
+    else:
+        acao = 'conexao'
+    return {'fonte': 'isca', 'ocorridoEm': quando(a), 'ipOrigem': ip, 'portaDestino': 443 if https else 80,
+            'protocolo': 'tcp', 'servico': servico_web(m.group('host') if m else None), 'acao': acao,
+            'alvo': clip((a.get('agent') or {}).get('name'), 128), 'detalhes': det}
+
+
 def ambiente_alerta(alerta):
     agent = alerta.get('agent') or {}
     labels = agent.get('labels') or {}
@@ -507,6 +562,9 @@ def converter(alerta):
         ev = de_dionaea(alerta, regra, d)
     elif 'heralding' in grupos:
         ev = de_heralding(alerta, regra, d)
+    elif 'isca_web' in grupos or 'accesslog' in grupos or (
+            'syscheck' in grupos and str((alerta.get('agent') or {}).get('name', '')).startswith('range-isca-web')):
+        ev = de_web(alerta, regra, d)
     elif 'isca' in grupos:
         ev = de_isca(alerta, regra, d)
     elif 'prompt_honeypot' in grupos:

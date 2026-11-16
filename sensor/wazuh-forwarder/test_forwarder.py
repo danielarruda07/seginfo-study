@@ -155,5 +155,55 @@ class ProducaoTest(unittest.TestCase):
         self.assertEqual(fw.ambiente_alerta({'agent': {'id': '000', 'name': 'range-wazuh'}}), 'nao_classificado')
 
 
+class IscaWebTest(unittest.TestCase):
+    AGENTE = {'id': '006', 'name': 'range-isca-web'}
+
+    def alerta(self, regra, linha, **data):
+        return {'timestamp': '2026-11-16T18:10:05.000-0300', 'agent': self.AGENTE, 'rule': regra,
+                'full_log': linha, 'data': {'srcip': '203.0.113.7', **data}}
+
+    def test_exploracao_de_plugin_vira_comando_com_tecnica(self):
+        linha = ('203.0.113.7 - - [16/Nov/2026:21:10:05 +0000] "POST /wp-content/plugins/wp-file-manager/lib/php/'
+                 'connector.minimal.php HTTP/1.1" 200 12 "-" "python-requests/2.31" host=empresa.example scheme=https')
+        regra = {'id': '100322', 'level': 12, 'description': 'wp-file-manager', 'groups': ['range', 'isca_web'],
+                 'mitre': {'id': ['T1190'], 'technique': ['Exploit Public-Facing Application']}}
+        ev = fw.converter(self.alerta(regra, linha))
+        self.assertEqual(ev['fonte'], 'isca')
+        self.assertEqual(ev['ambiente'], 'laboratorio')
+        self.assertEqual(ev['servico'], 'wordpress')
+        self.assertEqual(ev['portaDestino'], 443)
+        self.assertEqual(ev['detalhes']['mitre'][0]['id'], 'T1190')
+        self.assertTrue(ev['detalhes']['url'].startswith('POST /wp-content/plugins/wp-file-manager'))
+        self.assertEqual(ev['detalhes']['userAgent'], 'python-requests/2.31')
+
+    def test_ataque_classificado_pelo_wazuh_vira_comando(self):
+        linha = '203.0.113.7 - - [x] "GET /vulnerabilities/sqli/?id=1%27+or+1=1 HTTP/1.1" 200 5 "-" "sqlmap" host=dvwa.empresa.example scheme=http'
+        regra = {'id': '31103', 'level': 7, 'groups': ['web', 'accesslog', 'attack', 'sql_injection']}
+        ev = fw.converter(self.alerta(regra, linha))
+        self.assertEqual((ev['acao'], ev['servico'], ev['portaDestino']), ('comando', 'dvwa', 80))
+
+    def test_post_no_login_vira_forca_bruta_e_404_vira_varredura(self):
+        regra = {'id': '100324', 'level': 8, 'groups': ['range', 'isca_web']}
+        login = '203.0.113.7 - - [x] "POST /xmlrpc.php HTTP/1.1" 200 5 "-" "Mozilla" host=empresa.example scheme=https'
+        self.assertEqual(fw.converter(self.alerta(regra, login))['acao'], 'login_falha')
+        scan = '203.0.113.7 - - [x] "GET /.env HTTP/1.1" 404 5 "-" "zgrab" host=shop.empresa.example scheme=http'
+        ev = fw.converter(self.alerta({'id': '31101', 'level': 5, 'groups': ['web', 'accesslog']}, scan))
+        self.assertEqual((ev['acao'], ev['servico']), ('scan', 'juice-shop'))
+
+    def test_webshell_pelo_fim_sem_ip(self):
+        a = {'timestamp': '2026-11-16T18:10:05.000-0300', 'agent': self.AGENTE,
+             'rule': {'id': '100320', 'level': 12, 'groups': ['range', 'isca_web', 'webshell', 'syscheck'],
+                      'mitre': {'id': ['T1505.003'], 'technique': ['Web Shell']}},
+             'syscheck': {'path': '/srv/isca/wp/wp-content/uploads/x.php', 'event': 'added'}}
+        ev = fw.converter(a)
+        self.assertEqual(ev['acao'], 'download')
+        self.assertNotIn('ipOrigem', ev)
+        self.assertEqual(ev['detalhes']['arquivo'], '/srv/isca/wp/wp-content/uploads/x.php')
+
+    def test_sem_ip_valido_descarta(self):
+        regra = {'id': '31101', 'level': 5, 'groups': ['web', 'accesslog']}
+        self.assertIsNone(fw.converter(self.alerta(regra, 'x', srcip='lixo')))
+
+
 if __name__ == '__main__':
     unittest.main()
