@@ -123,6 +123,29 @@ export function proximoPassoTecnica(t: CoberturaTecnica): Passo {
   return { texto: 'Sem alerta confirmado no exercício. Revise a regra e a cobertura dos logs antes de concluir o teste.', tone: 'warning' };
 }
 
+/** Tipos de pendência do ciclo, na ordem de gravidade (lacuna de detecção primeiro). */
+export const TIPOS_PENDENCIA = [
+  { id: 'sem_regra', titulo: 'Ataque visto, sem detecção', dica: 'Há eventos reais no Radar e nenhuma regra do Wazuh marca a técnica: é ponto cego. Crie ou ajuste uma regra.' },
+  { id: 'validar', titulo: 'Alerta aguardando validação', dica: 'A regra dispara, mas ninguém confirmou num exercício que ela pega o ataque certo. Reproduza com a Kali e registre a validação.' },
+  { id: 'responder', titulo: 'Validada, falta a resposta', dica: 'Documente triagem, contenção, recuperação e tempos.' },
+  { id: 'outra', titulo: 'Outras', dica: 'Exercício sem alerta confirmado ou prática sem evento registrado.' },
+] as const;
+export type TipoPendencia = (typeof TIPOS_PENDENCIA)[number]['id'];
+
+export function tipoPendencia(t: CoberturaTecnica): TipoPendencia {
+  if (t.observada && !t.alerta) return 'sem_regra';
+  if (t.alerta && !t.detectada) return 'validar';
+  if (t.detectada && !t.respondida) return 'responder';
+  return 'outra';
+}
+
+/** Agrupa as pendências por tipo, sem grupos vazios, na ordem de TIPOS_PENDENCIA. */
+export function agruparPendencias(lacunas: CoberturaTecnica[]) {
+  return TIPOS_PENDENCIA
+    .map((tipo) => ({ ...tipo, tecnicas: lacunas.filter((t) => tipoPendencia(t) === tipo.id) }))
+    .filter((g) => g.tecnicas.length > 0);
+}
+
 /** CVEs citadas em exercícios Red × Blue (campo "referência do achado"). */
 export const cvesDosExercicios = (ex: PurpleExercise[]) =>
   [...new Set(ex.map((e) => e.findingReference.trim().toUpperCase()).filter((r) => /^CVE-\d{4}-\d+$/.test(r)))];

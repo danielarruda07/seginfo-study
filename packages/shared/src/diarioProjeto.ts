@@ -26,6 +26,20 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-16-ponto-cego-t1046',
+    data: '2026-11-16',
+    titulo: 'O ponto cego que o SIEM não via: varredura de portas',
+    descricao:
+      'Com os alertas reais na Matriz, sobrou uma técnica em vermelho: T1046. O honeypot recebe varreduras o dia ' +
+      'todo, mas cada conexão aceita pelo firewall é só uma linha de log, sem alerta. A varredura só aparece ' +
+      'olhando o conjunto: o mesmo IP em muitas portas em pouco tempo. Uma regra de correlação no Wazuh (frequência, ' +
+      'mesmo IP, portas diferentes) transformou isso em alerta. Lição: algumas técnicas não estão em nenhum evento ' +
+      'isolado, só no padrão entre eventos; e a lista de pendências foi agrupada por tipo para mostrar primeiro o ' +
+      'ponto cego, não a fila de validações.',
+    categoria: 'seguranca',
+    tags: ['mitre-attack', 'wazuh', 'deteccao', 'fortigate', 'blue-team'],
+  },
+  {
     id: 'proj-2026-11-16-isca-web',
     data: '2026-11-16',
     titulo: 'Um site de verdade para ser atacado, longe do app',

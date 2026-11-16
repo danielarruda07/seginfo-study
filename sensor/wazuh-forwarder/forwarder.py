@@ -277,6 +277,9 @@ def de_fortigate(a, regra, d):
     elif d.get('subtype') == 'ips' or d.get('attack'):
         acao = 'outro'
         det['ips'] = clip(d.get('attack'), 200)
+    elif 'varredura' in grupos:
+        # regra 100331: o mesmo IP em muitas portas expostas do range em pouco tempo (T1046)
+        acao = 'scan'
     elif acao_fw in ('deny', 'blocked', 'dropped', 'block'):
         acao = 'bloqueio'
     else:
@@ -582,7 +585,8 @@ def converter(alerta):
         if ev.get('fonte') in ('cowrie', 'dionaea', 'opencanary', 'heralding', 'isca', 'prompt_honeypot') or 'reflexao' in grupos:
             ambiente = 'laboratorio'
         elif ev.get('fonte') == 'fortigate':
-            ambiente = 'laboratorio' if str(d.get('policyname', '')).upper().startswith('RANGE-') else 'nao_classificado'
+            ambiente = 'laboratorio' if (str(d.get('policyname', '')).upper().startswith('RANGE-')
+                                         or 'varredura' in grupos) else 'nao_classificado'
         ev['ambiente'] = ambiente
     if ev and GEO and ev.get('ipOrigem') and publico(ev['ipOrigem']):
         ev['paisOrigem'] = GEO.pais(ev['ipOrigem'])

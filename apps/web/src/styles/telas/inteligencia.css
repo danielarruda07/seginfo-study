@@ -123,3 +123,10 @@ button.in-top__item:focus-visible { outline: 2px solid var(--alvoar-teal-600); o
 .in-top__cabeca { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
 .in-top__cabeca .iv-section-label { margin: 0; }
 .in-gn { display: inline-flex; align-self: flex-start; }
+
+/* Matriz ATT&CK: pendências do ciclo agrupadas por tipo (recolhível) */
+.attack-pendencias__toggle { font-family: inherit; font-weight: 600; }
+.attack-pendencias__grupo + .attack-pendencias__grupo { margin-top: 1rem; }
+.attack-pendencias ul { margin: .4rem 0 0; padding-left: 1.1rem; display: grid; gap: .3rem; }
+.attack-pendencias li { line-height: 1.4; }
+.attack-pendencias .attack-link { font-family: inherit; padding: 0; }

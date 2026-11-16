@@ -1,0 +1,19 @@
+<!-- Range: varredura de portas vinda da internet (T1046), a partir do log de trafego do FortiGate. 100330-100339 -->
+<group name="range,fortigate,varredura,">
+  <!-- conexao que entrou pela WAN (regras de exposicao do range); nivel 2 = nao vira alerta sozinha -->
+  <rule id="100330" level="2">
+    <if_sid>81618</if_sid>
+    <field name="srcintf" type="pcre2">^wan$|^virtual-wan-link$</field>
+    <field name="dstintf" type="pcre2">^VLAN8[2-5]_</field>
+    <description>Range: conexao da internet $(srcip) -> porta $(dstport)</description>
+  </rule>
+  <!-- o mesmo IP em 10 portas diferentes em 60 s: varredura de servicos -->
+  <rule id="100331" level="8" frequency="10" timeframe="60" ignore="600">
+    <if_matched_sid>100330</if_matched_sid>
+    <same_srcip />
+    <different_dstport />
+    <description>Range: varredura de portas vinda da internet ($(srcip) em 10+ portas em 60 s)</description>
+    <mitre><id>T1046</id></mitre>
+    <group>recon,scan,</group>
+  </rule>
+</group>

@@ -4,7 +4,7 @@ import type { CoberturaTecnica } from '@/services/attack';
 import type { KevItem } from '@/services/kev';
 import type { PurpleExercise } from '@/services/exerciciosPurple';
 import {
-  acaoMeta, acoesDaTecnica, ativosRelacionados, cvesDosExercicios, exerciciosDoCve, formatarUtc, kevCasaBusca,
+  acaoMeta, acoesDaTecnica, agruparPendencias, ativosRelacionados, tipoPendencia, cvesDosExercicios, exerciciosDoCve, formatarUtc, kevCasaBusca,
   ordenarKev, prazoKev, proximoPassoTecnica, tecnicaVisivel, tecnicasDosExercicios, temCamada, tomKev,
 } from './regras';
 
@@ -71,6 +71,18 @@ describe('Matriz ATT&CK', () => {
     expect(p.tone).toBe('serious');
     expect(p.texto).toMatch(/Wazuh já alerta.*100201/);
     expect(proximoPassoTecnica(tec({ observada: 50 })).texto).toMatch(/nenhuma regra do Wazuh/);
+  });
+
+  it('agrupa pendências por tipo, com o ponto cego primeiro e sem grupos vazios', () => {
+    const regra = { regra: 'r', testadoEm: '2026-01-01' };
+    const grupos = agruparPendencias([
+      tec({ id: 'T1110', alerta: true }), tec({ id: 'T1046', observada: 9 }), tec({ id: 'T1078', alerta: true }),
+      tec({ id: 'T1059', alerta: true, detectada: regra }),
+    ]);
+    expect(grupos.map((g) => [g.id, g.tecnicas.map((t) => t.id)])).toEqual([
+      ['sem_regra', ['T1046']], ['validar', ['T1110', 'T1078']], ['responder', ['T1059']],
+    ]);
+    expect(tipoPendencia(tec({ praticada: true }))).toBe('outra');
   });
 
   it('extrai CVEs válidas dos exercícios, sem repetir', () => {

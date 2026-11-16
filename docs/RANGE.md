@@ -157,6 +157,9 @@ O Ubuntu real não tem agente de monitoração (para não denunciar) e não guar
 - Coletor `sensor/wazuh-forwarder` leva os alertas ao app (`/api/ingest`) por Cloudflare Access + token próprio.
   O honeypot continua sem saída; quem fala com o app é a VM do Wazuh.
 
+- **Varredura de portas (T1046)**: cada conexão aceita pelo firewall é só uma linha de log; a regra de correlação
+  alerta quando o mesmo IP da internet bate em 10+ portas expostas diferentes em 60 s ([`infra/range/wazuh/range_scan_rules.xml`](../infra/range/wazuh/range_scan_rules.xml)).
+
 ## Decisões e lições
 - **Fechar a WAN antes de abrir qualquer porta:** administração do firewall e RDP antigos estavam acessíveis
   pela WAN e foram fechados; DMZ do ONT nunca é usada (exporia o firewall).

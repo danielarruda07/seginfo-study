@@ -15,7 +15,7 @@ import { getPericiaTecnicas } from '@/services/pericia';
 import { getTecnica } from '@/data/attack';
 import { listPurpleExercises } from '@/services/exerciciosPurple';
 import { TATICAS, calcularCobertura, resumoCobertura, camadaNavigator, pontuacao, type CoberturaTecnica } from '@/services/attack';
-import { CAMADAS, proximoPassoTecnica, tecnicaVisivel, temCamada, type Camada } from './inteligencia/regras';
+import { CAMADAS, agruparPendencias, proximoPassoTecnica, tecnicaVisivel, temCamada, type Camada } from './inteligencia/regras';
 import { TecnicaDrawer } from './inteligencia/TecnicaDrawer';
 import '@/styles/telas/inteligencia.css';
 
@@ -61,6 +61,8 @@ export function Attack() {
         : wazuh.data?.erro ? `Alertas do Wazuh indisponíveis: ${wazuh.data.erro} A camada "Alerta" usa só os exercícios.`
           : null;
   const respostas = exercicios.filter((e) => e.blueResponse.trim()).length;
+  const pendencias = agruparPendencias(resumo.lacunas);
+  const [verPendencias, setVerPendencias] = useState(false);
   const [filtro, setFiltro] = useState<Camada | null>(null);
   const [buscaRaw, setBuscaRaw] = useState('');
   const busca = useDebounce(buscaRaw, 300);
@@ -117,13 +119,34 @@ export function Attack() {
       <p className="iv-muted in-ciclo-nota">Estudo: {resumo.estudadas}/{resumo.total} técnicas · Prática: {resumo.praticadas}/{resumo.total} técnicas. Esses indicadores de aprendizagem não contam como evidência operacional.</p>
       <p className="iv-muted"><Link to="/investigacoes">Abrir dossiês para percorrer eventos, arquivos e persistência por janela de ataque</Link></p>
 
-      {resumo.lacunas.length > 0 && (
+      {pendencias.length > 0 && (
         <StatusStrip tone="warn" icon="pi-exclamation-triangle">
-          <strong>{resumo.lacunas.length} etapa(s) pendente(s) no ciclo operacional:</strong>{' '}
-          {resumo.lacunas.map((t) => (
-            <button key={t.id} type="button" className="attack-link" onClick={() => abrir(t)} aria-label={`Abrir ${t.id} ${t.nome}`}>{t.id} · {proximoPassoTecnica(t).texto}</button>
-          ))}
+          <strong>{resumo.lacunas.length} técnica(s) com etapa pendente no ciclo:</strong>{' '}
+          {pendencias.map((g) => `${g.tecnicas.length} ${g.titulo.toLowerCase()}`).join(' · ')}{' '}
+          <button type="button" className="attack-link attack-pendencias__toggle" aria-expanded={verPendencias}
+            onClick={() => setVerPendencias((v) => !v)}>{verPendencias ? 'Recolher' : 'Ver lista'}</button>
         </StatusStrip>
+      )}
+      {verPendencias && pendencias.length > 0 && (
+        <section className="iv-card iv-mt attack-pendencias" aria-label="Etapas pendentes por tipo">
+          {pendencias.map((g) => (
+            <div key={g.id} className="attack-pendencias__grupo">
+              <h2 className="iv-section-label">{g.titulo} ({g.tecnicas.length})</h2>
+              <p className="iv-muted">{g.dica}</p>
+              <ul>
+                {g.tecnicas.map((t) => (
+                  <li key={t.id}>
+                    <button type="button" className="attack-link" onClick={() => abrir(t)} aria-label={`Abrir ${t.id} ${t.nome}`}>
+                      <span className="mono">{t.id}</span> · {t.nome}
+                    </button>
+                    {t.alertaWazuh?.regras[0] && <span className="iv-muted"> · regra {t.alertaWazuh.regras[0].id}: {t.alertaWazuh.regras[0].descricao}</span>}
+                    {!t.alertaWazuh && g.id !== 'validar' && <span className="iv-muted"> · {proximoPassoTecnica(t).texto}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
       )}
 
       <div className="iv-card iv-mt">

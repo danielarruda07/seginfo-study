@@ -155,6 +155,17 @@ class ProducaoTest(unittest.TestCase):
         self.assertEqual(fw.ambiente_alerta({'agent': {'id': '000', 'name': 'range-wazuh'}}), 'nao_classificado')
 
 
+class VarreduraTest(unittest.TestCase):
+    def test_varredura_vinda_da_internet_vira_scan_do_laboratorio(self):
+        a = {'timestamp': '2026-11-16T19:30:01.000-0300', 'agent': {'id': '000', 'name': 'range-wazuh'},
+             'rule': {'id': '100331', 'level': 8, 'groups': ['range', 'fortigate', 'varredura', 'recon', 'scan'],
+                      'mitre': {'id': ['T1046'], 'technique': ['Network Service Discovery']}},
+             'data': {'srcip': '45.33.32.156', 'dstport': '6379', 'action': 'accept', 'proto': '6', 'devname': 'fw'}}
+        ev = fw.converter(a)
+        self.assertEqual((ev['fonte'], ev['acao'], ev['ambiente']), ('fortigate', 'scan', 'laboratorio'))
+        self.assertEqual(ev['detalhes']['mitre'][0]['id'], 'T1046')
+
+
 class IscaWebTest(unittest.TestCase):
     AGENTE = {'id': '006', 'name': 'range-isca-web'}
 
