@@ -65,6 +65,14 @@ describe('Matriz ATT&CK', () => {
     expect(proximoPassoTecnica(tec({ estudada: true })).texto).toMatch(/Pratique/);
   });
 
+  it('alerta real do Wazuh tira a técnica do vermelho e pede validação citando a regra', () => {
+    const wz = { id: 'T1110', alertas: 120, ultimo: null, agentes: ['honeypot'], regras: [{ id: '100201', descricao: 'Cowrie: login falho', nivel: 5, alertas: 120 }] };
+    const p = proximoPassoTecnica(tec({ observada: 50, alerta: true, alertaWazuh: wz, alertaExercicio: false }));
+    expect(p.tone).toBe('serious');
+    expect(p.texto).toMatch(/Wazuh já alerta.*100201/);
+    expect(proximoPassoTecnica(tec({ observada: 50 })).texto).toMatch(/nenhuma regra do Wazuh/);
+  });
+
   it('extrai CVEs válidas dos exercícios, sem repetir', () => {
     expect(cvesDosExercicios([ex({ findingReference: 'cve-2024-1234 ' }), ex({ findingReference: 'CVE-2024-1234' }), ex({ findingReference: 'achado interno' })]))
       .toEqual(['CVE-2024-1234']);

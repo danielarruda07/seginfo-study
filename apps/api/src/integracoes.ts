@@ -108,7 +108,8 @@ export function listarIntegracoes(): Integracao[] {
     {
       id: 'wazuh-indexador', nome: 'Wazuh: indexador (alertas)', uso: 'Buscar alertas do Wazuh (índice wazuh-alerts).',
       configurada: wazuhIndexadorFaltando().length === 0,
-      endereco: enderecoDe(e.WAZUH_INDEXER_URL, 9200),
+      // pelo proxy de console do dashboard (all-in-one com indexador só no 127.0.0.1) a porta padrão é a 443
+      endereco: enderecoDe(e.WAZUH_INDEXER_URL, /\/api\/console\/proxy\/?$/.test(e.WAZUH_INDEXER_URL ?? '') ? 443 : 9200),
       identidade: e.WAZUH_INDEXER_USERNAME || null,
       tls: e.WAZUH_INDEXER_URL ? tlsDe(e.WAZUH_INDEXER_TLS_INSEGURO, e.WAZUH_INDEXER_CA_B64) : null,
       faltando: wazuhIndexadorFaltando(),

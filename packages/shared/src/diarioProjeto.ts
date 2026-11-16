@@ -26,6 +26,20 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-16-attack-alertas-wazuh',
+    data: '2026-11-16',
+    titulo: 'A matriz dizia "sem alerta" com centenas de milhares de alertas no SIEM',
+    descricao:
+      'A Matriz ATT&CK pedia um registro manual de exercício para cada técnica antes de admitir que havia alerta, ' +
+      'enquanto o Wazuh já disparava regras com o ID MITRE em quase todas elas. Agora a etapa "Alerta" lê o SIEM: ' +
+      'agrega os alertas por técnica, mostra quais regras dispararam e em quais agentes, e separa produção de ' +
+      'laboratório. A validação continua manual de propósito: alerta disparando prova que a regra existe, não que ' +
+      'ela está certa. No caminho apareceu outra lição: na instalação all-in-one o indexador só escuta localmente, ' +
+      'e o dashboard já oferece uma ponte autenticada até ele, sem abrir porta nova.',
+    categoria: 'funcionalidade',
+    tags: ['mitre-attack', 'wazuh', 'siem', 'deteccao', 'blue-team'],
+  },
+  {
     id: 'proj-2026-11-15-inteligencia-ui',
     data: '2026-11-15',
     titulo: 'Tela de inteligência que responde ao clique',

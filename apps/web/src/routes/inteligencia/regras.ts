@@ -77,7 +77,7 @@ export const formatarUtc = (iso: string) => iso.replace('T', ' ').slice(0, 19);
 export type Camada = 'observada' | 'alerta' | 'validada' | 'respondida' | 'estudada' | 'praticada' | 'detectada';
 export const CAMADAS: { id: Camada; label: string }[] = [
   { id: 'observada', label: 'Observação · Radar real' },
-  { id: 'alerta', label: 'Alerta · exercício' },
+  { id: 'alerta', label: 'Alerta · Wazuh ou exercício' },
   { id: 'validada', label: 'Validação · regra testada' },
   { id: 'respondida', label: 'Resposta documentada' },
 ];
@@ -112,7 +112,11 @@ export function proximoPassoTecnica(t: CoberturaTecnica): Passo {
     if (t.estudada) return { texto: 'Já estudada, mas ainda sem prática registrada. Pratique esta técnica em um lab autorizado para iniciar o ciclo operacional.', tone: 'info' };
     return { texto: 'Sem registro operacional para esta técnica. Estude-a na base MITRE ATT&CK e gere um evento controlado em um lab autorizado para iniciar o ciclo.', tone: 'info' };
   }
-  if (t.observada && !t.alerta) return { texto: 'Há eventos reais no Radar, mas nenhum alerta foi registrado em exercício ligado a esta técnica. Verifique a telemetria e teste uma regra no lab.', tone: 'danger' };
+  if (t.observada && !t.alerta) return { texto: 'Há eventos reais no Radar, mas nenhuma regra do Wazuh com esta técnica disparou e nenhum exercício registrou alerta. Verifique a telemetria e crie ou teste uma regra no lab.', tone: 'danger' };
+  if (t.alerta && !t.detectada && t.alertaWazuh && !t.alertaExercicio) {
+    const regra = t.alertaWazuh.regras[0];
+    return { texto: `O Wazuh já alerta esta técnica${regra ? ` (regra ${regra.id}: ${regra.descricao})` : ''}. Confirme num exercício que o alerta é correto e registre a validação e os falsos positivos.`, tone: 'serious' };
+  }
   if (t.alerta && !t.detectada) return { texto: 'Um exercício gerou sinal. Valide a regra com evidência, confirme se o alerta é correto e registre falsos positivos.', tone: 'serious' };
   if (t.detectada && !t.respondida) return { texto: 'A regra foi validada, mas falta documentar a triagem e a resposta: contenção, recuperação e tempos.', tone: 'warning' };
   if (t.respondida) return { texto: 'Ciclo documentado. Revise a resposta após mudanças de regra, ativos ou telemetria.' };

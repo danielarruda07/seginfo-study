@@ -22,6 +22,11 @@ export function TecnicaDrawer({ tecnica: t, nav, onChange, periodo = '30 dias' }
   const executados = t.exercicios.filter((e) => e.status !== 'planejado');
   const sinais = executados.filter((e) => e.detection === 'detectado' || e.detection === 'parcial');
   const respostas = executados.filter((e) => e.blueResponse.trim());
+  const wz = t.alertaWazuh;
+  const estadoAlerta = [
+    wz ? `${wz.alertas.toLocaleString('pt-BR')} alerta(s) do Wazuh` : null,
+    sinais.length ? `${sinais.length} sinal(is) em exercício` : null,
+  ].filter(Boolean).join(' · ') || (executados.length ? 'Teste sem alerta ou sem sinal parcial' : 'Nenhuma regra do Wazuh disparou e não há exercício registrado');
 
   return (
     <DetailDrawer {...nav} ariaLabel={`Ficha da técnica ${t.id} ${t.nome}`}
@@ -39,11 +44,11 @@ export function TecnicaDrawer({ tecnica: t, nav, onChange, periodo = '30 dias' }
         <h3 className="iv-section-label">Ciclo operacional</h3>
         <div className="in-ciclo-detalhe">
           <Etapa icon="pi-eye" titulo="1 · Observação" estado={t.observada ? `${t.observada} evento(s) real(is) no Radar` : 'Sem evento no período'} detalhe="Telemetria coletada; não significa que houve alerta." ativa={t.observada > 0} />
-          <Etapa icon="pi-bell" titulo="2 · Alerta" estado={sinais.length ? `${sinais.length} sinal(is) em exercício` : executados.length ? 'Teste sem alerta ou sem sinal parcial' : 'Sem exercício registrado'} detalhe="Resultado informado no diário do Lab; não correlacionado automaticamente aos eventos do Radar." ativa={sinais.length > 0} />
+          <Etapa icon="pi-bell" titulo="2 · Alerta" estado={estadoAlerta} detalhe="Regra do Wazuh com esta técnica (rule.mitre.id) que disparou de verdade, ou sinal registrado no diário do Lab." ativa={!!wz || sinais.length > 0} />
           <Etapa icon="pi-check-circle" titulo="3 · Validação" estado={t.detectada ? `Regra registrada em ${t.detectada.testadoEm}` : 'Regra ainda não validada'} detalhe={t.detectada ? `${t.detectada.automatico ? 'Resultado do diário Red × Blue' : 'Confirmação manual'} · ${t.detectada.regra || 'sem regra descrita'}` : 'Registre a regra e confirme o sinal com evidência do teste.'} ativa={!!t.detectada} />
           <Etapa icon="pi-shield" titulo="4 · Resposta" estado={respostas.length ? `${respostas.length} resposta(s) documentada(s)` : 'Resposta não documentada'} detalhe={respostas.length ? respostas.map((e) => e.blueResponse).join(' · ') : 'Anote triagem, contenção e recuperação no diário do Lab.'} ativa={respostas.length > 0} />
         </div>
-        <p className="in-ciclo-nota">Os eventos do Radar são observações reais. Alertas, validações e respostas vêm dos registros dos exercícios; a aplicação não os correlaciona automaticamente.</p>
+        <p className="in-ciclo-nota">Os eventos do Radar são observações reais. O alerta vem das regras do Wazuh que dispararam com esta técnica ou dos exercícios; validação e resposta continuam vindo dos registros dos exercícios, porque dependem do seu julgamento (o alerta estava certo? o que foi feito?).</p>
         <div className="iv-row iv-wrap iv-mt">
           <Link to="/radar" className="in-ext"><i className="pi pi-eye" aria-hidden="true" />Abrir eventos do Radar</Link>
           <Link to="/labs" className="in-ext"><i className="pi pi-wrench" aria-hidden="true" />Abrir diário Red × Blue</Link>
@@ -84,6 +89,26 @@ export function TecnicaDrawer({ tecnica: t, nav, onChange, periodo = '30 dias' }
         </FichaLista>
         {cves.length > 0 && <p className="in-muted-p">CVEs validadas com esta técnica: {cves.map((c) => <Link key={c} to="/ameacas" className="mono in-gap">{c}</Link>)}</p>}
       </section>
+
+      {wz && (
+        <section>
+          <h3 className="iv-section-label">Alertas do Wazuh ({periodo})</h3>
+          <DetailFields items={[
+            ['Alertas', wz.alertas.toLocaleString('pt-BR')],
+            ['Último', wz.ultimo ? new Date(wz.ultimo).toLocaleString('pt-BR') : '—'],
+            ['Agentes', wz.agentes.join(', ') || '—'],
+          ]} />
+          <FichaLista vazio="">
+            {wz.regras.map((r) => (
+              <li key={r.id} className="in-list__row">
+                <span><span className="mono">{r.id}</span> · {r.descricao || 'regra sem descrição'}</span>
+                <span className="iv-muted">nível {r.nivel} · {r.alertas.toLocaleString('pt-BR')} alerta(s)</span>
+              </li>
+            ))}
+          </FichaLista>
+          <Link to="/wazuh" className="in-ext"><i className="pi pi-shield" aria-hidden="true" />Abrir Wazuh</Link>
+        </section>
+      )}
 
       {acoes.length > 0 && (
         <section>

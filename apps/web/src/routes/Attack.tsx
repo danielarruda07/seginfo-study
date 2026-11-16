@@ -10,7 +10,7 @@ import { ActiveFiltersBar } from '@/components/ui/ActiveFiltersBar';
 import { Kpi, Pill, StatusStrip } from '@/components/InfraKit';
 import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import { useDebounce } from '@/hooks/useDebounce';
-import { getRadarResumo } from '@/services/radar';
+import { getRadarResumo, getWazuhTecnicas } from '@/services/radar';
 import { getPericiaTecnicas } from '@/services/pericia';
 import { getTecnica } from '@/data/attack';
 import { listPurpleExercises } from '@/services/exerciciosPurple';
@@ -42,12 +42,24 @@ export function Attack() {
   // Radar só existe no modo servidor; sem ele a camada "observada" fica vazia.
   const radar = useQuery({ queryKey: ['radar', 'resumo', 30, ambiente], queryFn: () => getRadarResumo(30, 'todos', ambiente), retry: false });
   const pericia = useQuery({ queryKey: ['pericia', 'tecnicas', ambiente], queryFn: getPericiaTecnicas, retry: false, enabled: ambiente === 'todos' || ambiente === 'laboratorio' });
+  // Alertas reais do Wazuh (indexador), por rule.mitre.id; produção = agentes prod-*, laboratório = os demais.
+  const comWazuh = ambiente !== 'nao_classificado';
+  const wazuh = useQuery({ queryKey: ['radar', 'wazuh-tecnicas', 30, ambiente], queryFn: () => getWazuhTecnicas(30, ambiente), retry: false, enabled: comWazuh, staleTime: 5 * 60_000 });
   const observadas = useMemo(() => Object.fromEntries((radar.data?.mitre ?? []).map((m) => [m.id, m.eventos])), [radar.data]);
+  const alertasWazuh = useMemo(() => (comWazuh ? Object.fromEntries((wazuh.data?.tecnicas ?? []).map((t) => [t.id, t])) : {}), [wazuh.data, comWazuh]);
   const [versao, setVersao] = useState(0); // força recálculo após marcar detecção
-  const cobertura = useMemo(() => calcularCobertura(observadas), [observadas, versao]);
+  const cobertura = useMemo(() => calcularCobertura(observadas, alertasWazuh), [observadas, alertasWazuh, versao]);
   const resumo = resumoCobertura(cobertura);
   const exercicios = listPurpleExercises().filter((e) => e.status !== 'planejado');
   const sinaisExercicio = exercicios.filter((e) => e.detection === 'detectado' || e.detection === 'parcial').length;
+  const tecnicasComAlerta = cobertura.filter((t) => t.alerta).length;
+  const tecnicasWazuh = cobertura.filter((t) => t.alertaWazuh).length;
+  const alertasWazuhNaMatriz = cobertura.reduce((s, t) => s + (t.alertaWazuh?.alertas ?? 0), 0);
+  const wazuhAviso = !comWazuh ? null
+    : wazuh.isError ? 'Não foi possível consultar os alertas do Wazuh agora; a camada "Alerta" usa só os exercícios.'
+      : wazuh.data && !wazuh.data.configurado ? `Indexador do Wazuh não configurado no servidor (falta ${(wazuh.data.faltando ?? []).join(', ')}); a camada "Alerta" usa só os exercícios.`
+        : wazuh.data?.erro ? `Alertas do Wazuh indisponíveis: ${wazuh.data.erro} A camada "Alerta" usa só os exercícios.`
+          : null;
   const respostas = exercicios.filter((e) => e.blueResponse.trim()).length;
   const [filtro, setFiltro] = useState<Camada | null>(null);
   const [buscaRaw, setBuscaRaw] = useState('');
@@ -70,7 +82,7 @@ export function Attack() {
     <div>
       <PageHeader
         title="Matriz ATT&CK"
-        subtitle="Separe observações reais do Radar dos alertas de exercício, da validação de regras e das respostas registradas."
+        subtitle="Separe observações reais do Radar dos alertas (regras do Wazuh que dispararam e sinais de exercício), da validação de regras e das respostas registradas."
         actions={<Button label="Exportar para o Navigator" icon="pi pi-download" outlined
           onClick={() => baixarJson('seginfo-attack-layer.json', camadaNavigator(cobertura))} />}
       />
@@ -79,12 +91,14 @@ export function Attack() {
       {radar.isError && (
         <StatusStrip icon="pi-info-circle">Radar indisponível (modo local ou API fora): a camada "Vi no Radar" fica vazia.</StatusStrip>
       )}
+      {wazuhAviso && <StatusStrip icon="pi-info-circle">{wazuhAviso}</StatusStrip>}
       {pericia.isError && <StatusStrip icon="pi-info-circle">Não foi possível carregar agora as técnicas sugeridas pelos laudos periciais.</StatusStrip>}
 
       <div className="iv-kpis iv-mt">
         <Kpi label="Observação · Radar real" icon="pi-eye" value={radar.isLoading ? '…' : radar.isError ? '—' : radar.data?.total ?? 0} hint={`${resumo.observadas} técnicas · últimos 30 dias`}
           active={filtro === 'observada'} onClick={() => alternar('observada')} />
-        <Kpi label="Alertas · exercícios" icon="pi-bell" value={sinaisExercicio} hint="sinais detectados/parciais nos testes; sem correlação automática com o Radar"
+        <Kpi label="Alertas · Wazuh e exercícios" icon="pi-bell" value={comWazuh && wazuh.isLoading ? '…' : tecnicasComAlerta}
+          hint={`técnicas com alerta · Wazuh: ${tecnicasWazuh} (${alertasWazuhNaMatriz.toLocaleString('pt-BR')} alertas, 30 dias${comWazuh ? '' : ', sem agentes não classificados'}) · exercícios: ${sinaisExercicio} sinal(is)`}
           active={filtro === 'alerta'} onClick={() => alternar('alerta')} />
         <Kpi label="Validação registrada" icon="pi-check-circle" value={resumo.detectadas} hint="técnicas com regra anotada após teste"
           active={filtro === 'validada'} onClick={() => alternar('validada')} />
