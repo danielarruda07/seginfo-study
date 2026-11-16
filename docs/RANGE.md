@@ -158,7 +158,7 @@ O Ubuntu real não tem agente de monitoração (para não denunciar) e não guar
   O honeypot continua sem saída; quem fala com o app é a VM do Wazuh.
 
 - **Varredura de portas (T1046)**: cada conexão aceita pelo firewall é só uma linha de log; a regra de correlação
-  alerta quando o mesmo IP da internet bate em 10+ portas expostas diferentes em 60 s ([`infra/range/wazuh/range_scan_rules.xml`](../infra/range/wazuh/range_scan_rules.xml)).
+  alerta quando o mesmo IP da internet bate em 8+ portas expostas diferentes em 5 min ([`infra/range/wazuh/range_scan_rules.xml`](../infra/range/wazuh/range_scan_rules.xml)).
 
 ## Decisões e lições
 - **Fechar a WAN antes de abrir qualquer porta:** administração do firewall e RDP antigos estavam acessíveis

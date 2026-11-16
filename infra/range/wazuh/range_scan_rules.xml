@@ -7,12 +7,12 @@
     <field name="dstintf" type="pcre2">^VLAN8[2-5]_</field>
     <description>Range: conexao da internet $(srcip) -> porta $(dstport)</description>
   </rule>
-  <!-- o mesmo IP em 10 portas diferentes em 60 s: varredura de servicos -->
-  <rule id="100331" level="8" frequency="10" timeframe="60" ignore="600">
+  <!-- o mesmo IP em 8 portas diferentes em 5 min: varredura de servicos -->
+  <rule id="100331" level="8" frequency="8" timeframe="300" ignore="900">
     <if_matched_sid>100330</if_matched_sid>
     <same_srcip />
     <different_dstport />
-    <description>Range: varredura de portas vinda da internet ($(srcip) em 10+ portas em 60 s)</description>
+    <description>Range: varredura de portas vinda da internet ($(srcip) em 8+ portas em 5 min)</description>
     <mitre><id>T1046</id></mitre>
     <group>recon,scan,</group>
   </rule>
