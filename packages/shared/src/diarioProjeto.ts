@@ -26,6 +26,24 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-17-fase4-persistencia-endpoint',
+    data: '2026-11-17',
+    titulo: 'Fase 4: persistência e execução no endpoint, e ler o que o SIEM já sabe',
+    descricao:
+      'Saí da cadeia de AD e fui para o endpoint: execução via WMI, proxy por binário confiável (LOLBin), ' +
+      'persistência por assinatura de evento WMI e chave Run no registro — quatro técnicas novas na Matriz, ' +
+      'todas confirmadas no indexer. A lição desta fase foi de telemetria e de SIEM, não de ataque. ' +
+      'Primeira: a detecção só existe se o dado chega — o agente não encaminhava o canal do Sysmon, então ' +
+      'nenhuma regra de processo/registro/WMI podia disparar; habilitar o encaminhamento foi o passo que ' +
+      'desbloqueou tudo. Segunda: antes de escrever regra, veja o que o conjunto de regras já cobre — metade ' +
+      'das técnicas já tinha detecção nativa (assinatura WMI e chave Run), e insistir em regra própria só ' +
+      'competia com a nativa. Terceira, a mais cara: uma regra encadeada só vence se ancora no nó certo da ' +
+      'árvore — ancorar no pai genérico não basta quando o evento já se compromete com uma sub-árvore mais ' +
+      'específica; a regra tem de ser filha desse nó. Fechei limpando o que criei (assinatura WMI e chaves Run).',
+    categoria: 'aprendizado',
+    tags: ['cyber-range', 'sysmon', 'wazuh', 'lolbin', 'wmi', 'persistencia', 'mitre-attack', 'blue-team'],
+  },
+  {
     id: 'proj-2026-11-17-fase3-cadeia-ad',
     data: '2026-11-17',
     titulo: 'Fase 3: a cadeia de ataque de AD, e detectar onde dá',
