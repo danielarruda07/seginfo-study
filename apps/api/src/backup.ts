@@ -13,7 +13,7 @@ import { apagarItem, enviarBackup, listarBackups, obterAccessToken } from './one
 const PADRAO_NOME = /^seginfo-\d{8}-\d{6}\.sgb$/;
 
 async function exportarDados(usuarioId: string) {
-  const [usuario, progresso, sessoes, metas, posts, arsenal, biblioteca, cofre, ataques, memorias, linkedinPosts, diario, linkedinEstrategia, agentes, agenteAvaliacoes, agenteExecucoes, artefatosAtaque, artefatoOcorrencias, pericias, linkedinProjetos, linkedinIdeias, postVersoes, linkedinPerfilPro, linkedinInspiracoes, linkedinVoz, exposicaoAlvos, exposicaoVarreduras] = await Promise.all([
+  const [usuario, progresso, sessoes, metas, posts, arsenal, biblioteca, cofre, ataques, memorias, linkedinPosts, diario, linkedinEstrategia, agentes, agenteAvaliacoes, agenteExecucoes, artefatosAtaque, artefatoOcorrencias, pericias, linkedinProjetos, linkedinIdeias, postVersoes, linkedinPerfilPro, linkedinInspiracoes, linkedinVoz, exposicaoAlvos, exposicaoVarreduras, linkedinProjetoMarcos, linkedinProjetoInformes, linkedinProjetoEventos] = await Promise.all([
     prisma.usuario.findUnique({ where: { id: usuarioId }, select: { id: true, email: true } }),
     prisma.progresso.findMany({ where: { usuarioId } }),
     prisma.sessao.findMany({ where: { usuarioId } }),
@@ -47,6 +47,9 @@ async function exportarDados(usuarioId: string) {
     // Minha exposição: alvos acompanhados e o histórico das varreduras (só dados públicos)
     prisma.exposicaoAlvo.findMany({ where: { usuarioId } }),
     prisma.exposicaoVarredura.findMany({ where: { usuarioId }, orderBy: { criadoEm: 'asc' } }),
+    prisma.linkedinProjetoMarco.findMany({ where: { projeto: { usuarioId } } }),
+    prisma.linkedinProjetoInforme.findMany({ where: { projeto: { usuarioId } } }),
+    prisma.linkedinProjetoEvento.findMany({ where: { projeto: { usuarioId } } }),
   ]);
   if (!usuario) throw new Error('Usuário do backup não encontrado.');
   return {
@@ -59,6 +62,7 @@ async function exportarDados(usuarioId: string) {
     artefatosAtaque, artefatoOcorrencias, pericias,
     linkedinProjetos, linkedinIdeias, postVersoes, linkedinPerfilPro, linkedinInspiracoes, linkedinVoz,
     exposicaoAlvos, exposicaoVarreduras,
+    linkedinProjetoMarcos, linkedinProjetoInformes, linkedinProjetoEventos,
   };
 }
 

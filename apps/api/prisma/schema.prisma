@@ -464,10 +464,66 @@ model LinkedinProjeto {
   objetivo     String   @default("")
   pilar        String?
   status       String   @default("ativo") // ativo | pausado | concluido
+  resultadoEsperado String @default("")
+  escopo       String   @default("")
+  criteriosSucesso String @default("")
+  fase         String   @default("iniciacao")
+  condicao     String   @default("sem_avaliacao")
+  avanco       Int      @default(0)
+  marcos       LinkedinProjetoMarco[]
+  informes     LinkedinProjetoInforme[]
+  eventos      LinkedinProjetoEvento[]
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
   @@index([usuarioId, status])
+}
+
+model LinkedinProjetoMarco {
+  id String @id @default(cuid())
+  projetoId String
+  projeto LinkedinProjeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  nome String
+  entrega String @default("")
+  responsavel String @default("")
+  prazo String?
+  situacao String @default("planejado")
+  concluidoEm DateTime?
+  criadoEm DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  @@index([projetoId, prazo])
+}
+
+model LinkedinProjetoInforme {
+  id String @id @default(cuid())
+  projetoId String
+  projeto LinkedinProjeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  data String
+  condicao String
+  avanco Int
+  resumo String
+  entregas String @default("")
+  proximosPassos String @default("")
+  impedimentos String @default("")
+  autorId String
+  excluidoEm DateTime?
+  criadoEm DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  @@index([projetoId, excluidoEm, data])
+}
+
+model LinkedinProjetoEvento {
+  id String @id @default(cuid())
+  projetoId String
+  projeto LinkedinProjeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  autorId String
+  entidade String
+  entidadeId String
+  acao String
+  antes Json?
+  depois Json?
+  criadoEm DateTime @default(now())
+  @@index([projetoId, criadoEm])
 }
 
 // Backlog de ideias de post. Nascem à mão, da análise de um post publicado, de um lab,

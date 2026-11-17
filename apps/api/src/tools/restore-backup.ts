@@ -39,7 +39,12 @@ const Post = z.object({
   linkedinPostId: z.string().nullable().optional(), visibilidade: z.string().optional(), aprovadoEm: z.coerce.date().nullable().optional(), publicadoEm: z.coerce.date().nullable().optional(), atualizadoEm: z.coerce.date().optional(),
 });
 const PostVersao = z.object({ id: z.string(), postId: z.string(), usuarioId: z.string(), numero: z.number().int(), gancho: z.string(), corpo: z.string(), origem: z.string(), criadoEm: z.coerce.date().optional() });
-const LinkedinProjeto = z.object({ id: z.string(), usuarioId: z.string(), nome: z.string(), descricao: z.string(), objetivo: z.string(), pilar: z.string().nullable(), status: z.string(), criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional() });
+const LinkedinProjeto = z.object({ id: z.string(), usuarioId: z.string(), nome: z.string(), descricao: z.string(), objetivo: z.string(), pilar: z.string().nullable(), status: z.string(),
+  resultadoEsperado: z.string().optional(), escopo: z.string().optional(), criteriosSucesso: z.string().optional(), fase: z.string().optional(), condicao: z.string().optional(), avanco: z.number().int().optional(),
+  criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional() });
+const LinkedinProjetoMarco = z.object({ id: z.string(), projetoId: z.string(), nome: z.string(), entrega: z.string(), responsavel: z.string(), prazo: z.string().nullable(), situacao: z.string(), concluidoEm: z.coerce.date().nullable(), criadoEm: z.coerce.date(), atualizadoEm: z.coerce.date() });
+const LinkedinProjetoInforme = z.object({ id: z.string(), projetoId: z.string(), data: z.string(), condicao: z.string(), avanco: z.number().int(), resumo: z.string(), entregas: z.string(), proximosPassos: z.string(), impedimentos: z.string(), autorId: z.string(), excluidoEm: z.coerce.date().nullable(), criadoEm: z.coerce.date(), atualizadoEm: z.coerce.date() });
+const LinkedinProjetoEvento = z.object({ id: z.string(), projetoId: z.string(), autorId: z.string(), entidade: z.string(), entidadeId: z.string(), acao: z.string(), antes: z.unknown().nullable(), depois: z.unknown().nullable(), criadoEm: z.coerce.date() });
 const LinkedinIdeia = z.object({ id: z.string(), usuarioId: z.string(), titulo: z.string(), briefing: z.string(), pilar: z.string().nullable(), projetoId: z.string().nullable(), formato: z.string().nullable(), origem: z.string(), origemRef: z.string().nullable(), status: z.string(), sugeridaPara: z.string().nullable(), criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional() });
 const LinkedinPerfilPro = z.object({ usuarioId: z.string(), dados: z.unknown(), importadoEm: z.coerce.date().nullable().optional(), atualizadoEm: z.coerce.date().optional() }).nullable();
 const LinkedinInspiracao = z.object({ id: z.string(), usuarioId: z.string(), tipo: z.string(), autor: z.string(), url: z.string(), texto: z.string(), motivo: z.string(), aspectos: z.array(z.string()), observacaoVisual: z.string(), frequencia: z.string(), criadoEm: z.coerce.date().optional(), atualizadoEm: z.coerce.date().optional() });
@@ -77,6 +82,7 @@ const Exportacao = z.object({
   agenteExecucoes: z.array(AgenteExecucao).default([]),
   // Pipeline do LinkedIn (backups anteriores a 2026-11-15 não têm estas chaves)
   linkedinProjetos: z.array(LinkedinProjeto).default([]), linkedinIdeias: z.array(LinkedinIdeia).default([]),
+  linkedinProjetoMarcos: z.array(LinkedinProjetoMarco).default([]), linkedinProjetoInformes: z.array(LinkedinProjetoInforme).default([]), linkedinProjetoEventos: z.array(LinkedinProjetoEvento).default([]),
   postVersoes: z.array(PostVersao).default([]),
   // Perfil profissional, inspirações e voz do LinkedIn (backups anteriores a 2026-11-15 não têm estas chaves)
   linkedinPerfilPro: LinkedinPerfilPro.default(null), linkedinInspiracoes: z.array(LinkedinInspiracao).default([]),
@@ -110,6 +116,11 @@ try {
   if (!email || !z.string().email().safeParse(email).success) {
     throw new Error('E-mail do usuário ausente; defina RESTORE_USER_EMAIL para exportações antigas.');
   }
+  const projetoIds = new Set(backup.linkedinProjetos.map((p) => p.id));
+  if ([...backup.linkedinProjetoMarcos, ...backup.linkedinProjetoInformes, ...backup.linkedinProjetoEventos].some((r) => !projetoIds.has(r.projetoId)) ||
+    [...backup.linkedinProjetoInformes, ...backup.linkedinProjetoEventos].some((r) => r.autorId !== userId)) {
+    throw new Error('Andamento de projeto com vínculo ou autor inválido no backup.');
+  }
 
   process.env.DATABASE_URL = targetUrl;
   const { prisma } = await import('../db.js');
@@ -134,6 +145,12 @@ try {
       }),
       prisma.postVersao.createMany({ data: backup.postVersoes.filter((v) => backup.posts.some((p) => p.id === v.postId)) }),
       prisma.linkedinProjeto.createMany({ data: backup.linkedinProjetos }),
+      prisma.linkedinProjetoMarco.createMany({ data: backup.linkedinProjetoMarcos }),
+      prisma.linkedinProjetoInforme.createMany({ data: backup.linkedinProjetoInformes }),
+      prisma.linkedinProjetoEvento.createMany({ data: backup.linkedinProjetoEventos.map((e) => ({ ...e,
+        antes: e.antes == null ? Prisma.DbNull : e.antes as Prisma.InputJsonValue,
+        depois: e.depois == null ? Prisma.DbNull : e.depois as Prisma.InputJsonValue,
+      })) }),
       prisma.linkedinIdeia.createMany({ data: backup.linkedinIdeias }),
       prisma.arsenalItem.createMany({ data: backup.arsenal.map((i) => ({ ...i, artefatos: i.artefatos as Prisma.InputJsonValue })) }),
       prisma.biblioItem.createMany({ data: backup.biblioteca }),

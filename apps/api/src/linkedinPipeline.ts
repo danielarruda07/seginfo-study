@@ -380,24 +380,37 @@ export async function registerLinkedinPipelineRoutes(app: FastifyInstance) {
     const b = ProjetoInSchema.safeParse(req.body);
     if (!b.success) return invalido(reply);
     if ((await prisma.linkedinProjeto.count({ where: { usuarioId: uid(req) } })) >= 100) return reply.status(400).send({ error: 'Limite de 100 projetos.' });
-    return prisma.linkedinProjeto.create({
-      data: { usuarioId: uid(req), nome: b.data.nome, descricao: b.data.descricao ?? '', objetivo: b.data.objetivo ?? '', pilar: b.data.pilar ?? null, status: b.data.status ?? 'ativo' },
+    return prisma.$transaction(async (tx) => {
+      const novo = await tx.linkedinProjeto.create({
+        data: { usuarioId: uid(req), nome: b.data.nome, descricao: b.data.descricao ?? '', objetivo: b.data.objetivo ?? '', pilar: b.data.pilar ?? null, status: b.data.status ?? 'ativo',
+          resultadoEsperado: b.data.resultadoEsperado ?? '', escopo: b.data.escopo ?? '', criteriosSucesso: b.data.criteriosSucesso ?? '', fase: b.data.fase ?? 'iniciacao' },
+      });
+      await tx.linkedinProjetoEvento.create({ data: { projetoId: novo.id, autorId: uid(req), entidade: 'projeto', entidadeId: novo.id, acao: 'criar', depois: JSON.parse(JSON.stringify(novo)) as Prisma.InputJsonValue } });
+      return novo;
     });
   });
 
   app.patch('/api/linkedin/projetos/:id', async (req, reply) => {
     const b = ProjetoInSchema.partial().safeParse(req.body);
     if (!b.success) return invalido(reply);
-    const r = await prisma.linkedinProjeto.updateMany({ where: { id: idDe(req), usuarioId: uid(req) }, data: b.data });
-    if (!r.count) return naoAchei(reply);
-    return prisma.linkedinProjeto.findUniqueOrThrow({ where: { id: idDe(req) } });
+    const atual = await prisma.linkedinProjeto.findFirst({ where: { id: idDe(req), usuarioId: uid(req) } });
+    if (!atual) return naoAchei(reply);
+    return prisma.$transaction(async (tx) => {
+      const novo = await tx.linkedinProjeto.update({ where: { id: atual.id }, data: b.data });
+      await tx.linkedinProjetoEvento.create({ data: { projetoId: atual.id, autorId: uid(req), entidade: 'projeto', entidadeId: atual.id, acao: 'editar',
+        antes: JSON.parse(JSON.stringify(atual)) as Prisma.InputJsonValue, depois: JSON.parse(JSON.stringify(novo)) as Prisma.InputJsonValue } });
+      return novo;
+    });
   });
 
-  // apagar o projeto solta o vínculo; ideias, rascunhos, posts e marcos continuam
-  app.delete('/api/linkedin/projetos/:id', async (req) => {
+  // Projetos sem andamento podem ser apagados; ideias, rascunhos, posts e marcos do diário perdem o vínculo.
+  app.delete('/api/linkedin/projetos/:id', async (req, reply) => {
     const u = uid(req);
     const id = idDe(req);
     if (!(await prisma.linkedinProjeto.count({ where: { id, usuarioId: u } }))) return { ok: true };
+    if (await prisma.linkedinProjetoInforme.count({ where: { projetoId: id } }) || await prisma.linkedinProjetoMarco.count({ where: { projetoId: id } })) {
+      return reply.status(409).send({ error: 'Projeto com andamento registrado não pode ser excluído. Conclua ou pause o projeto para preservar o histórico.' });
+    }
     const solto = { where: { usuarioId: u, projetoId: id }, data: { projetoId: null } };
     await prisma.$transaction([
       prisma.post.updateMany(solto), prisma.linkedinIdeia.updateMany(solto), prisma.linkedinPost.updateMany(solto),
@@ -414,6 +427,10 @@ export async function registerLinkedinPipelineRoutes(app: FastifyInstance) {
     if (!b.success) return invalido(reply);
     const u = uid(req);
     if (!(await projetoDoUsuario(u, b.data.projetoId))) return reply.status(400).send({ error: 'Projeto não encontrado.' });
+    if (b.data.origem === 'projeto' && (!b.data.projetoId || !b.data.origemRef ||
+      !(await prisma.linkedinProjetoInforme.count({ where: { id: b.data.origemRef, projetoId: b.data.projetoId, excluidoEm: null } })))) {
+      return reply.status(400).send({ error: 'Informe de origem não encontrado.' });
+    }
     try {
       return await prisma.linkedinIdeia.create({
         data: {

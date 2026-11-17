@@ -1,5 +1,5 @@
 import type {
-  AcaoRefino, CanalPublicacao, IdeiaIn, IdeiaLinkedin, PostPublicado, ProjetoIn, ProjetoLinkedin, RascunhoGerado,
+  AcaoRefino, CanalPublicacao, IdeiaIn, IdeiaLinkedin, InformeProjeto, InformeProjetoIn, MarcoProjeto, MarcoProjetoIn, PostPublicado, ProjetoIn, ProjetoLinkedin, RascunhoGerado,
   RascunhoLinkedin, RefinoIA, StatusContaLinkedin, SugestaoPauta, TarefaIA, VersaoRascunho, Visibilidade,
 } from '@seginfo/shared';
 import { http } from './http';
@@ -21,6 +21,13 @@ const dados = <T,>(p: Promise<{ data: T }>) => p.then((r) => r.data);
 export const listProjetos = () => dados(http.get<ProjetoLinkedin[]>('/linkedin/projetos'));
 export const criarProjeto = (b: ProjetoIn) => dados(http.post<ProjetoLinkedin>('/linkedin/projetos', b));
 export const editarProjeto = (id: string, b: Partial<ProjetoIn>) => dados(http.patch<ProjetoLinkedin>(`/linkedin/projetos/${id}`, b));
+export interface AndamentoProjeto { marcos: MarcoProjeto[]; informes: InformeProjeto[]; eventos: { id: string; autorId: string; entidade: string; acao: string; criadoEm: string; campos: string[] }[]; autores: Record<string, string> }
+export const getAndamentoProjeto = (id: string) => dados(http.get<AndamentoProjeto>(`/linkedin/projetos/${id}/andamento`));
+export const criarMarcoProjeto = (id: string, b: MarcoProjetoIn) => dados(http.post<MarcoProjeto>(`/linkedin/projetos/${id}/marcos`, b));
+export const editarMarcoProjeto = (id: string, marcoId: string, b: Partial<MarcoProjetoIn>) => dados(http.patch<MarcoProjeto>(`/linkedin/projetos/${id}/marcos/${marcoId}`, b));
+export const criarInformeProjeto = (id: string, b: InformeProjetoIn) => dados(http.post<InformeProjeto>(`/linkedin/projetos/${id}/informes`, b));
+export const editarInformeProjeto = (id: string, informeId: string, b: Partial<InformeProjetoIn>) => dados(http.patch<InformeProjeto>(`/linkedin/projetos/${id}/informes/${informeId}`, b));
+export const excluirInformeProjeto = (id: string, informeId: string) => dados(http.delete<{ ok: true }>(`/linkedin/projetos/${id}/informes/${informeId}`));
 /** Apaga o projeto; ideias, rascunhos, posts e marcos continuam, só perdem o vínculo. */
 export const removerProjeto = (id: string) => dados(http.delete<{ ok: true }>(`/linkedin/projetos/${id}`));
 

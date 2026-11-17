@@ -10,6 +10,7 @@ import { useInvalidate } from '@/hooks/useInvalidate';
 import { Estudio, type PedidoEstudio } from './linkedin/Estudio';
 import { Pipeline } from './linkedin/Pipeline';
 import { Ideias } from './linkedin/Ideias';
+import type { IdeiaInicial } from './linkedin/IdeiaForm';
 import { Projetos } from './linkedin/Projetos';
 import { Publicados } from './linkedin/Publicados';
 import { Diario } from './linkedin/Diario';
@@ -48,7 +49,7 @@ export function Posts() {
   const [oauth] = useState(retornoDoOAuth);
   const [aba, setAba] = useState<number>(oauth ? ABA.marca : ABA.pipeline);
   const [pedidoEstudio, setPedidoEstudio] = useState<PedidoEstudio | null>(null);
-  const [novaIdeiaNoProjeto, setNovaIdeiaNoProjeto] = useState<string | null>(null);
+  const [novaIdeiaNoProjeto, setNovaIdeiaNoProjeto] = useState<IdeiaInicial | null>(null);
   const [migracao, setMigracao] = useState<Aviso | null>(null);
 
   const abrirEstudio = useCallback((p: PedidoEstudio) => { setPedidoEstudio(p); setAba(ABA.estudio); }, []);
@@ -101,7 +102,7 @@ export function Posts() {
             <Ideias onEscrever={abrirEstudio} novaNoProjeto={novaIdeiaNoProjeto} onNovaConsumida={limparNovaIdeia} />
           </TabPanel>
           <TabPanel header="Projetos" leftIcon="pi pi-folder mr-2">
-            <Projetos onNovaIdeia={(projetoId) => { setNovaIdeiaNoProjeto(projetoId); setAba(ABA.ideias); }} />
+            <Projetos onNovaIdeia={(ideia) => { setNovaIdeiaNoProjeto(ideia); setAba(ABA.ideias); }} />
           </TabPanel>
           <TabPanel header="Publicados" leftIcon="pi pi-linkedin mr-2">
             <Publicados onUsarIdeia={abrirEstudio} />

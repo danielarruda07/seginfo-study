@@ -4,14 +4,14 @@ import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
-import type { FormatoPost, IdeiaLinkedin } from '@seginfo/shared';
+import type { FormatoPost, IdeiaLinkedin, OrigemIdeia } from '@seginfo/shared';
 import { FormField } from '@/components/ui/FormField';
 import { FORMATOS, mensagemErro, riscosDePublicacao } from '@/services/linkedin';
 import { criarIdeia, editarIdeia } from '@/services/linkedinPipeline';
 import { detalheDoErro } from './dados';
 
 type Opcao = { label: string; value: string };
-export interface IdeiaInicial { id?: string; titulo?: string; briefing?: string; pilar?: string | null; projetoId?: string | null; formato?: FormatoPost | null; sugeridaPara?: string | null }
+export interface IdeiaInicial { id?: string; titulo?: string; briefing?: string; pilar?: string | null; projetoId?: string | null; formato?: FormatoPost | null; sugeridaPara?: string | null; origem?: OrigemIdeia; origemRef?: string | null }
 
 export const ideiaParaForm = (i: IdeiaLinkedin): IdeiaInicial => ({
   id: i.id, titulo: i.titulo, briefing: i.briefing, pilar: i.pilar, projetoId: i.projetoId, formato: i.formato, sugeridaPara: i.sugeridaPara,
@@ -41,7 +41,7 @@ export function IdeiaForm({ inicial, projetos, pilares, onClose, onSalva }: {
     };
     try {
       if (inicial.id) await editarIdeia(inicial.id, corpo);
-      else await criarIdeia({ ...corpo, origem: 'manual' });
+      else await criarIdeia({ ...corpo, origem: inicial.origem ?? 'manual', origemRef: inicial.origemRef ?? null });
       onSalva(corpo.titulo);
     } catch (e) {
       setErro(detalheDoErro(e).status === 409 ? 'Já existe uma ideia com este título.' : mensagemErro(e));

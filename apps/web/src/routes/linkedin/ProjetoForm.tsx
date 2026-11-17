@@ -4,13 +4,14 @@ import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
-import { STATUS_PROJETO, type ProjetoLinkedin, type StatusProjeto } from '@seginfo/shared';
+import { FASES_PROJETO, STATUS_PROJETO, type FaseProjeto, type ProjetoLinkedin, type StatusProjeto } from '@seginfo/shared';
 import { FormField } from '@/components/ui/FormField';
 import { mensagemErro, riscosDePublicacao } from '@/services/linkedin';
 import { criarProjeto, editarProjeto } from '@/services/linkedinPipeline';
 import { STATUS_PROJETO_META } from './pipelineRegras';
 
 const SITUACOES = STATUS_PROJETO.map((value) => ({ value, label: STATUS_PROJETO_META[value].label }));
+const FASES = FASES_PROJETO.map((value) => ({ value, label: ({ iniciacao: 'Iniciação', planejamento: 'Planejamento', execucao: 'Execução', encerramento: 'Encerramento' })[value] }));
 
 /** Criar ou editar um projeto (ou série) de conteúdo. */
 export function ProjetoForm({ inicial, pilares, onClose, onSalvo }: {
@@ -20,17 +21,20 @@ export function ProjetoForm({ inicial, pilares, onClose, onSalvo }: {
   const [f, setF] = useState({
     nome: inicial?.nome ?? '', descricao: inicial?.descricao ?? '', objetivo: inicial?.objetivo ?? '',
     pilar: inicial?.pilar ?? null as string | null, status: (inicial?.status ?? 'ativo') as StatusProjeto,
+    resultadoEsperado: inicial?.resultadoEsperado ?? '', escopo: inicial?.escopo ?? '', criteriosSucesso: inicial?.criteriosSucesso ?? '',
+    fase: (inicial?.fase ?? 'iniciacao') as FaseProjeto,
   });
   const [erroNome, setErroNome] = useState('');
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
-  const riscos = riscosDePublicacao(`${f.nome}\n${f.descricao}\n${f.objetivo}`);
+  const riscos = riscosDePublicacao(`${f.nome}\n${f.descricao}\n${f.objetivo}\n${f.resultadoEsperado}\n${f.escopo}\n${f.criteriosSucesso}`);
 
   async function salvar(ev?: FormEvent) {
     ev?.preventDefault();
     if (!f.nome.trim()) return setErroNome('Dê um nome ao projeto.');
     setErroNome(''); setErro(''); setSalvando(true);
-    const corpo = { nome: f.nome.trim(), descricao: f.descricao.trim(), objetivo: f.objetivo.trim(), pilar: f.pilar || null, status: f.status };
+    const corpo = { nome: f.nome.trim(), descricao: f.descricao.trim(), objetivo: f.objetivo.trim(), pilar: f.pilar || null, status: f.status,
+      resultadoEsperado: f.resultadoEsperado.trim(), escopo: f.escopo.trim(), criteriosSucesso: f.criteriosSucesso.trim(), fase: f.fase };
     try {
       if (inicial) await editarProjeto(inicial.id, corpo);
       else await criarProjeto(corpo);
@@ -69,6 +73,16 @@ export function ProjetoForm({ inicial, pilares, onClose, onSalvo }: {
           <FormField id="proj-status" label="Situação">
             <Dropdown inputId="proj-status" value={f.status} options={SITUACOES} onChange={(e) => setF({ ...f, status: e.value })} />
           </FormField>
+          <FormField id="proj-resultado" label="Resultado esperado" full hint="Que valor ou mudança este projeto deve produzir?">
+            <InputTextarea id="proj-resultado" value={f.resultadoEsperado} maxLength={1000} rows={2} autoResize onChange={(e) => setF({ ...f, resultadoEsperado: e.target.value })} />
+          </FormField>
+          <FormField id="proj-escopo" label="Escopo" full hint="O que está incluído nesta entrega?">
+            <InputTextarea id="proj-escopo" value={f.escopo} maxLength={1000} rows={2} autoResize onChange={(e) => setF({ ...f, escopo: e.target.value })} />
+          </FormField>
+          <FormField id="proj-sucesso" label="Critérios de sucesso" full hint="Como você saberá que entregou o resultado?">
+            <InputTextarea id="proj-sucesso" value={f.criteriosSucesso} maxLength={1000} rows={2} autoResize onChange={(e) => setF({ ...f, criteriosSucesso: e.target.value })} />
+          </FormField>
+          <FormField id="proj-fase" label="Fase atual"><Dropdown inputId="proj-fase" value={f.fase} options={FASES} onChange={(e) => setF({ ...f, fase: e.value })} /></FormField>
         </div>
         {riscos.length > 0 && <p className="ca-aviso" role="status"><i className="pi pi-exclamation-triangle" aria-hidden="true" /> Pode expor: {riscos.join(', ')}. O nome e o objetivo vão para a IA: descreva sem endereços nem nomes de equipamentos.</p>}
         {erro && <small className="iv-field__error" role="alert">{erro}</small>}

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from 'primereact/button';
+import { Dropdown } from 'primereact/dropdown';
 import { Message } from 'primereact/message';
 import { confirmDialog } from 'primereact/confirmdialog';
 import { diaLocal, type ProjetoLinkedin, type StatusProjeto } from '@seginfo/shared';
@@ -8,18 +9,21 @@ import { EmptyState, Pill, StatusStrip } from '@/components/InfraKit';
 import { ClickCard } from '@/components/ui/ClickCard';
 import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import { useInvalidate } from '@/hooks/useInvalidate';
+import { useDebounce } from '@/hooks/useDebounce';
+import { SearchInput } from '@/components/ui/SearchInput';
 import { getEstrategia, mensagemErro } from '@/services/linkedin';
 import { editarProjeto, removerProjeto } from '@/services/linkedinPipeline';
 import { useIdeias, useProjetos, usePublicados, useRascunhos } from './dados';
 import { STATUS_PROJETO_META, fusoDoNavegador, resumoDoProjeto } from './pipelineRegras';
 import { ProjetoDrawer } from './ProjetoDrawer';
 import { ProjetoForm } from './ProjetoForm';
+import type { IdeiaInicial } from './IdeiaForm';
 
 type Aviso = { sev: 'success' | 'error'; text: string };
 const ORDEM: Record<StatusProjeto, number> = { ativo: 0, pausado: 1, concluido: 2 };
 
 /** Projetos (ou séries) de conteúdo: a forma de separar por assunto ideias, rascunhos, posts e marcos. */
-export function Projetos({ onNovaIdeia }: { onNovaIdeia: (projetoId: string) => void }) {
+export function Projetos({ onNovaIdeia }: { onNovaIdeia: (ideia: IdeiaInicial) => void }) {
   const invalidate = useInvalidate();
   const { data: projetos = [], isLoading, error } = useProjetos();
   const { data: ideias = [] } = useIdeias();
@@ -30,14 +34,23 @@ export function Projetos({ onNovaIdeia }: { onNovaIdeia: (projetoId: string) => 
   const [form, setForm] = useState<{ projeto: ProjetoLinkedin | null } | null>(null);
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [busca, setBusca] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState<StatusProjeto | null>(null);
+  const [filtroCondicao, setFiltroCondicao] = useState<string | null>(null);
+  const termo = useDebounce(busca, 300).trim().toLocaleLowerCase();
 
   const fuso = fusoDoNavegador();
   const hoje = diaLocal(new Date(), fuso);
-  const ordenados = useMemo(() => [...projetos].sort((a, b) => ORDEM[a.status] - ORDEM[b.status] || a.nome.localeCompare(b.nome)), [projetos]);
+  const ordenados = useMemo(() => [...projetos].filter((p) =>
+    (!filtroStatus || p.status === filtroStatus) && (!filtroCondicao || p.condicao === filtroCondicao) &&
+    (!termo || `${p.nome} ${p.descricao} ${p.objetivo} ${p.resultadoEsperado}`.toLocaleLowerCase().includes(termo)))
+    .sort((a, b) => ORDEM[a.status] - ORDEM[b.status] || a.nome.localeCompare(b.nome)), [projetos, filtroStatus, filtroCondicao, termo]);
   const resumos = useMemo(() => new Map(projetos.map((p) => [p.id, resumoDoProjeto(p, { ideias, rascunhos, publicados }, hoje, fuso)])),
     [projetos, ideias, rascunhos, publicados, hoje, fuso]);
   const sel = useDrawerSelection(ordenados);
   const ativos = projetos.filter((p) => p.status === 'ativo').length;
+  const atencao = projetos.filter((p) => p.status === 'ativo' && p.condicao === 'atencao').length;
+  const criticos = projetos.filter((p) => p.status === 'ativo' && p.condicao === 'critico').length;
   const parados = [...resumos.values()].filter((r) => r.parado).length;
   const recarregar = () => invalidate('linkedin-projetos', 'linkedin-ideias', 'linkedin-rascunhos', 'linkedin-publicados', 'linkedin-diario');
 
@@ -62,8 +75,10 @@ export function Projetos({ onNovaIdeia }: { onNovaIdeia: (projetoId: string) => 
 
   return (
     <div>
-      <StatusStrip tone={parados ? 'warn' : 'ok'} icon="pi-folder">
+      <StatusStrip tone={parados || atencao || criticos ? 'warn' : 'ok'} icon="pi-folder">
         {ativos} {ativos === 1 ? 'projeto ativo' : 'projetos ativos'}.
+        {atencao > 0 && <> <strong>{atencao}</strong> em atenção.</>}
+        {criticos > 0 && <> <strong>{criticos}</strong> críticos.</>}
         {parados > 0 && <> <strong>{parados}</strong> sem post há 14 dias ou mais.</>}
         {' '}Um projeto reúne tudo de um assunto: do que você quer falar até o que já publicou.
       </StatusStrip>
@@ -72,7 +87,10 @@ export function Projetos({ onNovaIdeia }: { onNovaIdeia: (projetoId: string) => 
       <div className="iv-card iv-mt">
         <div className="ca-toolbar">
           <Button label="Novo projeto" icon="pi pi-plus" onClick={() => setForm({ projeto: null })} />
-          <span className="iv-muted ca-small">Exemplos: um lab em andamento, uma certificação, a construção de uma ferramenta.</span>
+          <SearchInput value={busca} onChange={setBusca} placeholder="Buscar projeto" />
+          <Dropdown value={filtroStatus} onChange={(e) => setFiltroStatus(e.value ?? null)} options={[{ value: 'ativo', label: 'Ativo' }, { value: 'pausado', label: 'Pausado' }, { value: 'concluido', label: 'Concluído' }]} placeholder="Situação" showClear />
+          <Dropdown value={filtroCondicao} onChange={(e) => setFiltroCondicao(e.value ?? null)} options={[{ value: 'sem_avaliacao', label: 'Sem avaliação' }, { value: 'no_caminho', label: 'No caminho' }, { value: 'atencao', label: 'Atenção' }, { value: 'critico', label: 'Crítico' }]} placeholder="Condição" showClear />
+          <span className="iv-muted ca-small">{ordenados.length} de {projetos.length} projetos</span>
         </div>
         {aviso && <Message severity={aviso.sev} text={aviso.text} className="ca-msg" />}
       </div>
@@ -84,6 +102,7 @@ export function Projetos({ onNovaIdeia }: { onNovaIdeia: (projetoId: string) => 
             text="Crie um para cada assunto em que você está trabalhando. Depois, ligue ideias e posts a ele para ver o que anda e o que parou."
             action={<Button label="Novo projeto" icon="pi pi-plus" onClick={() => setForm({ projeto: null })} />} /></div>
         )}
+        {!isLoading && projetos.length > 0 && ordenados.length === 0 && <div className="iv-card lp-grade__cheio"><EmptyState icon="pi-filter" title="Nenhum projeto com esses filtros" text="Limpe a busca ou mude os filtros." /></div>}
         {ordenados.map((p) => {
           const r = resumos.get(p.id)!;
           const meta = STATUS_PROJETO_META[p.status];
@@ -92,6 +111,7 @@ export function Projetos({ onNovaIdeia }: { onNovaIdeia: (projetoId: string) => 
               <div className="ca-post__meta">
                 <strong className="ca-flex1">{p.nome}</strong>
                 <Pill label={meta.label} tone={meta.tone} />
+                <Pill label={`${p.avanco}%`} tone={p.condicao === 'critico' ? 'danger' : p.condicao === 'atencao' ? 'warning' : undefined} />
               </div>
               {p.descricao && <p className="iv-muted ca-small ca-clamp-2 lp-cartao__gancho">{p.descricao}</p>}
               <dl className="lp-contagens">
@@ -111,7 +131,7 @@ export function Projetos({ onNovaIdeia }: { onNovaIdeia: (projetoId: string) => 
 
       {sel.item && (
         <ProjetoDrawer projeto={sel.item} nav={sel.nav} resumo={resumos.get(sel.item.id)!} ideias={ideias} rascunhos={rascunhos} publicados={publicados} ocupado={ocupado}
-          onNovaIdeia={() => { const id = sel.item!.id; sel.close(); onNovaIdeia(id); }}
+          onNovaIdeia={(ideia) => { const id = sel.item!.id; sel.close(); onNovaIdeia(ideia ?? { projetoId: id }); }}
           onEditar={() => setForm({ projeto: sel.item! })}
           onStatus={(s) => mudarStatus(sel.item!, s)}
           onExcluir={() => excluir(sel.item!)} />

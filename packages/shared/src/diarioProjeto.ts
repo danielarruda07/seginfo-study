@@ -26,6 +26,17 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-16-linkedin-projetos-andamento',
+    data: '2026-11-16',
+    titulo: 'Projetos com marcos e informes para comunicar entregas reais',
+    descricao:
+      'A aba Projetos do LinkedIn passou a registrar resultado esperado, escopo, critérios de sucesso, marcos e informes de andamento. ' +
+      'A condição e o avanço refletem o informe ativo mais recente; editar ou excluir um informe recalcula a visão sem apagar o histórico. ' +
+      'Um informe escolhido pode virar uma ideia de post editável, ligando entrega, resultado e aprendizado à comunicação profissional.',
+    categoria: 'funcionalidade',
+    tags: ['linkedin', 'projetos', 'marcos', 'andamento'],
+  },
+  {
     id: 'proj-2026-11-15-linkedin-perfil-blocos-recolhidos',
     data: '2026-11-15',
     titulo: 'O perfil profissional cabe melhor na tela',

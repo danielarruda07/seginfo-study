@@ -34,6 +34,9 @@ em **Cofre → Backup & Restauração** cobre as chaves do navegador deste perfi
 O módulo **LinkedIn** guarda tudo no banco: rascunhos (`Post`), posts publicados com a
 análise da IA (`LinkedinPost`), estratégia (`LinkedinEstrategia`), marcos do diário criados
 pela tela (`DiarioEntrada`) e as notas que a IA cria no **Segundo Cérebro** (`Memoria`).
+Os projetos de conteúdo (`LinkedinProjeto`) agora incluem os marcos de entrega,
+informes de andamento e eventos de alteração; os três entram na exportação e na
+restauração, inclusive informes excluídos logicamente para preservar o histórico.
 Tudo isso entra no backup externo e volta na restauração. Os marcos do diário escritos
 durante o desenvolvimento ficam no código (`packages/shared/src/diarioProjeto.ts`), ou seja,
 no GitHub.

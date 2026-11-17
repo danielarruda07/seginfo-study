@@ -26,7 +26,8 @@ const ideia = (id: string, extra: Partial<IdeiaLinkedin> = {}): IdeiaLinkedin =>
 });
 
 const projeto = (id: string, extra: Partial<ProjetoLinkedin> = {}): ProjetoLinkedin => ({
-  id, nome: `Projeto ${id}`, descricao: '', objetivo: '', pilar: null, status: 'ativo', criadoEm: '2026-10-01T10:00:00.000Z', ...extra,
+  id, nome: `Projeto ${id}`, descricao: '', objetivo: '', pilar: null, status: 'ativo', resultadoEsperado: '', escopo: '',
+  criteriosSucesso: '', fase: 'iniciacao', condicao: 'sem_avaliacao', avanco: 0, criadoEm: '2026-10-01T10:00:00.000Z', ...extra,
 });
 
 describe('colunasDoQuadro', () => {

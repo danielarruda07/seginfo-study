@@ -21,8 +21,49 @@ export interface ProjetoLinkedin {
   objetivo: string;
   pilar: string | null;
   status: StatusProjeto;
+  resultadoEsperado: string;
+  escopo: string;
+  criteriosSucesso: string;
+  fase: FaseProjeto;
+  condicao: CondicaoProjeto;
+  avanco: number;
   criadoEm: string;
 }
+
+export const FASES_PROJETO = ['iniciacao', 'planejamento', 'execucao', 'encerramento'] as const;
+export type FaseProjeto = (typeof FASES_PROJETO)[number];
+export const CONDICOES_PROJETO = ['sem_avaliacao', 'no_caminho', 'atencao', 'critico'] as const;
+export type CondicaoProjeto = (typeof CONDICOES_PROJETO)[number];
+export const SITUACOES_MARCO = ['planejado', 'em_andamento', 'concluido'] as const;
+export type SituacaoMarco = (typeof SITUACOES_MARCO)[number];
+
+export interface MarcoProjeto {
+  id: string; projetoId: string; nome: string; entrega: string; responsavel: string;
+  prazo: string | null; situacao: SituacaoMarco; concluidoEm: string | null;
+  criadoEm: string; atualizadoEm: string;
+}
+export interface InformeProjeto {
+  id: string; projetoId: string; data: string; condicao: CondicaoProjeto; avanco: number;
+  resumo: string; entregas: string; proximosPassos: string; impedimentos: string;
+  autorId: string; criadoEm: string; atualizadoEm: string; excluidoEm: string | null;
+}
+
+const DataISO = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((v) => {
+  const d = new Date(`${v}T00:00:00.000Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+}, 'Data inválida');
+export const MarcoProjetoInSchema = z.object({
+  nome: z.string().trim().min(2).max(160), entrega: z.string().trim().max(1000).default(''),
+  responsavel: z.string().trim().max(120).default(''), prazo: DataISO.nullable().default(null),
+  situacao: z.enum(SITUACOES_MARCO).default('planejado'),
+}).strict();
+export type MarcoProjetoIn = z.input<typeof MarcoProjetoInSchema>;
+export const InformeProjetoInSchema = z.object({
+  data: DataISO, condicao: z.enum(CONDICOES_PROJETO), avanco: z.number().int().min(0).max(100),
+  resumo: z.string().trim().min(3).max(2000), entregas: z.string().trim().max(2000).default(''),
+  proximosPassos: z.string().trim().max(2000).default(''), impedimentos: z.string().trim().max(2000).default(''),
+}).strict();
+export type InformeProjetoIn = z.input<typeof InformeProjetoInSchema>;
 
 export const ProjetoInSchema = z.object({
   nome: z.string().trim().min(1).max(80),
@@ -30,6 +71,10 @@ export const ProjetoInSchema = z.object({
   objetivo: z.string().trim().max(500).optional(),
   pilar: z.string().trim().max(80).nullable().optional(),
   status: z.enum(STATUS_PROJETO).optional(),
+  resultadoEsperado: z.string().trim().max(1000).optional(),
+  escopo: z.string().trim().max(1000).optional(),
+  criteriosSucesso: z.string().trim().max(1000).optional(),
+  fase: z.enum(FASES_PROJETO).optional(),
 });
 export type ProjetoIn = z.infer<typeof ProjetoInSchema>;
 
@@ -39,7 +84,7 @@ export const STATUS_IDEIA = ['nova', 'em_rascunho', 'descartada'] as const;
 export type StatusIdeia = (typeof STATUS_IDEIA)[number];
 
 /** De onde a ideia veio: digitada, análise de post publicado, lab, marco do diário, Radar ou planejador. */
-export const ORIGENS_IDEIA = ['manual', 'analise', 'lab', 'marco', 'radar', 'planejador'] as const;
+export const ORIGENS_IDEIA = ['manual', 'analise', 'lab', 'marco', 'radar', 'planejador', 'projeto'] as const;
 export type OrigemIdeia = (typeof ORIGENS_IDEIA)[number];
 
 export interface IdeiaLinkedin {
@@ -57,8 +102,6 @@ export interface IdeiaLinkedin {
   sugeridaPara: string | null;
   criadoEm: string;
 }
-
-const DataISO = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 export const IdeiaInSchema = z.object({
   titulo: z.string().trim().min(3).max(200),

@@ -25,7 +25,7 @@ type Aviso = { sev: 'success' | 'info' | 'error'; text: string };
 export function Ideias({ onEscrever, novaNoProjeto, onNovaConsumida }: {
   onEscrever: (p: PedidoEstudio) => void;
   /** vindo da aba Projetos: abrir o formulário já com o projeto */
-  novaNoProjeto: string | null;
+  novaNoProjeto: IdeiaInicial | null;
   onNovaConsumida: () => void;
 }) {
   const invalidate = useInvalidate();
@@ -46,7 +46,7 @@ export function Ideias({ onEscrever, novaNoProjeto, onNovaConsumida }: {
   // pedido da aba Projetos: abre o formulário já com o projeto escolhido
   useEffect(() => {
     if (!novaNoProjeto) return;
-    setForm({ projetoId: novaNoProjeto });
+    setForm(novaNoProjeto);
     onNovaConsumida();
   }, [novaNoProjeto, onNovaConsumida]);
 

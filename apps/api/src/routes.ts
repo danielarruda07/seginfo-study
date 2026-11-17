@@ -10,6 +10,7 @@ import { origemOk, registerStorageRoutes } from './storage-routes.js';
 import { registerKevRoutes } from './kev.js';
 import { registerLinkedinRoutes } from './linkedin.js';
 import { registerLinkedinPipelineRoutes } from './linkedinPipeline.js';
+import { registerLinkedinProjetoAndamentoRoutes } from './linkedinProjetoAndamento.js';
 import { registerLinkedinPerfilRoutes } from './linkedinPerfil.js';
 import { registerLinkedinImagemRoutes } from './linkedinImagem.js';
 import { registerAgenteRoutes } from './agentes.js';
@@ -292,6 +293,7 @@ export async function registerStateRoutes(app: FastifyInstance) {
   await registerLinkedinRoutes(app);
   // LinkedIn: rascunhos no pipeline, projetos, ideias, agendamento e conexão com a API
   await registerLinkedinPipelineRoutes(app);
+  await registerLinkedinProjetoAndamentoRoutes(app);
   // LinkedIn: perfil profissional, inspirações e perfil de voz
   await registerLinkedinPerfilRoutes(app);
   // LinkedIn: arte dos posts (slides e ilustração por IA)

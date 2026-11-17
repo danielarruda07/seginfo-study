@@ -5,6 +5,8 @@ import { DetailFields } from '@/components/ui/Detail';
 import { Pill } from '@/components/InfraKit';
 import { primeiraLinha } from './regras';
 import { STATUS_META, STATUS_PROJETO_META, type ResumoProjeto } from './pipelineRegras';
+import { ProjetoAndamento } from './ProjetoAndamento';
+import type { IdeiaInicial } from './IdeiaForm';
 
 type Nav = Pick<DetailDrawerProps, 'index' | 'total' | 'onIndex' | 'onClose'>;
 const dataBr = (d: string) => d.slice(0, 10).split('-').reverse().join('/');
@@ -27,7 +29,7 @@ function Lista({ titulo, vazio, itens }: { titulo: string; vazio: string; itens:
 export function ProjetoDrawer({ projeto: p, nav, resumo, ideias, rascunhos, publicados, ocupado, onNovaIdeia, onEditar, onStatus, onExcluir }: {
   projeto: ProjetoLinkedin; nav: Nav; resumo: ResumoProjeto;
   ideias: IdeiaLinkedin[]; rascunhos: RascunhoLinkedin[]; publicados: PostPublicado[]; ocupado: boolean;
-  onNovaIdeia: () => void; onEditar: () => void;
+  onNovaIdeia: (ideia?: IdeiaInicial) => void; onEditar: () => void;
   onStatus: (s: StatusProjeto) => void; onExcluir: () => void;
 }) {
   const meta = STATUS_PROJETO_META[p.status];
@@ -44,7 +46,7 @@ export function ProjetoDrawer({ projeto: p, nav, resumo, ideias, rascunhos, publ
       title={p.nome}
       subtitle={p.descricao || 'Sem descrição'}
       actions={<>
-        <Button label="Nova ideia neste projeto" icon="pi pi-plus" size="small" onClick={onNovaIdeia} />
+        <Button label="Nova ideia neste projeto" icon="pi pi-plus" size="small" onClick={() => onNovaIdeia()} />
         <Button label="Editar" icon="pi pi-pencil" size="small" outlined onClick={onEditar} />
         {p.status === 'ativo' && <Button label="Pausar" icon="pi pi-pause" size="small" outlined disabled={ocupado} onClick={() => onStatus('pausado')} />}
         {p.status === 'ativo' && <Button label="Concluir" icon="pi pi-flag" size="small" outlined disabled={ocupado} onClick={() => onStatus('concluido')} />}
@@ -61,11 +63,18 @@ export function ProjetoDrawer({ projeto: p, nav, resumo, ideias, rascunhos, publ
         <h3 className="iv-section-label">Sobre</h3>
         <DetailFields items={[
           ['Objetivo', p.objetivo],
+          ['Resultado esperado', p.resultadoEsperado],
+          ['Escopo', p.escopo],
+          ['Critérios de sucesso', p.criteriosSucesso],
+          ['Fase', ({ iniciacao: 'Iniciação', planejamento: 'Planejamento', execucao: 'Execução', encerramento: 'Encerramento' })[p.fase]],
+          ['Condição', ({ sem_avaliacao: 'Sem avaliação', no_caminho: 'No caminho', atencao: 'Atenção', critico: 'Crítico' })[p.condicao]],
+          ['Avanço', `${p.avanco}%`],
           ['Pilar principal', p.pilar ?? ''],
           ['Criado em', dataBr(p.criadoEm)],
           ['Último post', resumo.ultimoPost ? `${dataBr(resumo.ultimoPost)} (há ${resumo.diasSemPost} ${resumo.diasSemPost === 1 ? 'dia' : 'dias'})` : ''],
         ]} />
       </section>
+      <ProjetoAndamento key={p.id} projeto={p} onNovaIdeia={onNovaIdeia} />
       <Lista titulo="Ideias novas" vazio="Nenhuma ideia esperando neste projeto." itens={novas.map((i) => ({ id: i.id, texto: i.titulo }))} />
       <Lista titulo="No pipeline" vazio="Nenhum rascunho em andamento."
         itens={emCurso.map((r) => ({ id: r.id, texto: r.titulo, extra: STATUS_META[r.status].label }))} />

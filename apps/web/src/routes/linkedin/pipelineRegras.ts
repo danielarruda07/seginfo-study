@@ -22,7 +22,7 @@ export const CANAL_CURTO: Record<CanalPublicacao, string> = { lembrete: 'lembret
 
 export const ORIGEM_IDEIA_LABEL: Record<OrigemIdeia, string> = {
   manual: 'Anotada por você', analise: 'Análise de um post', lab: 'Lab concluído',
-  marco: 'Marco do diário', radar: 'Radar de ataques', planejador: 'Planejador da semana',
+  marco: 'Marco do diário', radar: 'Radar de ataques', planejador: 'Planejador da semana', projeto: 'Andamento do projeto',
 };
 export const STATUS_IDEIA_LABEL: Record<StatusIdeia, string> = { nova: 'Novas', em_rascunho: 'Em rascunho', descartada: 'Descartadas' };
 
