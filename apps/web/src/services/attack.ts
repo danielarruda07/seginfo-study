@@ -5,6 +5,7 @@ import { LABS } from '@/data/labs';
 import { getStatusMap } from './catalog';
 import { getProgressoLab } from './inventario';
 import { listPurpleExercises, type PurpleExercise } from './exerciciosPurple';
+import type { AlertasWazuhTecnica } from './radar';
 import { read, write, registerSchema, todayISO } from './store';
 
 /**
@@ -12,7 +13,9 @@ import { read, write, registerSchema, todayISO } from './store';
  *  - estudada: algum tópico concluído cobre a técnica;
  *  - praticada: algum lab concluído cobre a técnica (catálogo ou MITRE anotado no lab);
  *  - detectada: marcação manual, com a regra que detectou e a data do teste;
- *  - observada: o Radar registrou eventos reais dessa técnica (modo servidor).
+ *  - observada: o Radar registrou eventos reais dessa técnica (modo servidor);
+ *  - alerta: uma regra do Wazuh com essa técnica disparou de verdade (indexador, rule.mitre.id)
+ *    ou um exercício registrou sinal detectado/parcial.
  */
 
 const DETECCOES_KEY = 'attack:deteccoes';
@@ -27,6 +30,10 @@ export interface CoberturaTecnica extends Tecnica {
   detectada: Deteccao | null;
   observada: number;
   alerta?: boolean;
+  /** Sinal detectado/parcial registrado em exercício (diário Red × Blue). */
+  alertaExercicio?: boolean;
+  /** Alertas reais do Wazuh para a técnica (ou subtécnicas) na janela consultada. */
+  alertaWazuh?: AlertasWazuhTecnica | null;
   respondida?: boolean;
   topicos: string[];
   labs: string[];
@@ -49,8 +56,11 @@ export function removerDeteccao(tecnicaId: string): void {
   write(DETECCOES_KEY, atual);
 }
 
-/** observadas: mapa técnica -> nº de eventos do Radar (vazio no modo local). */
-export function calcularCobertura(observadas: Record<string, number> = {}): CoberturaTecnica[] {
+/**
+ * observadas: mapa técnica -> nº de eventos do Radar (vazio no modo local);
+ * alertasWazuh: mapa técnica -> alertas reais do Wazuh (vazio sem indexador).
+ */
+export function calcularCobertura(observadas: Record<string, number> = {}, alertasWazuh: Record<string, AlertasWazuhTecnica> = {}): CoberturaTecnica[] {
   const status = getStatusMap();
   const deteccoes = getDeteccoes();
   const todosExercicios = listPurpleExercises();
@@ -63,6 +73,8 @@ export function calcularCobertura(observadas: Record<string, number> = {}): Cobe
     const exercicios = todosExercicios.filter((e) => e.status !== 'planejado' && e.techniques.some((id) => normalizar(id) === t.id));
     const resultadoDeteccao = exercicios.find((e) => e.detection !== 'nao_testado');
     const manual = deteccoes[t.id] ?? null;
+    const exercicioComSinal = exercicios.some((e) => e.detection === 'detectado' || e.detection === 'parcial');
+    const alertaWazuh = alertasWazuh[t.id] && alertasWazuh[t.id].alertas > 0 ? alertasWazuh[t.id] : null;
     const detectada = resultadoDeteccao
       ? resultadoDeteccao.detection === 'detectado'
         ? {
@@ -77,7 +89,9 @@ export function calcularCobertura(observadas: Record<string, number> = {}): Cobe
       praticada: labs.some((l) => getProgressoLab(l.id).status === 'concluido') || exercicios.length > 0,
       detectada,
       observada: observadas[t.id] ?? 0,
-      alerta: exercicios.some((e) => e.detection === 'detectado' || e.detection === 'parcial'),
+      alerta: exercicioComSinal || !!alertaWazuh,
+      alertaExercicio: exercicioComSinal,
+      alertaWazuh,
       respondida: exercicios.some((e) => !!e.blueResponse.trim()),
       topicos: topicos.map((tp) => tp.id),
       labs: labs.map((l) => l.id),
@@ -118,7 +132,7 @@ export function camadaNavigator(c: CoberturaTecnica[]) {
     name: 'SegInfo Study: cobertura',
     versions: { layer: '4.5', navigator: '5.1.0' },
     domain: 'enterprise-attack',
-    description: `Exportado em ${todayISO()}. Ciclo operacional: observada + alerta de teste + validação + resposta (0 a 4).`,
+    description: `Exportado em ${todayISO()}. Ciclo operacional: observada + alerta (Wazuh ou exercício) + validação + resposta (0 a 4).`,
     gradient: { colors: ['#ffffff', '#00d6c8'], minValue: 0, maxValue: 4 },
     techniques: c.filter((t) => pontuacao(t) > 0).map((t) => ({
       techniqueID: t.id,
@@ -126,7 +140,8 @@ export function camadaNavigator(c: CoberturaTecnica[]) {
       score: pontuacao(t),
       comment: [
         t.observada > 0 && `observada no Radar: ${t.observada}`,
-        t.alerta && 'alerta gerado em exercício',
+        t.alertaWazuh && `alertas do Wazuh: ${t.alertaWazuh.alertas} (regras ${t.alertaWazuh.regras.map((r) => r.id).join(', ')})`,
+        t.alertaExercicio && 'alerta gerado em exercício',
         t.detectada && `validação: ${t.detectada.regra || 'regra registrada'}`,
         t.respondida && 'resposta documentada',
       ].filter(Boolean).join('; '),

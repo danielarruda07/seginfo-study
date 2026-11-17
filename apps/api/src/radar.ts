@@ -7,6 +7,7 @@ import type { AuthedRequest } from './auth.js';
 import { isIP } from 'node:net';
 import { classificarIp, deCache, type ClassificacaoGreynoise } from './greynoise.js';
 import { ipNaoPublico } from './osint.js';
+import { wazuhAlertasPorTecnica, wazuhIndexadorFaltando } from './wazuhIndexador.js';
 
 /**
  * Análise dos eventos de ataque. Registrada DENTRO do plugin de rotas de estado
@@ -367,6 +368,22 @@ const EventosQuery = z.object({
     const ip = String((req.params as { ip?: string }).ip ?? '').trim();
     if (!ipValido(ip)) return reply.status(400).send({ error: 'informe um IP público' });
     return classificarIp(ip);
+  });
+
+  // Matriz ATT&CK: alertas reais do Wazuh agrupados por rule.mitre.id (a regra disparou = camada "alerta").
+  const TecnicasWazuhQuery = z.object({ dias: z.coerce.number().int().min(1).max(90).default(30), ambiente: AmbienteFiltroSchema });
+  app.get('/api/radar/wazuh-tecnicas', async (req, reply) => {
+    const q = TecnicasWazuhQuery.safeParse(req.query);
+    if (!q.success) return reply.status(400).send({ error: 'parâmetros inválidos' });
+    const faltando = wazuhIndexadorFaltando();
+    if (faltando.length) return { configurado: false, faltando, total: 0, tecnicas: [] };
+    // agente sem ambiente não existe no Wazuh: o nome diz se é produção (prod-*) ou laboratório
+    if (q.data.ambiente === 'nao_classificado') return { configurado: true, total: 0, tecnicas: [] };
+    try {
+      return { configurado: true, ...(await wazuhAlertasPorTecnica(q.data.dias, q.data.ambiente)) };
+    } catch (e) {
+      return { configurado: true, erro: (e as Error).message, total: 0, tecnicas: [] };
+    }
   });
 
   const LoteGreynoise = z.object({ ips: z.array(z.string().trim().max(45)).min(1).max(20) });

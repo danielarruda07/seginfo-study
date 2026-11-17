@@ -56,3 +56,32 @@ export function purpleExerciseCountForTechnique(techniqueId: string) {
   return listPurpleExercises().filter((e) => e.status !== 'planejado' && e.techniques.some((technique) => technique.split('.')[0] === id));
 }
 
+/** Item de importação: um exercício parcial; os campos ausentes recebem o padrão de EMPTY_PURPLE_EXERCISE. */
+const ImportItemSchema = PurpleExerciseSchema.partial().extend({ title: z.string().min(1).max(160) });
+
+/** Assinatura estável para não duplicar um exercício já gravado (mesmo lab, título e técnicas). */
+const assinaturaExercicio = (e: Pick<PurpleExercise, 'labId' | 'title' | 'techniques'>) =>
+  `${e.labId}|${e.title.trim().toLowerCase()}|${[...e.techniques].map((t) => t.trim().toUpperCase()).sort().join(',')}`;
+
+/**
+ * Importa exercícios de um JSON (objeto ou lista), SÓ ACRESCENTANDO: nunca apaga nem sobrescreve.
+ * Um exercício com a mesma assinatura (lab + título + técnicas) de um já existente é contado como repetido e ignorado.
+ */
+export function importPurpleExercises(texto: string, labIdPadrao = 'lab-atomic-cobertura'): { novos: number; repetidos: number } {
+  const dados: unknown = JSON.parse(texto);
+  const lista = z.array(ImportItemSchema).parse(Array.isArray(dados) ? dados : [dados]);
+  const vistos = new Set(records.all().map(assinaturaExercicio));
+  let novos = 0;
+  let repetidos = 0;
+  for (const item of lista) {
+    const labId = item.labId ?? labIdPadrao;
+    const exercicio = { ...EMPTY_PURPLE_EXERCISE(labId), ...item, labId };
+    const sig = assinaturaExercicio(exercicio);
+    if (vistos.has(sig)) { repetidos += 1; continue; }
+    vistos.add(sig);
+    savePurpleExercise(exercicio);
+    novos += 1;
+  }
+  return { novos, repetidos };
+}
+

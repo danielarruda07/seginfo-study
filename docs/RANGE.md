@@ -15,6 +15,7 @@ com honeypot e alvos reais isolados, e depois **reproduzir os mesmos ataques com
 | Atacante | Kali | alvos internos | não (janela temporária só para atualizar) |
 | Exposto | honeypot: Cowrie (SSH/Telnet), Dionaea (FTP, HTTP/S, MSSQL, MySQL...), Heralding (VNC, PostgreSQL, SMTP, POP3, IMAP) e iscas próprias (Redis, Elasticsearch, API do Docker) | Wazuh (agente), alvo real Linux (proxy) | não |
 | Alvos reais | Ubuntu real atrás do Cowrie; Windows Server real exposto (RDP, SMB) | Wazuh (só canal de eventos) | não |
+| Isca web | WordPress antigo com plugins vulneráveis, DVWA e Juice Shop, num domínio próprio sem proxy/CDN | Wazuh (só canal de eventos) | não (janela temporária só para instalar e renovar o certificado) |
 | Servidores | Wazuh (SIEM), Proxmox, app | — | — |
 
 Cada segmento é uma VLAN no switch e uma interface no FortiGate. Toda passagem entre segmentos atravessa o
@@ -29,12 +30,37 @@ Internet ─► ONT da operadora (IP público, port mapping) ─► FortiGate (V
    VNC, PostgreSQL, SMTP, POP3, IMAP ─► Heralding (captura de credenciais)
    Redis, Elasticsearch, API do Docker ─► iscas próprias (registram e respondem o mínimo; nada executa)
    RDP, SMB, RPC, NetBIOS ─► Windows Server REAL (NLA, compartilhamento isca)
+   HTTP/HTTPS (80/443) ─► isca web: nginx ─► WordPress vulnerável | DVWA | Juice Shop (por subdomínio)
    UDP de reflexão (DNS, NTP, SSDP, memcached) ─► o FIREWALL registra e DESCARTA (nada responde)
 ```
-- A regra de entrada usa **agendamento com data de fim**: a exposição fecha sozinha (72 h por rodada).
+- A regra de entrada começou com **agendamento com data de fim** (72 h por rodada); hoje fica aberta sem prazo
+  por decisão do dono e fecha desativando as regras de entrada.
 - Os alvos reais voltam ao snapshot `limpo` **a cada 6 horas** (timer no Wazuh com token Proxmox mínimo:
   só auditoria, energia e rollback dessas VMs).
 - Nenhum segmento exposto tem saída para a internet: malware que tente baixar a segunda etapa falha.
+
+## Isca web: um site de verdade para ser atacado
+O app de estudo **não** é a isca: ele guarda tokens de toda a infraestrutura e fica atrás do Cloudflare Access.
+Para ver ataques web reais, um domínio separado aponta direto para o IP público (sem proxy/CDN) e cai numa VM
+própria, num segmento só dela:
+- **nginx** na frente grava toda requisição num log combinado com `host=` e `scheme=` no fim (o decoder de
+  access log do Wazuh lê sem mudança); cada subdomínio vai para um alvo: WordPress (domínio principal), DVWA e
+  Juice Shop.
+- **WordPress antigo** com atualização automática desligada e plugins em versões com falhas públicas (upload
+  sem autenticação, leitura de arquivos, SQLi), usuário admin com senha fraca de propósito.
+- **Wazuh**: grupo próprio que lê o log do nginx e vigia a pasta do site em tempo real (FIM). Regras próprias:
+  PHP novo no site (webshell, T1505.003), tentativa nos endpoints dos plugins vulneráveis (T1190) e POST no
+  `xmlrpc.php` (T1110), enumeração de usuários (T1589) e uma regra de nível baixo que transforma **todo acesso não estático** em alerta (o Wazuh, por padrão, só alerta o que parece ataque; na isca queremos ver tudo). O coletor do Radar converte esses alertas em eventos de fonte `isca` (serviço =
+  wordpress/dvwa/juice-shop); o arquivo detectado pelo FIM entra sem IP, porque o monitor não sabe quem gravou.
+- **IPS do firewall em modo só registro** na regra de entrada: a assinatura fica no log, o ataque chega ao alvo.
+- **Sem saída para a internet**: um invasor que consiga shell não baixa ferramentas nem ataca terceiros pelo IP
+  de casa. A janela de saída abre só para instalar e para renovar o certificado (90 dias).
+- **Reset diário** para o snapshot `limpo` (um ataque tem tempo de se desenrolar; o que foi capturado já está
+  no Wazuh). O script de reset descobre o nó de cada VM no cluster, então funciona depois de migração.
+- A VM pode rodar em qualquer nó do cluster **exceto o que hospeda a produção**; o isolamento é do firewall
+  (o nó só repassa a VLAN marcada e não tem endereço nela). Os três nós têm a mesma configuração de rede.
+
+Script de instalação (idempotente) e regras: [`infra/range/isca-web/`](../infra/range/isca-web/).
 
 ## Heralding e iscas próprias: mais superfície real, sem executar nada
 
@@ -130,6 +156,9 @@ O Ubuntu real não tem agente de monitoração (para não denunciar) e não guar
   payload no Dionaea; logon falho do Windows como T1110.001 e logon RDP aceito como alerta alto (T1078, T1021.001).
 - Coletor `sensor/wazuh-forwarder` leva os alertas ao app (`/api/ingest`) por Cloudflare Access + token próprio.
   O honeypot continua sem saída; quem fala com o app é a VM do Wazuh.
+
+- **Varredura de portas (T1046)**: cada conexão aceita pelo firewall é só uma linha de log; a regra de correlação
+  alerta quando o mesmo IP da internet bate em 8+ portas expostas diferentes em 5 min ([`infra/range/wazuh/range_scan_rules.xml`](../infra/range/wazuh/range_scan_rules.xml)).
 
 ## Decisões e lições
 - **Fechar a WAN antes de abrir qualquer porta:** administração do firewall e RDP antigos estavam acessíveis

@@ -92,3 +92,19 @@ export const getGreynoise = (ip: string) =>
 /** Até 20 IPs; a API consulta um por vez (cota pequena), então o prazo é maior. */
 export const classificarGreynoise = (ips: string[]) =>
   http.post<{ itens: ClassificacaoGreynoise[]; ignorados: number }>('/radar/greynoise', { ips: ips.slice(0, 20) }, { timeout: 90_000 }).then((r) => r.data);
+
+// ---------------------------------------------------------------- Matriz ATT&CK: alertas do Wazuh
+
+export interface RegraWazuhTecnica { id: string; descricao: string; nivel: number; alertas: number }
+export interface AlertasWazuhTecnica { id: string; alertas: number; ultimo: string | null; regras: RegraWazuhTecnica[]; agentes: string[] }
+export interface WazuhTecnicas {
+  configurado: boolean;
+  faltando?: string[];
+  erro?: string;
+  total: number;
+  tecnicas: AlertasWazuhTecnica[];
+}
+
+/** Alertas reais do Wazuh (indexador) agrupados por técnica ATT&CK, nos últimos `dias`. */
+export const getWazuhTecnicas = (dias = 30, ambiente: AmbienteFiltro = 'todos') =>
+  http.get<WazuhTecnicas>('/radar/wazuh-tecnicas', { params: { dias, ambiente }, timeout: 30_000 }).then((r) => r.data);

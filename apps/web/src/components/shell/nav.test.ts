@@ -23,7 +23,7 @@ describe('nav', () => {
 
   it('filtra o menu sem acento e mantém a seção inteira quando o título casa', () => {
     expect(filterNav('topicos').flatMap((s) => s.items.map((i) => i.label))).toEqual(['Tópicos']);
-    expect(filterNav('pratica')[0].items).toHaveLength(4);
+    expect(filterNav('pratica')[0].items).toHaveLength(5);
     expect(filterNav('zzz')).toEqual([]);
   });
 });

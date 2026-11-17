@@ -26,6 +26,78 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-17-documentacao-ambiente',
+    data: '2026-11-17',
+    titulo: 'Documentar o ambiente dentro do próprio app',
+    descricao:
+      'Um ambiente de estudo só ensina se dá para explicar como foi montado. Criei um menu de Documentação que ' +
+      'descreve o range no nível de arquitetura — rede e VLANs, regras de firewall, criação das VMs, configuração do ' +
+      'switch e as formas de abrir cada porta para ataque — e um índice de testes por tipo, cada um com âncora própria: ' +
+      'o que abre a superfície, como é atacada e como o Wazuh detecta. Desafio central: escrever para um repositório ' +
+      'público sem virar um mapa do alvo — nada de IPs, domínio ou senhas, só nome de segmento e técnica. ' +
+      'Lição: a documentação do que está exposto é, ela mesma, superfície de ataque; descrever o método sem o mapa é o equilíbrio certo.',
+    categoria: 'funcionalidade',
+    tags: ['documentacao', 'cyber-range', 'mitre-attack', 'blue-team'],
+  },
+  {
+    id: 'proj-2026-11-17-importar-exercicios',
+    data: '2026-11-17',
+    titulo: 'Fechar a fila de pendências sem digitar 21 vezes',
+    descricao:
+      'A Matriz mostrava dezenas de técnicas com alerta real do Wazuh, mas todas presas na etapa "aguardando ' +
+      'validação": a detecção existe, falta registrar o exercício que prova que a regra pega o ataque certo. ' +
+      'Registrar isso à mão, uma a uma, era o gargalo. A solução foi um importador: um botão que lê um JSON de ' +
+      'exercícios Red × Blue e só acrescenta — de-duplica pela assinatura (lab + título + técnicas) e nunca apaga ' +
+      'o que já está lá. Cada exercício cita a regra e o agente que detectaram de verdade, com a resposta do Blue. ' +
+      'Lição: quando a evidência já existe, a ferramenta tem que deixar você colher em lote, não recadastrar; e o ' +
+      'importador aditivo evita o medo de perder o que foi feito à mão.',
+    categoria: 'funcionalidade',
+    tags: ['mitre-attack', 'purple-team', 'wazuh', 'produtividade'],
+  },
+  {
+    id: 'proj-2026-11-16-ponto-cego-t1046',
+    data: '2026-11-16',
+    titulo: 'O ponto cego que o SIEM não via: varredura de portas',
+    descricao:
+      'Com os alertas reais na Matriz, sobrou uma técnica em vermelho: T1046. O honeypot recebe varreduras o dia ' +
+      'todo, mas cada conexão aceita pelo firewall é só uma linha de log, sem alerta. A varredura só aparece ' +
+      'olhando o conjunto: o mesmo IP em muitas portas em pouco tempo. Uma regra de correlação no Wazuh (frequência, ' +
+      'mesmo IP, portas diferentes) transformou isso em alerta. Lição: algumas técnicas não estão em nenhum evento ' +
+      'isolado, só no padrão entre eventos; e a lista de pendências foi agrupada por tipo para mostrar primeiro o ' +
+      'ponto cego, não a fila de validações.',
+    categoria: 'seguranca',
+    tags: ['mitre-attack', 'wazuh', 'deteccao', 'fortigate', 'blue-team'],
+  },
+  {
+    id: 'proj-2026-11-16-isca-web',
+    data: '2026-11-16',
+    titulo: 'Um site de verdade para ser atacado, longe do app',
+    descricao:
+      'A ideia inicial era abrir o próprio app de estudo para ver ataques web. Ele guarda tokens do firewall, do ' +
+      'hipervisor e do SIEM: invadido, entregaria a chave do homelab inteiro. A saída foi um domínio separado, sem ' +
+      'proxy, apontando para uma VM num segmento só dela, com WordPress antigo e plugins vulneráveis, DVWA e Juice ' +
+      'Shop. Sem saída para a internet, para que um invasor com shell não use o IP de casa contra terceiros, e com ' +
+      'reset diário. Minutos depois de abrir a porta, um scanner já procurava /sse, o endpoint típico de servidor ' +
+      'MCP: os robôs já caçam agentes de IA expostos. Lição: o alvo de estudo e o painel de controle nunca são a ' +
+      'mesma máquina.',
+    categoria: 'infra',
+    tags: ['honeypot', 'wordpress', 'wazuh', 'blue-team', 'range'],
+  },
+  {
+    id: 'proj-2026-11-16-attack-alertas-wazuh',
+    data: '2026-11-16',
+    titulo: 'A matriz dizia "sem alerta" com centenas de milhares de alertas no SIEM',
+    descricao:
+      'A Matriz ATT&CK pedia um registro manual de exercício para cada técnica antes de admitir que havia alerta, ' +
+      'enquanto o Wazuh já disparava regras com o ID MITRE em quase todas elas. Agora a etapa "Alerta" lê o SIEM: ' +
+      'agrega os alertas por técnica, mostra quais regras dispararam e em quais agentes, e separa produção de ' +
+      'laboratório. A validação continua manual de propósito: alerta disparando prova que a regra existe, não que ' +
+      'ela está certa. No caminho apareceu outra lição: na instalação all-in-one o indexador só escuta localmente, ' +
+      'e o dashboard já oferece uma ponte autenticada até ele, sem abrir porta nova.',
+    categoria: 'funcionalidade',
+    tags: ['mitre-attack', 'wazuh', 'siem', 'deteccao', 'blue-team'],
+  },
+  {
     id: 'proj-2026-11-16-linkedin-projetos-andamento',
     data: '2026-11-16',
     titulo: 'Projetos com marcos e informes para comunicar entregas reais',

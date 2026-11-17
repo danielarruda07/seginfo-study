@@ -29,6 +29,13 @@ describe('separação de ambientes', () => {
     expect(AtaqueEventoInSchema.safeParse({ ...event, ambiente: 'laboratorio' }).success).toBe(false);
     expect(AtaqueEventoInSchema.safeParse({ ...event, fonte: 'cowrie' }).success).toBe(false);
   });
+
+  it('aceita sem IP só o arquivo detectado na isca web (FIM), não qualquer download', () => {
+    const fim = { fonte: 'isca', ocorridoEm: '2026-11-16T00:00:00Z', acao: 'download', detalhes: { arquivo: '/srv/site/x.php' } };
+    expect(AtaqueEventoInSchema.safeParse(fim).success).toBe(true);
+    expect(AtaqueEventoInSchema.safeParse({ ...fim, detalhes: {} }).success).toBe(false);
+    expect(AtaqueEventoInSchema.safeParse({ ...fim, fonte: 'cowrie' }).success).toBe(false);
+  });
   it('aplica ambiente em todas as agregações do resumo, preservando o dono dos dados', async () => {
     const app = Fastify(); app.addHook('preHandler', async (r) => { (r as any).usuarioId = 'dono'; }); await registerRadarRoutes(app);
     const r = await app.inject('/api/radar/resumo?ambiente=producao&escopo=todos');
