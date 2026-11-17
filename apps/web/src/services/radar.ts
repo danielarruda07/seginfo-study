@@ -54,6 +54,7 @@ export interface RadarEventosFiltro {
   ip?: string;
   servico?: string;
   acao?: string;
+  tecnica?: string;
   fonte?: AtaqueFonte;
   pais?: string;
   escopo?: RadarEscopo;

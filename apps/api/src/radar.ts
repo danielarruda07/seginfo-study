@@ -36,6 +36,14 @@ export const MITRE_POR_ACAO: Record<string, { id: string; nome: string }> = {
   reflexao: { id: 'T1498.002', nome: 'Reflection Amplification' },
 };
 
+/** Ações cujo mapeamento casa com a técnica pedida (compara pelo id base, ex.: T1498 ~ T1498.002). */
+export const acoesDaTecnica = (tecnica: string): string[] => {
+  const base = tecnica.split('.')[0];
+  return Object.entries(MITRE_POR_ACAO)
+    .filter(([, m]) => m.id === tecnica || m.id.split('.')[0] === base)
+    .map(([acao]) => acao);
+};
+
 export type Escopo = 'internet' | 'interno' | 'todos';
 const EscopoQuery = z.enum(['internet', 'interno', 'todos']).default('todos');
 
@@ -236,6 +244,7 @@ const EventosQuery = z.object({
     ip: z.string().max(45).optional(),
     servico: z.string().max(32).optional(),
     acao: z.string().max(16).optional(),
+    tecnica: z.string().max(16).optional(),
     fonte: AtaqueFonte.optional(),
     ambiente: AmbienteFiltroSchema,
     pais: z.string().length(2).optional(),
@@ -249,12 +258,12 @@ const EventosQuery = z.object({
     const q = EventosQuery.safeParse(req.query);
     if (!q.success) return reply.status(400).send({ error: 'parâmetros inválidos' });
 
-    const { ip, servico, acao, fonte, pais, escopo, ambiente, q: texto, page, limit } = q.data;
+    const { ip, servico, acao, tecnica, fonte, pais, escopo, ambiente, q: texto, page, limit } = q.data;
     const where = {
       usuarioId: uid(req),
       ...(ip ? { ipOrigem: ip } : {}),
       ...(servico ? { servico } : {}),
-      ...(acao ? { acao } : {}),
+      ...(acao ? { acao } : !acao && tecnica ? { acao: { in: acoesDaTecnica(tecnica) } } : {}),
       ...(fonte ? { fonte } : {}),
       ...(pais ? { paisOrigem: pais } : {}),
       ...(escopo !== 'todos' ? { escopo } : {}),

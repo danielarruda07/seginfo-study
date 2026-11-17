@@ -18,6 +18,8 @@ export interface FiltrosUi {
   busca: string; setBusca: (v: string) => void;
   fonte?: string; setFonte: (v: string | undefined) => void;
   acao?: string; setAcao: (v: string | undefined) => void;
+  tecnica?: string; setTecnica: (v: string | undefined) => void;
+  tecnicas: { id: string; nome: string; eventos?: number }[];
   pais?: string; setPais: (v: string | undefined) => void;
   paises: { nome: string; total: number }[];
   chips: ActiveFilter[];
@@ -42,6 +44,10 @@ export function EventosTabela({ itens, total, loading, page, onPage, onOpen, sel
       <div className="iv-toolbar">
         <SearchInput value={f.busca} onChange={f.setBusca} placeholder="Buscar IP, serviço, usuário ou alvo" />
         <Dropdown value={f.acao} options={ACAO_OPTS} onChange={(e) => f.setAcao(e.value)} placeholder="Todas as ações" showClear aria-label="Filtrar por ação" />
+        {f.tecnicas.length > 0 && (
+          <Dropdown value={f.tecnica} options={f.tecnicas.map((t) => ({ label: `${t.id} · ${t.nome}`, value: t.id }))}
+            onChange={(e) => f.setTecnica(e.value)} placeholder="Todas as técnicas" showClear aria-label="Filtrar por técnica MITRE" className="iv-hide-sm" />
+        )}
         <Dropdown value={f.fonte} options={FONTE_OPTS} onChange={(e) => f.setFonte(e.value)} placeholder="Todas as fontes" showClear aria-label="Filtrar por fonte" />
         <Dropdown value={f.pais} options={f.paises.map((p) => ({ label: `${p.nome} (${p.total})`, value: p.nome }))} onChange={(e) => f.setPais(e.value)}
           placeholder="Todos os países" showClear aria-label="Filtrar por país" className="iv-hide-sm" />

@@ -26,6 +26,20 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-17-fase5-filtro-tecnica',
+    data: '2026-11-17',
+    titulo: 'Fase 5 (parte 3): filtrar o Radar por técnica MITRE',
+    descricao:
+      'Faltava conectar a seção de técnicas ATT&CK observadas à tabela de eventos: agora dá para filtrar ' +
+      'os eventos por técnica. Para não cair na armadilha de escolher uma técnica e ver a tela vazia, o ' +
+      'seletor só oferece técnicas que têm eventos correspondentes, e técnica e ação se excluem no filtro. ' +
+      'Precisou de um pequeno acréscimo na API (traduzir a técnica para as ações equivalentes, comparando ' +
+      'pelo id base para casar sub-técnicas). Lição: um filtro bom é o que nunca frustra — melhor oferecer ' +
+      'só o que retorna resultado do que deixar o usuário tentar e não achar nada.',
+    categoria: 'funcionalidade',
+    tags: ['radar', 'filtros', 'mitre-attack', 'ux', 'api'],
+  },
+  {
     id: 'proj-2026-11-17-fase5-investigacoes-didaticas',
     data: '2026-11-17',
     titulo: 'Fase 5 (parte 2): o laudo que qualquer um entende',

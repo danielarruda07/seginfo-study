@@ -10,7 +10,7 @@ import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getRadarResumo, getRadarEventos, classificarGreynoise, type ClassificacaoGreynoise, type RadarEscopo, type RadarResumo, type RadarEventosFiltro } from '@/services/radar';
 import { calcularCobertura } from '@/services/attack';
-import { FONTE_LABEL, acaoMeta } from './inteligencia/regras';
+import { FONTE_LABEL, acaoMeta, acoesDaTecnica } from './inteligencia/regras';
 import { TopList, type TopItem } from './inteligencia/radar/TopList';
 import { EventosTabela, ROWS, type FiltrosUi } from './inteligencia/radar/EventosTabela';
 import { EventoDrawer } from './inteligencia/radar/EventoDrawer';
@@ -48,6 +48,7 @@ export function Radar() {
   const [ip, setIp] = useState<string | undefined>();
   const [servico, setServico] = useState<string | undefined>();
   const [acao, setAcao] = useState<string | undefined>();
+  const [tecnica, setTecnica] = useState<string | undefined>();
   const [fonte, setFonte] = useState<string | undefined>();
   const [pais, setPais] = useState<string | undefined>();
   const [qRaw, setQRaw] = useState('');
@@ -62,7 +63,7 @@ export function Radar() {
   });
 
   const resumo = useQuery({ queryKey: ['radar-resumo', dias, escopo, ambiente], queryFn: () => getRadarResumo(dias, escopo, ambiente), retry: false, refetchInterval: ATUALIZAR_MS });
-  const filtros = useMemo(() => ({ ip, servico, acao, fonte: fonte as RadarEventosFiltro['fonte'], pais, escopo, ambiente, q: q || undefined, page, limit: ROWS, ordem: ordenacao.campo, direcao: ordenacao.direcao }), [ip, servico, acao, fonte, pais, escopo, ambiente, q, page, ordenacao]);
+  const filtros = useMemo(() => ({ ip, servico, acao, tecnica, fonte: fonte as RadarEventosFiltro['fonte'], pais, escopo, ambiente, q: q || undefined, page, limit: ROWS, ordem: ordenacao.campo, direcao: ordenacao.direcao }), [ip, servico, acao, tecnica, fonte, pais, escopo, ambiente, q, page, ordenacao]);
   const eventos = useQuery({ queryKey: ['radar-eventos', filtros], queryFn: () => getRadarEventos(filtros), retry: false, refetchInterval: ATUALIZAR_MS });
   const r = resumo.data;
 
@@ -82,22 +83,27 @@ export function Radar() {
   const abrirIndicador = (d: Dimensao) => (id: string) => { fecharTudo(); setDim(d); indSel.open(id); };
 
   const reset = <T,>(set: (v: T | undefined) => void) => (v: T | undefined) => { set(v); setPage(0); };
-  const limpar = useCallback(() => { setIp(undefined); setServico(undefined); setAcao(undefined); setFonte(undefined); setPais(undefined); setQRaw(''); setPage(0); }, []);
+  const limpar = useCallback(() => { setIp(undefined); setServico(undefined); setAcao(undefined); setTecnica(undefined); setFonte(undefined); setPais(undefined); setQRaw(''); setPage(0); }, []);
   const filtrarPor = (d: Dimensao, valor: string) => {
     fecharTudo(); limpar();
     if (d === 'ip') setIp(valor); else if (d === 'servico') setServico(valor); else if (d === 'pais') setPais(valor); else setQRaw(valor);
     document.getElementById('radar-eventos-titulo')?.scrollIntoView({ behavior: 'smooth' });
   };
-  const alternarAcao = (a: string) => reset(setAcao)(acao === a ? undefined : a);
+  const alternarAcao = (a: string) => { setTecnica(undefined); reset(setAcao)(acao === a ? undefined : a); };
+  const tecnicasFiltraveis = useMemo(() => (r?.mitre ?? []).filter((m) => acoesDaTecnica(m.id).length > 0), [r]);
 
   const f: FiltrosUi = {
     busca: qRaw, setBusca: (v) => { setQRaw(v); setPage(0); },
-    fonte, setFonte: reset(setFonte), acao, setAcao: reset(setAcao), pais, setPais: reset(setPais),
+    fonte, setFonte: reset(setFonte),
+    acao, setAcao: (v) => { setTecnica(undefined); reset(setAcao)(v); },
+    tecnica, setTecnica: (v) => { setAcao(undefined); reset(setTecnica)(v); }, tecnicas: tecnicasFiltraveis,
+    pais, setPais: reset(setPais),
     paises: r?.topPaises ?? [], limpar,
     chips: [
       ip && { key: 'ip', label: `IP: ${ip}`, onRemove: () => reset(setIp)(undefined) },
       servico && { key: 'srv', label: `Serviço: ${servico}`, onRemove: () => reset(setServico)(undefined) },
       acao && { key: 'acao', label: `Ação: ${acaoMeta(acao).label}`, onRemove: () => reset(setAcao)(undefined) },
+      tecnica && { key: 'tec', label: `Técnica: ${tecnica}`, onRemove: () => reset(setTecnica)(undefined) },
       fonte && { key: 'fonte', label: `Fonte: ${FONTE_LABEL[fonte] ?? fonte}`, onRemove: () => reset(setFonte)(undefined) },
       pais && { key: 'pais', label: `País: ${pais}`, onRemove: () => reset(setPais)(undefined) },
       q && { key: 'q', label: `Busca: ${q}`, onRemove: () => f.setBusca('') },
