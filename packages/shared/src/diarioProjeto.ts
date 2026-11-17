@@ -26,6 +26,23 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-17-fase3-cadeia-ad',
+    data: '2026-11-17',
+    titulo: 'Fase 3: a cadeia de ataque de AD, e detectar onde dá',
+    descricao:
+      'Com o domínio de pé, percorri a cadeia que um ataque real faz depois do foothold: AS-REP Roasting, ' +
+      'DCSync (direitos de replicação), movimento lateral por serviço remoto e escalada por adição a grupo ' +
+      'privilegiado — cada um virou alerta no Wazuh com regra e técnica MITRE. Duas lições honestas. ' +
+      'Primeira: o que o laboratório não deixa fazer também ensina — a extração do DCSync exige um binário ' +
+      'ofensivo que a rede isolada bloqueia, então detectei o passo anterior (a concessão dos direitos de ' +
+      'replicação), que é o ponto de detecção mais precoce e confiável. Segunda: o ambiente endurecido muda o ' +
+      'caminho — a vítima barra conexão de administração de entrada, então o movimento lateral teve de ir pelo ' +
+      'controlador de domínio, que aceita; o firewall de host é, ele mesmo, um controle. ' +
+      'Fechei limpando os backdoors que criei (direitos de replicação, conta sem pré-autenticação, grupo privilegiado).',
+    categoria: 'seguranca',
+    tags: ['cyber-range', 'active-directory', 'dcsync', 'movimento-lateral', 'wazuh', 'mitre-attack', 'blue-team'],
+  },
+  {
     id: 'proj-2026-11-17-fase2-ad-deteccoes',
     data: '2026-11-17',
     titulo: 'Fase 2: montar o alvo e a detecção juntos',
