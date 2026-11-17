@@ -26,6 +26,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-17-importar-exercicios',
+    data: '2026-11-17',
+    titulo: 'Fechar a fila de pendências sem digitar 21 vezes',
+    descricao:
+      'A Matriz mostrava dezenas de técnicas com alerta real do Wazuh, mas todas presas na etapa "aguardando ' +
+      'validação": a detecção existe, falta registrar o exercício que prova que a regra pega o ataque certo. ' +
+      'Registrar isso à mão, uma a uma, era o gargalo. A solução foi um importador: um botão que lê um JSON de ' +
+      'exercícios Red × Blue e só acrescenta — de-duplica pela assinatura (lab + título + técnicas) e nunca apaga ' +
+      'o que já está lá. Cada exercício cita a regra e o agente que detectaram de verdade, com a resposta do Blue. ' +
+      'Lição: quando a evidência já existe, a ferramenta tem que deixar você colher em lote, não recadastrar; e o ' +
+      'importador aditivo evita o medo de perder o que foi feito à mão.',
+    categoria: 'funcionalidade',
+    tags: ['mitre-attack', 'purple-team', 'wazuh', 'produtividade'],
+  },
+  {
     id: 'proj-2026-11-16-ponto-cego-t1046',
     data: '2026-11-16',
     titulo: 'O ponto cego que o SIEM não via: varredura de portas',

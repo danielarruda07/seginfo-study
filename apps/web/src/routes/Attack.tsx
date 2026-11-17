@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from 'primereact/button';
 import { Link } from '@tanstack/react-router';
@@ -13,7 +13,8 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { getRadarResumo, getWazuhTecnicas } from '@/services/radar';
 import { getPericiaTecnicas } from '@/services/pericia';
 import { getTecnica } from '@/data/attack';
-import { listPurpleExercises } from '@/services/exerciciosPurple';
+import { importPurpleExercises, listPurpleExercises } from '@/services/exerciciosPurple';
+import { Message } from 'primereact/message';
 import { TATICAS, calcularCobertura, resumoCobertura, camadaNavigator, pontuacao, type CoberturaTecnica } from '@/services/attack';
 import { CAMADAS, agruparPendencias, proximoPassoTecnica, tecnicaVisivel, temCamada, type Camada } from './inteligencia/regras';
 import { TecnicaDrawer } from './inteligencia/TecnicaDrawer';
@@ -63,6 +64,23 @@ export function Attack() {
   const respostas = exercicios.filter((e) => e.blueResponse.trim()).length;
   const pendencias = agruparPendencias(resumo.lacunas);
   const [verPendencias, setVerPendencias] = useState(false);
+  const inputImport = useRef<HTMLInputElement>(null);
+  const [avisoImport, setAvisoImport] = useState<{ sev: 'success' | 'info' | 'error'; text: string } | null>(null);
+
+  async function importarExercicios(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const r = importPurpleExercises(await file.text());
+      setAvisoImport(r.novos > 0
+        ? { sev: 'success', text: `${r.novos} exercício(s) importado(s)${r.repetidos ? `, ${r.repetidos} já existia(m)` : ''}. Revise a resposta do Blue em cada um para encerrar a validação.` }
+        : { sev: 'info', text: `Nenhum exercício novo: ${r.repetidos} já estava(m) na lista.` });
+      setVersao((v) => v + 1);
+    } catch {
+      setAvisoImport({ sev: 'error', text: 'Arquivo inválido: esperado um JSON com a lista de exercícios (cada um com ao menos "title").' });
+    }
+  }
   const [filtro, setFiltro] = useState<Camada | null>(null);
   const [buscaRaw, setBuscaRaw] = useState('');
   const busca = useDebounce(buscaRaw, 300);
@@ -85,8 +103,13 @@ export function Attack() {
       <PageHeader
         title="Matriz ATT&CK"
         subtitle="Separe observações reais do Radar dos alertas (regras do Wazuh que dispararam e sinais de exercício), da validação de regras e das respostas registradas."
-        actions={<Button label="Exportar para o Navigator" icon="pi pi-download" outlined
-          onClick={() => baixarJson('seginfo-attack-layer.json', camadaNavigator(cobertura))} />}
+        actions={<div className="iv-row iv-wrap">
+          <Button label="Exportar para o Navigator" icon="pi pi-download" outlined
+            onClick={() => baixarJson('seginfo-attack-layer.json', camadaNavigator(cobertura))} />
+          <Button label="Importar exercícios" icon="pi pi-upload" outlined severity="secondary"
+            onClick={() => inputImport.current?.click()} />
+          <input ref={inputImport} type="file" accept="application/json,.json" hidden onChange={importarExercicios} />
+        </div>}
       />
 
       <AmbienteSelector value={ambiente} onChange={(v) => { setAmbiente(v); sel.close(); }} />
@@ -94,6 +117,7 @@ export function Attack() {
         <StatusStrip icon="pi-info-circle">Radar indisponível (modo local ou API fora): a camada "Vi no Radar" fica vazia.</StatusStrip>
       )}
       {wazuhAviso && <StatusStrip icon="pi-info-circle">{wazuhAviso}</StatusStrip>}
+      {avisoImport && <Message severity={avisoImport.sev} text={avisoImport.text} className="iv-mt" />}
       {pericia.isError && <StatusStrip icon="pi-info-circle">Não foi possível carregar agora as técnicas sugeridas pelos laudos periciais.</StatusStrip>}
 
       <div className="iv-kpis iv-mt">
