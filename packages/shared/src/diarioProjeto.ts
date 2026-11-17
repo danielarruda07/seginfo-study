@@ -26,6 +26,20 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-17-documentacao-ambiente',
+    data: '2026-11-17',
+    titulo: 'Documentar o ambiente dentro do próprio app',
+    descricao:
+      'Um ambiente de estudo só ensina se dá para explicar como foi montado. Criei um menu de Documentação que ' +
+      'descreve o range no nível de arquitetura — rede e VLANs, regras de firewall, criação das VMs, configuração do ' +
+      'switch e as formas de abrir cada porta para ataque — e um índice de testes por tipo, cada um com âncora própria: ' +
+      'o que abre a superfície, como é atacada e como o Wazuh detecta. Desafio central: escrever para um repositório ' +
+      'público sem virar um mapa do alvo — nada de IPs, domínio ou senhas, só nome de segmento e técnica. ' +
+      'Lição: a documentação do que está exposto é, ela mesma, superfície de ataque; descrever o método sem o mapa é o equilíbrio certo.',
+    categoria: 'funcionalidade',
+    tags: ['documentacao', 'cyber-range', 'mitre-attack', 'blue-team'],
+  },
+  {
     id: 'proj-2026-11-17-importar-exercicios',
     data: '2026-11-17',
     titulo: 'Fechar a fila de pendências sem digitar 21 vezes',
