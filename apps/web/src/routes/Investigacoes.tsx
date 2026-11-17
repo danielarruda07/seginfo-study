@@ -10,6 +10,9 @@ import { Pill, StatusStrip } from '@/components/InfraKit';
 import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import { useDebounce } from '@/hooks/useDebounce';
 import { listarPericias, getPericia, type PericiaItem, type PericiaEvento } from '@/services/pericia';
+import { didaticaDoEvento, caminhoDidatico } from '@/data/didaticaAtaques';
+import { FONTES_ISCA } from './inteligencia/regras';
+import { FluxoAtaque } from './inteligencia/radar/FluxoAtaque';
 
 const dataHora = (v: string) => new Date(v).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' });
 const bytes = (n: number) => n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : n >= 1024 ? `${Math.round(n / 1024)} KB` : `${n} B`;
@@ -31,6 +34,7 @@ function LinhaDoTempo({ evento }: { evento: PericiaEvento }) {
     <div className="iv-row iv-wrap" style={{ justifyContent: 'space-between' }}>
       <strong>{acaoLabel[evento.acao] ?? evento.acao}</strong><time className="iv-muted tabular">{dataHora(evento.quando)}</time>
     </div>
+    <p className="in-oquefoi" style={{ margin: '.2rem 0 0' }}>{didaticaDoEvento(evento.acao, FONTES_ISCA.has(evento.fonte)).resumoPopular}</p>
     <p className="iv-muted" style={{ margin: '.35rem 0' }}>
       {evento.ip ?? 'origem não informada'}{evento.pais ? ` · ${evento.pais}` : ''} · {evento.servico ?? 'serviço não informado'}{evento.porta ? `:${evento.porta}` : ''} · {evento.fonte}
     </p>
@@ -47,9 +51,16 @@ function Dossie({ id }: { id: string }) {
   const p = q.data; const d = p.dados;
   const eventosVisiveis = p.linhaTempo.filter((e) => !filtroEvento ||
     `${e.acao} ${e.fonte} ${e.ip ?? ''} ${e.servico ?? ''} ${e.comando ?? ''} ${e.mitre.map((m) => JSON.stringify(m)).join(' ')}`.toLocaleLowerCase().includes(filtroEvento.toLocaleLowerCase()));
+  const caminho = caminhoDidatico(p.linhaTempo.map((e) => e.acao));
   return <>
     <StatusStrip icon="pi-info-circle">Linha do tempo correlaciona eventos do Radar no alvo e na janela deste laudo. Técnicas ATT&amp;CK vêm dos eventos quando disponíveis; relações sugeridas pelo arquivo são hipóteses, não confirmação de execução.</StatusStrip>
     {d.erros.length > 0 && <StatusStrip tone="warn" icon="pi-exclamation-triangle">Coleta parcial: {d.erros.join(' · ')}</StatusStrip>}
+    {caminho.length > 0 && (
+      <DetailSection title="Em linguagem simples: o caminho do ataque">
+        <p className="in-prose" style={{ marginBottom: '.6rem' }}>Resumo para quem não é da área: estas foram as etapas observadas nesta janela, da chegada do atacante até onde ele conseguiu ir.</p>
+        <FluxoAtaque etapas={caminho} />
+      </DetailSection>
+    )}
     <DetailSection title={`Caminho observado (${eventosVisiveis.length} de ${p.linhaTempo.length} eventos)`}>
       {p.linhaTempoTruncada && <StatusStrip tone="warn" icon="pi-exclamation-triangle">A janela teve mais eventos; mostrando os 2.000 mais recentes para manter a tela responsiva.</StatusStrip>}
       <SearchInput value={filtroEvento} onChange={setFiltroEvento} placeholder="Filtrar por ação, IP, serviço, técnica ou comando…" />

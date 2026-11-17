@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { EtapaFluxo, FaseAtaque } from '@/data/didaticaAtaques';
 import { faseLabel } from '@/data/didaticaAtaques';
 
@@ -12,10 +13,11 @@ const ICONE: Record<FaseAtaque, string> = {
  * impacto. Didático para quem não é da área. Vertical no celular, em linha no desktop.
  */
 export function FluxoAtaque({ etapas }: { etapas: EtapaFluxo[] }) {
+  const tituloId = useId();
   if (!etapas.length) return null;
   return (
-    <section aria-labelledby="fluxo-ataque-titulo">
-      <h3 id="fluxo-ataque-titulo" className="iv-section-label">Como esse ataque se desenrola</h3>
+    <section aria-labelledby={tituloId}>
+      <h3 id={tituloId} className="iv-section-label">Como esse ataque se desenrola</h3>
       <ol className="in-fluxo" role="list">
         {etapas.map((e, i) => (
           <li key={e.fase + i} className={`in-fluxo__etapa in-fluxo__etapa--${e.fase}`}>

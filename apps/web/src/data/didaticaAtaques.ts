@@ -152,6 +152,30 @@ export const DIDATICA_ACAO: Record<string, DidaticaAtaque> = {
 
 const PADRAO: DidaticaAtaque = DIDATICA_ACAO.outro;
 
+/**
+ * Papel de cada ação no caminho de um ataque, para montar o organograma de um dossiê
+ * inteiro (Investigações) a partir das ações que de fato apareceram na janela.
+ */
+const PAPEL_CAMINHO: Record<string, { fase: FaseAtaque; titulo: string; texto: string }> = {
+  scan: { fase: 'inicio', titulo: 'Reconhecimento', texto: 'Mapeou portas e serviços para achar por onde entrar.' },
+  login_falha: { fase: 'inicio', titulo: 'Tentativa de acesso', texto: 'Tentou adivinhar usuário e senha (força bruta).' },
+  lockout: { fase: 'inicio', titulo: 'Conta travada', texto: 'O excesso de tentativas travou uma conta.' },
+  login_ok: { fase: 'ampliacao', titulo: 'Entrou', texto: 'Conseguiu um acesso válido e passou a agir por dentro.' },
+  comando: { fase: 'ampliacao', titulo: 'Agiu por dentro', texto: 'Executou comandos para explorar o sistema e se fixar.' },
+  download: { fase: 'ampliacao', titulo: 'Trouxe ferramentas', texto: 'Baixou arquivos de fora (ferramenta ou malware).' },
+  tunel: { fase: 'impacto', titulo: 'Usou como ponte', texto: 'Tentou usar o alvo para alcançar outros destinos.' },
+  reflexao: { fase: 'impacto', titulo: 'Abuso para DDoS', texto: 'Tentou usar o alvo para atacar terceiros.' },
+};
+const ORDEM_CAMINHO = ['scan', 'login_falha', 'lockout', 'login_ok', 'comando', 'download', 'tunel', 'reflexao'];
+
+/** Organograma do caminho do ataque, montado a partir das ações presentes num dossiê. */
+export function caminhoDidatico(acoes: Iterable<string>): EtapaFluxo[] {
+  const vistos = new Set(acoes);
+  return ORDEM_CAMINHO
+    .filter((a) => vistos.has(a) && PAPEL_CAMINHO[a])
+    .map((a) => ({ fase: PAPEL_CAMINHO[a].fase, titulo: PAPEL_CAMINHO[a].titulo, texto: PAPEL_CAMINHO[a].texto }));
+}
+
 /** Didática do evento, com o ajuste de isca (login aceito em honeypot é esperado). */
 export function didaticaDoEvento(acao: string, ehIsca: boolean): DidaticaAtaque {
   const base = DIDATICA_ACAO[acao] ?? PADRAO;

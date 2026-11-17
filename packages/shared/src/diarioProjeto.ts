@@ -26,6 +26,20 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-17-fase5-investigacoes-didaticas',
+    data: '2026-11-17',
+    titulo: 'Fase 5 (parte 2): o laudo que qualquer um entende',
+    descricao:
+      'Levei a camada didática do Radar para as Investigações (os dossiês). Cada evento da linha do ' +
+      'tempo agora tem a frase em linguagem popular, e o dossiê abre com um organograma do caminho do ' +
+      'ataque montado a partir das ações que de fato apareceram naquela janela: reconhecimento, acesso, ' +
+      'ação por dentro e impacto. Em vez de uma lista técnica de eventos, o relatório conta a história de ' +
+      'como o ataque começou e até onde foi. A lição: o mesmo dicionário didático serve a telas diferentes ' +
+      '(Radar e Investigações) — centralizar o conteúdo uma vez e reusar é o que mantém a didática coerente.',
+    categoria: 'funcionalidade',
+    tags: ['investigacoes', 'laudos', 'didatica', 'ux', 'mitre-attack', 'plataforma-de-estudo'],
+  },
+  {
     id: 'proj-2026-11-17-fase5-radar-didatico',
     data: '2026-11-17',
     titulo: 'Fase 5 (parte 1): traduzir o Radar para quem não é da área',
