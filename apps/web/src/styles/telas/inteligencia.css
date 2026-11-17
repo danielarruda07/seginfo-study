@@ -130,3 +130,25 @@ button.in-top__item:focus-visible { outline: 2px solid var(--alvoar-teal-600); o
 .attack-pendencias ul { margin: .4rem 0 0; padding-left: 1.1rem; display: grid; gap: .3rem; }
 .attack-pendencias li { line-height: 1.4; }
 .attack-pendencias .attack-link { font-family: inherit; padding: 0; }
+
+/* Camada didática do Radar: coluna em linguagem simples, bloco "no mundo real" e organograma do ataque */
+.in-oquefoi { font-size: .8rem; color: var(--text-color-secondary); line-height: 1.35; overflow-wrap: anywhere; }
+.in-mundoreal .iv-section-label .pi { color: var(--alvoar-teal-600); margin-right: .3rem; }
+.in-mundoreal .in-prose { padding: .6rem .7rem; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--alvoar-teal) 7%, var(--surface-card)); border-left: 3px solid var(--alvoar-teal-600); }
+
+.in-fluxo { list-style: none; margin: .25rem 0 .5rem; padding: 0; display: flex; flex-direction: column; gap: 1.5rem; }
+.in-fluxo__etapa { position: relative; padding: .65rem .7rem; border: 1px solid var(--surface-border); border-left: 3px solid var(--fase, var(--surface-border)); border-radius: var(--radius-sm); background: var(--surface-section); display: grid; gap: .25rem; }
+.in-fluxo__etapa--inicio { --fase: var(--tone-info, #3b82f6); }
+.in-fluxo__etapa--ampliacao { --fase: var(--tone-warning, #d97706); }
+.in-fluxo__etapa--impacto { --fase: var(--tone-danger, #dc2626); }
+.in-fluxo__cabeca { display: flex; align-items: center; gap: .4rem; }
+.in-fluxo__icone { display: inline-flex; width: 1.5rem; height: 1.5rem; align-items: center; justify-content: center; border-radius: 50%; background: color-mix(in srgb, var(--fase) 15%, var(--surface-card)); color: var(--fase); font-size: .78rem; flex: none; }
+.in-fluxo__fase { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; color: var(--fase); }
+.in-fluxo__titulo { font-size: .85rem; }
+.in-fluxo__texto { margin: 0; font-size: .78rem; line-height: 1.4; color: var(--text-color-secondary); overflow-wrap: anywhere; }
+.in-fluxo__seta { position: absolute; left: 50%; bottom: -1.2rem; transform: translateX(-50%) rotate(90deg); color: var(--text-color-secondary); opacity: .55; }
+@media (min-width: 640px) {
+  .in-fluxo { flex-direction: row; align-items: stretch; gap: 1.7rem; }
+  .in-fluxo__etapa { flex: 1 1 0; min-width: 0; border-left: 1px solid var(--surface-border); border-top: 3px solid var(--fase, var(--surface-border)); }
+  .in-fluxo__seta { left: auto; right: -1.35rem; bottom: auto; top: 50%; transform: translateY(-50%); }
+}

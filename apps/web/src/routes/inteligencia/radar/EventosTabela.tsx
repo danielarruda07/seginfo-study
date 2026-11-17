@@ -7,7 +7,8 @@ import { rotuloAmbiente } from '@/services/ambiente';
 import { ActiveFiltersBar, type ActiveFilter } from '@/components/ui/ActiveFiltersBar';
 import { EmptyState, Pill } from '@/components/InfraKit';
 import type { RadarEvento } from '@/services/radar';
-import { ACAO_META, FONTE_LABEL, acaoDoEvento, formatarLocal, resumoDetalhe } from '../regras';
+import { ACAO_META, FONTE_LABEL, FONTES_ISCA, acaoDoEvento, formatarLocal, resumoDetalhe } from '../regras';
+import { didaticaDoEvento } from '@/data/didaticaAtaques';
 
 export const ROWS = 15;
 const FONTE_OPTS = Object.entries(FONTE_LABEL).map(([value, label]) => ({ label, value }));
@@ -70,6 +71,8 @@ export function EventosTabela({ itens, total, loading, page, onPage, onOpen, sel
             ? <span className="mono in-quebra">{e.usuarioTentado}{e.usuarioTentado && det ? ' · ' : ''}{det}</span>
             : <span className="iv-muted">—</span>; }} />
         <Column header="Fonte / ambiente" sortable sortField="fonte" className="iv-hide-sm" headerClassName="iv-hide-sm" body={(e: RadarEvento) => <>{FONTE_LABEL[e.fonte]?.split(' (')[0] ?? e.fonte}<div className="iv-muted">{rotuloAmbiente(e.ambiente ?? 'nao_classificado')}</div></>} />
+        <Column header="O que foi" style={{ minWidth: 200 }}
+          body={(e: RadarEvento) => <span className="in-oquefoi">{didaticaDoEvento(e.acao, FONTES_ISCA.has(e.fonte)).resumoPopular}</span>} />
       </DataTable>
     </section>
   );

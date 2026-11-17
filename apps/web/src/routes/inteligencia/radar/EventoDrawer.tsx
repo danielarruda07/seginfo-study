@@ -11,6 +11,8 @@ import { rotuloAmbiente } from '@/services/ambiente';
 import { ExtLink } from '../ExtLink';
 import { SessaoAtacante } from '../../radar/SessaoAtacante';
 import { FONTE_LABEL, FONTES_ISCA, MITRE_POR_ACAO, acaoDoEvento, formatarLocal, formatarUtc } from '../regras';
+import { didaticaDoEvento } from '@/data/didaticaAtaques';
+import { FluxoAtaque } from './FluxoAtaque';
 
 type Nav = Pick<DetailDrawerProps, 'index' | 'total' | 'onIndex' | 'onClose'>;
 
@@ -33,6 +35,7 @@ export function EventoDrawer({ ev, nav, onFiltrarIp }: { ev: RadarEvento; nav: N
   const d = ev.detalhes ?? {};
   const txt = (k: string) => (typeof d[k] === 'string' || typeof d[k] === 'number' ? String(d[k]) : '');
   const isca = FONTES_ISCA.has(ev.fonte);
+  const didatica = didaticaDoEvento(ev.acao, isca);
   const servico = ev.servico ? `${ev.servico}${ev.portaDestino ? `:${ev.portaDestino}` : ''}` : ev.portaDestino ? `porta ${ev.portaDestino}` : '';
 
   return (
@@ -58,6 +61,18 @@ export function EventoDrawer({ ev, nav, onFiltrarIp }: { ev: RadarEvento; nav: N
           sem saída para a internet e restaurado periodicamente. O que vale aqui é ver o que o atacante faz depois de entrar.
         </StatusStrip>
       )}
+
+      <section className="in-didatica">
+        <h3 className="iv-section-label">Em linguagem simples</h3>
+        <p className="in-prose">{didatica.comoFunciona}</p>
+      </section>
+
+      <section className="in-mundoreal">
+        <h3 className="iv-section-label"><i className="pi pi-globe" aria-hidden="true" /> No mundo real</h3>
+        <p className="in-prose">{didatica.mundoReal}</p>
+      </section>
+
+      <FluxoAtaque etapas={didatica.fluxo} />
 
       <section>
         <h3 className="iv-section-label">O que fazer</h3>

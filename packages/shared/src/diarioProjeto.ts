@@ -26,6 +26,22 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-17-fase5-radar-didatico',
+    data: '2026-11-17',
+    titulo: 'Fase 5 (parte 1): traduzir o Radar para quem não é da área',
+    descricao:
+      'Até aqui o Radar mostrava o que aconteceu de forma técnica (ação, serviço, técnica MITRE). ' +
+      'Comecei a camada didática: cada evento agora tem uma frase em linguagem popular na tabela e, ' +
+      'na ficha, uma explicação simples do ataque, uma comparação com o mundo real (o que isso seria ' +
+      'numa empresa de verdade, não numa simulação) e um organograma de como o ataque começa, se amplia ' +
+      'por dentro e qual o impacto. A ideia é que alguém sem base de segurança entenda a gravidade só de ' +
+      'olhar. A lição: a detecção já estava pronta; o valor que faltava era a tradução — dado técnico vira ' +
+      'aprendizado quando conta a história em linguagem de gente. Centralizei o conteúdo num dicionário por ' +
+      'tipo de ataque, reaproveitado pela tabela, pela ficha e pelo organograma.',
+    categoria: 'funcionalidade',
+    tags: ['radar', 'didatica', 'ux', 'mitre-attack', 'blue-team', 'plataforma-de-estudo'],
+  },
+  {
     id: 'proj-2026-11-17-fase4-persistencia-endpoint',
     data: '2026-11-17',
     titulo: 'Fase 4: persistência e execução no endpoint, e ler o que o SIEM já sabe',
