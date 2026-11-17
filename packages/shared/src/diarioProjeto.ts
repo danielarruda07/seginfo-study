@@ -26,6 +26,22 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-17-fase2-ad-deteccoes',
+    data: '2026-11-17',
+    titulo: 'Fase 2: montar o alvo e a detecção juntos',
+    descricao:
+      'Diminuir pendência não é acrescentar vulnerabilidade solta — é entregar alvo, ataque e detecção no mesmo movimento. ' +
+      'Para seis técnicas sem sinal, montei o que faltava: um domínio Active Directory inteiro do zero (para viabilizar o ' +
+      'Kerberoasting, que só existe com AD), a vítima ingressada nele, e então ataques controlados de dump de credenciais, ' +
+      'tarefa agendada, inibição de recuperação, ransomware (simulado numa pasta-isca monitorada pelo FIM) e exfiltração. ' +
+      'Cada um virou alerta no Wazuh com regra própria e técnica MITRE. Lição técnica mais cara: uma regra encadeada no ' +
+      'pai errado nunca dispara — um evento de Kerberos parava numa regra de nível 0 e a minha, ancorada na regra seguinte, ' +
+      'não era avaliada; ancorar no pai certo (o nó que o evento comprovadamente alcança) resolveu. ' +
+      'Lição de método: adicionar vulnerabilidade sem adicionar a detecção junto só aumenta a fila; o par alvo+regra é a unidade de trabalho.',
+    categoria: 'infra',
+    tags: ['cyber-range', 'active-directory', 'kerberoasting', 'wazuh', 'mitre-attack', 'blue-team'],
+  },
+  {
     id: 'proj-2026-11-17-documentacao-ambiente',
     data: '2026-11-17',
     titulo: 'Documentar o ambiente dentro do próprio app',
