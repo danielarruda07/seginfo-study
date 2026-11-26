@@ -26,6 +26,23 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-26-scanner-ci-hmac',
+    data: '2026-11-26',
+    titulo: 'Scanner vira quality gate: rota HMAC chamavel pela CI/CD',
+    descricao:
+      'O scanner so rodava no navegador, atras do Access. Para fechar o ciclo de DevSecOps (analise ' +
+      'de vulnerabilidade integrada ao pipeline) criei uma rota irma, POST /api/scan/ci, que a esteira ' +
+      'chama sem navegador. Como nao ha sessao, a auth e por HMAC-SHA256 sobre o corpo cru com o segredo ' +
+      'SCAN_CI_SECRET, com janela anti-replay de 300s e comparacao em tempo constante — mesmo padrao da ' +
+      'ingestao de coletores. Ela roda o mesmo motor nao destrutivo e devolve veredito de gate (200 passou, ' +
+      '422 reprovou) com limites configuraveis. Acompanha doc e um script pronto. Licao: a fronteira muda ' +
+      'com o chamador (operador = Access; maquina = HMAC), mas a regra de ouro continua: passivo, com escopo ' +
+      'e segredo, e fail-closed se faltar config.',
+    categoria: 'funcionalidade',
+    tags: ['pentest', 'scanner', 'devsecops', 'cicd', 'hmac', 'quality-gate'],
+    projetoId: null,
+  },
+  {
     id: 'proj-2026-11-26-scanner-ampliado',
     data: '2026-11-26',
     titulo: 'Scanner de endpoints vira teste de API: CORS, tecnologia, OpenAPI, lote e export',

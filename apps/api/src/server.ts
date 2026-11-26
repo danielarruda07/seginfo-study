@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { extractUrl } from './extract.js';
 import { registerStateRoutes } from './routes.js';
 import { registerIngestRoutes } from './ingest.js';
+import { registerScanCiRoutes } from './scanCi.js';
 import { registerMcpRoutes } from './mcp.js';
 import { iniciarRetencao } from './radar.js';
 import { iniciarBackupAutomatico } from './backup.js';
@@ -32,6 +33,9 @@ await app.register(registerStateRoutes);
 
 // ingestão de eventos por coletores (token de máquina; fora do hook de usuário)
 await app.register(registerIngestRoutes);
+
+// quality gate de higiene chamável pela CI/CD (HMAC; fora do hook de usuário)
+await app.register(registerScanCiRoutes);
 
 // MCP do homelab: as ferramentas dos agentes para clientes como o Claude Code (token próprio + Access)
 await app.register(registerMcpRoutes);
