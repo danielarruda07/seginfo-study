@@ -17,12 +17,14 @@ export const FERRAMENTAS: FerramentaCatalogo[] = [
   { id: 'fer-spiderfoot', nome: 'SpiderFoot', fase: 'reconhecimento', dominio: 'red', descricao: 'Automatiza investigações OSINT com mais de 100 fontes de dados.', url: 'https://www.spiderfoot.net', kali: false, topicoId: 'osint-recon' },
   { id: 'fer-shodan', nome: 'Shodan', fase: 'reconhecimento', dominio: 'red', descricao: 'Motor de busca para descobrir dispositivos conectados à internet.', url: 'https://www.shodan.io', kali: false, topicoId: 'osint-recon' },
   { id: 'fer-censys', nome: 'Censys', fase: 'reconhecimento', dominio: 'red', descricao: 'Identifica e monitora ativos expostos na internet.', url: 'https://censys.io', kali: false, topicoId: 'osint-recon' },
+  { id: 'fer-amass', nome: 'OWASP Amass', fase: 'reconhecimento', dominio: 'red', descricao: 'Enumeração de subdomínios e mapeamento de superfície de ataque (passivo e ativo).', url: 'https://github.com/owasp-amass/amass', kali: true, topicoId: 'osint-recon' },
 
   // ===================== 2. Varredura e descoberta de rede =====================
   { id: 'fer-nmap', nome: 'Nmap', fase: 'varredura', dominio: 'red', descricao: 'Escaneia redes e identifica hosts, portas e serviços.', url: 'https://nmap.org', kali: true, topicoId: 'red-nmap' },
   { id: 'fer-masscan', nome: 'Masscan', fase: 'varredura', dominio: 'red', descricao: 'Varredura de portas em altíssima velocidade, escala de internet.', url: 'https://github.com/robertdavidgraham/masscan', kali: true },
   { id: 'fer-angryip', nome: 'Angry IP Scanner', fase: 'varredura', dominio: 'red', descricao: 'Scanner de IP simples e rápido para descobrir endereços ativos.', url: 'https://angryip.org', kali: false },
   { id: 'fer-netdiscover', nome: 'Netdiscover', fase: 'varredura', dominio: 'red', descricao: 'Reconhecimento passivo/ativo de dispositivos em redes locais (ARP).', url: 'https://github.com/netdiscover-scanner/netdiscover', kali: true },
+  { id: 'fer-bloodhound', nome: 'BloodHound', fase: 'varredura', dominio: 'red', descricao: 'Mapeia caminhos de privilégio e relações no Active Directory via teoria de grafos.', url: 'https://github.com/SpecterOps/BloodHound', kali: true },
   { id: 'fer-fing', nome: 'Fing', fase: 'varredura', dominio: 'infra', descricao: 'Escaneia e monitora dispositivos conectados à rede.', url: 'https://www.fing.com', kali: false },
 
   // ===================== 3. Avaliação de vulnerabilidade =====================
@@ -31,6 +33,7 @@ export const FERRAMENTAS: FerramentaCatalogo[] = [
   { id: 'fer-qualys', nome: 'Qualys', fase: 'vulnerabilidade', dominio: 'blue', descricao: 'Gestão de vulnerabilidades baseada em nuvem.', url: 'https://www.qualys.com', kali: false, topicoId: 'vuln-scanners' },
   { id: 'fer-nikto', nome: 'Nikto', fase: 'vulnerabilidade', dominio: 'blue', descricao: 'Identifica vulnerabilidades e más configurações em servidores web.', url: 'https://github.com/sullo/nikto', kali: true },
   { id: 'fer-wpscan', nome: 'WPScan', fase: 'vulnerabilidade', dominio: 'red', descricao: 'Auditoria de segurança de sites WordPress.', url: 'https://wpscan.com', kali: true },
+  { id: 'fer-nuclei', nome: 'Nuclei', fase: 'vulnerabilidade', dominio: 'red', descricao: 'Scanner baseado em templates da comunidade para detecção rápida de vulnerabilidades e exposições.', url: 'https://github.com/projectdiscovery/nuclei', kali: true },
 
   // ===================== 4. Testes de aplicações web =====================
   { id: 'fer-burp', nome: 'Burp Suite', fase: 'web', dominio: 'red', descricao: 'Proxy de interceptação e teste de segurança de aplicações web.', url: 'https://portswigger.net/burp', kali: true, topicoId: 'web-burp' },
@@ -38,6 +41,7 @@ export const FERRAMENTAS: FerramentaCatalogo[] = [
   { id: 'fer-sqlmap', nome: 'SQLmap', fase: 'web', dominio: 'red', descricao: 'Detecta e explora vulnerabilidades de injeção SQL.', url: 'https://sqlmap.org', kali: true },
   { id: 'fer-dirsearch', nome: 'Dirb / Dirsearch', fase: 'web', dominio: 'red', descricao: 'Descobre diretórios e arquivos ocultos em servidores web.', url: 'https://github.com/maurosoria/dirsearch', kali: true },
   { id: 'fer-ffuf', nome: 'Ffuf', fase: 'web', dominio: 'red', descricao: 'Fuzzer rápido de aplicações web e endpoints, escrito em Go.', url: 'https://github.com/ffuf/ffuf', kali: true },
+  { id: 'fer-gobuster', nome: 'Gobuster', fase: 'web', dominio: 'red', descricao: 'Força bruta de diretórios, arquivos, subdomínios DNS e vhosts.', url: 'https://github.com/OJ/gobuster', kali: true },
 
   // ===================== 5. Estruturas de exploração =====================
   { id: 'fer-metasploit', nome: 'Metasploit Framework', fase: 'exploracao', dominio: 'red', descricao: 'Framework de exploração mais usado para validar vulnerabilidades.', url: 'https://www.metasploit.com', kali: true, topicoId: 'red-metasploit' },
@@ -45,6 +49,8 @@ export const FERRAMENTAS: FerramentaCatalogo[] = [
   { id: 'fer-empire', nome: 'Empire', fase: 'exploracao', dominio: 'red', descricao: 'Framework de pós-exploração (PowerShell/Python) para testes autorizados.', url: 'https://github.com/BC-SECURITY/Empire', kali: false },
   { id: 'fer-beef', nome: 'BeEF', fase: 'exploracao', dominio: 'red', descricao: 'Browser Exploitation Framework — avalia a segurança de navegadores.', url: 'https://beefproject.com', kali: true },
   { id: 'fer-set', nome: 'Social-Engineer Toolkit (SET)', fase: 'exploracao', dominio: 'red', descricao: 'Simula ataques de engenharia social em testes autorizados.', url: 'https://github.com/trustedsec/social-engineer-toolkit', kali: true },
+  { id: 'fer-impacket', nome: 'Impacket', fase: 'exploracao', dominio: 'red', descricao: 'Coleção Python de classes para protocolos de rede — execução remota, relay e ataques a AD/SMB.', url: 'https://github.com/fortra/impacket', kali: true },
+  { id: 'fer-responder', nome: 'Responder', fase: 'exploracao', dominio: 'red', descricao: 'Envenenamento LLMNR/NBT-NS/mDNS para capturar credenciais em rede interna.', url: 'https://github.com/lgandx/Responder', kali: true },
 
   // ===================== 6. Teste de segurança de senha =====================
   { id: 'fer-johntheripper', nome: 'John the Ripper', fase: 'senha', dominio: 'red', descricao: 'Auditoria da força de senhas por quebra de hash.', url: 'https://www.openwall.com/john/', kali: true },
@@ -52,6 +58,8 @@ export const FERRAMENTAS: FerramentaCatalogo[] = [
   { id: 'fer-hydra', nome: 'Hydra', fase: 'senha', dominio: 'red', descricao: 'Quebra de login rápida contra múltiplos protocolos de autenticação.', url: 'https://github.com/vanhauser-thc/thc-hydra', kali: true },
   { id: 'fer-medusa', nome: 'Medusa', fase: 'senha', dominio: 'red', descricao: 'Brute-force de login paralelo contra vários serviços.', url: 'https://github.com/jmk-foofus/medusa', kali: true },
   { id: 'fer-crackmapexec', nome: 'CrackMapExec', fase: 'senha', dominio: 'red', descricao: 'Pós-exploração e avaliação de segurança de redes Windows.', url: 'https://github.com/Porchetta-Industries/CrackMapExec', kali: true },
+  { id: 'fer-netexec', nome: 'NetExec (nxc)', fase: 'senha', dominio: 'red', descricao: 'Sucessor mantido do CrackMapExec: automação de pós-exploração e checagens em redes Windows/AD.', url: 'https://github.com/Pennyw0rth/NetExec', kali: true },
+  { id: 'fer-mimikatz', nome: 'Mimikatz', fase: 'senha', dominio: 'red', descricao: 'Extração de credenciais do Windows (LSASS, tickets Kerberos) e ataques pass-the-hash/ticket.', url: 'https://github.com/gentilkiwi/mimikatz', kali: true },
 
   // ===================== 7. Segurança sem fio =====================
   { id: 'fer-aircrackng', nome: 'Aircrack-ng', fase: 'wireless', dominio: 'red', descricao: 'Suíte de auditoria de segurança Wi-Fi (captura e quebra WPA/WEP).', url: 'https://www.aircrack-ng.org', kali: true },

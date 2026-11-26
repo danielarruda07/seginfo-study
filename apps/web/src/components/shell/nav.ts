@@ -30,6 +30,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: '/range', label: 'Range Vulnerável', icon: 'pi-bullseye' },
       { to: '/documentacao', label: 'Documentação', icon: 'pi-file' },
       { to: '/ferramentas', label: 'Arsenal de Ferramentas', icon: 'pi-wrench' },
+      { to: '/metodologia', label: 'Metodologia de Pentest', icon: 'pi-compass' },
     ],
   },
   {

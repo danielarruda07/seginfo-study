@@ -26,6 +26,22 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: "proj-2026-11-26-metodologia-pentest",
+    data: "2026-11-26",
+    titulo: "Metodologia de Pentest: ferramentas e técnicas na mesma espinha",
+    descricao:
+      "O Arsenal já listava ferramentas por fase e a Matriz já trazia o ATT&CK, mas faltava a " +
+      "espinha que liga os dois ao fluxo real de um teste autorizado. Criei a tela Metodologia de " +
+      "Pentest (base PTES + OWASP WSTG) com 7 fases, cada uma cruzando técnicas MITRE e ferramentas " +
+      "do arsenal, com checklist e uma tarja de cuidados. A fase 1 é o portão de autorização: nada " +
+      "toca o alvo sem escopo por escrito, janela acordada e operação reversível e auditável. Lição: " +
+      "uma ferramenta de ataque só vira trabalho profissional quando emoldurada por metodologia e " +
+      "autorização — o resto é risco.",
+    categoria: "funcionalidade",
+    tags: ["pentest", "metodologia", "mitre-attack", "ferramentas", "ptes"],
+    projetoId: null,
+  },
+  {
     id: 'proj-2026-11-17-fase5-filtro-tecnica',
     data: '2026-11-17',
     titulo: 'Fase 5 (parte 3): filtrar o Radar por técnica MITRE',

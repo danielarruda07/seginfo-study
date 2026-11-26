@@ -9,6 +9,7 @@ const Inventario = lazy(async () => ({ default: (await import('@/routes/Inventar
 const Labs = lazy(async () => ({ default: (await import('@/routes/Labs')).Labs }));
 const Range = lazy(async () => ({ default: (await import('@/routes/Range')).Range }));
 const Ferramentas = lazy(async () => ({ default: (await import('@/routes/Ferramentas')).Ferramentas }));
+const Metodologia = lazy(async () => ({ default: (await import('@/routes/Metodologia')).Metodologia }));
 const Sessoes = lazy(async () => ({ default: (await import('@/routes/Sessoes')).Sessoes }));
 const Metas = lazy(async () => ({ default: (await import('@/routes/Metas')).Metas }));
 const Posts = lazy(async () => ({ default: (await import('@/routes/Posts')).Posts }));
@@ -47,6 +48,7 @@ const ambienteRoute = createRoute({ getParentRoute: () => rootRoute, path: '/amb
 const labsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/labs', component: Labs });
 const rangeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/range', component: Range });
 const ferramentasRoute = createRoute({ getParentRoute: () => rootRoute, path: '/ferramentas', component: Ferramentas });
+const metodologiaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/metodologia', component: Metodologia });
 const sessoesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/sessoes', component: Sessoes });
 const metasRoute = createRoute({ getParentRoute: () => rootRoute, path: '/metas', component: Metas });
 const postsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/posts', component: Posts });
@@ -98,6 +100,7 @@ const routeTree = rootRoute.addChildren([
   labsRoute,
   rangeRoute,
   ferramentasRoute,
+  metodologiaRoute,
   sessoesRoute,
   metasRoute,
   postsRoute,
