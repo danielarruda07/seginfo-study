@@ -44,6 +44,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: '/attack', label: 'Matriz ATT&CK', icon: 'pi-table' },
       { to: '/ameacas', label: 'Ameaças (KEV)', icon: 'pi-exclamation-triangle' },
       { to: '/exposicao', label: 'Minha exposição', icon: 'pi-globe' },
+      { to: '/scanner', label: 'Scanner de endpoints', icon: 'pi-bolt' },
     ],
   },
   {

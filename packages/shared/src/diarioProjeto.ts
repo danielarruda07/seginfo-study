@@ -26,6 +26,22 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-26-scanner-endpoints',
+    data: '2026-11-26',
+    titulo: 'Scanner de endpoints: a primeira ferramenta que testa, nao so ensina',
+    descricao:
+      'A Metodologia organiza o metodo; faltava executar. Criei um scanner de higiene de endpoint ' +
+      'server-side na API: recebe uma URL (interna ou externa) e, de forma nao destrutiva (so ' +
+      'GET/HEAD/OPTIONS), reporta TLS, cabecalhos de seguranca, metodos expostos, exposicoes comuns ' +
+      '(.git/.env/swagger), flags de cookie e se ha autenticacao. Roda no servidor porque o navegador ' +
+      'esbarra em CORS e nao alcanca rede interna; fica atras do Access e so bate no alvo que o ' +
+      'operador digita. Licao: capacidade ofensiva de verdade exige fronteira (autorizacao, escopo e ' +
+      'operacao reversivel), senao vira o problema que ela deveria achar.',
+    categoria: 'funcionalidade',
+    tags: ['pentest', 'scanner', 'api', 'endpoints', 'devsecops'],
+    projetoId: null,
+  },
+  {
     id: "proj-2026-11-26-metodologia-pentest",
     data: "2026-11-26",
     titulo: "Metodologia de Pentest: ferramentas e técnicas na mesma espinha",
