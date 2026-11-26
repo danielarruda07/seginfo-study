@@ -26,6 +26,23 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-26-scanner-ampliado',
+    data: '2026-11-26',
+    titulo: 'Scanner de endpoints vira teste de API: CORS, tecnologia, OpenAPI, lote e export',
+    descricao:
+      'O scanner de higiene passou a cobrir o que um teste de API precisa, mantendo a regra de so ' +
+      'ler (GET/HEAD/OPTIONS): detecta CORS que reflete a origem ou libera credenciais, faz ' +
+      'fingerprint da tecnologia pelos cabecalhos, acha erro verboso no corpo (stack trace, SQL, ' +
+      'caminho ou IP interno), mostra se ha rate-limit e Cache-Control, pega cookie SameSite=None ' +
+      'sem Secure e mapeia a superficie lendo a spec OpenAPI/Swagger (conta rotas e operacoes). O ' +
+      'front ganhou modo lote (ate 15 URLs) e exportacao do laudo em Markdown e JSON, para anexar ao ' +
+      'relatorio do pentest. Licao: da para ampliar muito a cobertura sem sair do passivo; cada ' +
+      'analisador novo e uma funcao pura testada, o que mantem o risco baixo e o laudo auditavel.',
+    categoria: 'funcionalidade',
+    tags: ['pentest', 'scanner', 'api', 'cors', 'openapi', 'devsecops'],
+    projetoId: null,
+  },
+  {
     id: 'proj-2026-11-26-scanner-endpoints',
     data: '2026-11-26',
     titulo: 'Scanner de endpoints: a primeira ferramenta que testa, nao so ensina',

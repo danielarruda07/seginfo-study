@@ -12,8 +12,9 @@ import { ipNaoPublico } from './osint.js';
  * Roda no servidor (alcança endpoints internos e externos), atrás do Cloudflare Access
  * (só o usuário autenticado dispara) e só contra o alvo que o usuário digita. Faz apenas
  * GET/HEAD/OPTIONS, com timeout e limite de requisições; nunca envia corpo nem tenta
- * explorar. Reporta higiene (TLS, cabeçalhos, métodos expostos, exposições comuns, auth),
- * não executa ataque. Uso restrito a alvos autorizados pelo próprio operador.
+ * explorar. Reporta higiene (TLS, cabeçalhos, métodos expostos, exposições comuns, auth,
+ * CORS, tecnologia, superfície OpenAPI), não executa ataque. Uso restrito a alvos
+ * autorizados pelo próprio operador.
  */
 
 export type Severidade = 'alta' | 'media' | 'baixa' | 'info';
@@ -42,6 +43,23 @@ export interface Exposicao {
   sensivel: boolean;
 }
 
+export interface InfoCors {
+  origemEnviada: string;
+  acao: string | null;
+  permiteCredenciais: boolean;
+  refleteOrigem: boolean;
+  curinga: boolean;
+}
+
+export interface ResumoOpenApi {
+  url: string;
+  titulo: string | null;
+  versao: string | null;
+  rotas: number;
+  operacoes: number;
+  amostra: string[];
+}
+
 export interface ScanRelatorio {
   url: string;
   urlFinal: string;
@@ -53,11 +71,16 @@ export interface ScanRelatorio {
   tempoMs: number | null;
   servidor: string | null;
   poweredBy: string | null;
+  tecnologias: string[];
   redirects: { status: number; para: string }[];
   tls: InfoTlsScan | null;
   cabecalhos: { nome: string; presente: boolean; valor: string | null; dica: string }[];
   metodos: { permitidos: string[]; arriscados: string[] } | null;
   cookies: { nome: string; secure: boolean; httpOnly: boolean; sameSite: string | null }[];
+  cors: InfoCors | null;
+  controles: { rateLimit: boolean; cacheControl: string | null; retryAfter: string | null };
+  corpoSinais: { id: string; descricao: string }[];
+  openapi: ResumoOpenApi | null;
   exposicoes: Exposicao[];
   autenticacao: 'exigida' | 'aberta' | 'incerta';
   achados: Achado[];
@@ -67,6 +90,8 @@ export interface ScanRelatorio {
 const UA = 'seginfo-study-scanner/1.0 (teste autorizado)';
 const TIMEOUT = 10_000;
 const DIA_MS = 86_400_000;
+const ORIGEM_PROBE = 'https://seginfo-probe.invalid';
+const MAX_LOTE = 15;
 
 const METODOS_ARRISCADOS = ['PUT', 'DELETE', 'TRACE', 'CONNECT', 'PATCH'];
 
@@ -75,12 +100,17 @@ const CAMINHOS_EXPOSICAO: { caminho: string; sensivel: boolean; sinal?: RegExp }
   { caminho: '/.git/HEAD', sensivel: true, sinal: /ref:\s*refs\// },
   { caminho: '/.env', sensivel: true, sinal: /=[^\n]/ },
   { caminho: '/actuator/health', sensivel: true, sinal: /"status"/i },
+  { caminho: '/actuator/env', sensivel: true, sinal: /"propertySources"|"activeProfiles"/i },
   { caminho: '/server-status', sensivel: true, sinal: /Apache Server Status/i },
   { caminho: '/swagger.json', sensivel: true, sinal: /"swagger"|"openapi"/i },
   { caminho: '/openapi.json', sensivel: true, sinal: /"openapi"/i },
+  { caminho: '/v3/api-docs', sensivel: true, sinal: /"openapi"/i },
   { caminho: '/.well-known/security.txt', sensivel: false },
   { caminho: '/robots.txt', sensivel: false },
 ];
+
+/** Caminhos onde pode estar uma spec OpenAPI/Swagger legível (mapeamento de superfície). */
+const CAMINHOS_OPENAPI = ['/openapi.json', '/swagger.json', '/v3/api-docs', '/api-docs', '/swagger/v1/swagger.json'];
 
 // ---------- analisadores puros (testáveis sem rede) ----------
 
@@ -109,6 +139,88 @@ export function parseCookie(raw: string): { nome: string; secure: boolean; httpO
   };
 }
 
+/** Analisa a política CORS a partir da resposta a uma requisição com Origin de prova. */
+export function analisarCors(origemEnviada: string, acao: string | null | undefined, acac: string | null | undefined): InfoCors {
+  const a = (acao ?? '').trim();
+  return {
+    origemEnviada,
+    acao: a || null,
+    permiteCredenciais: /true/i.test(acac ?? ''),
+    refleteOrigem: a === origemEnviada,
+    curinga: a === '*',
+  };
+}
+
+/** Deriva nome/versão de tecnologia de cabeçalhos reveladores (fingerprint passivo). */
+export function fingerprintTech(h: Record<string, string | undefined>): string[] {
+  const get = (n: string) => h[n.toLowerCase()];
+  const techs: string[] = [];
+  const push = (v: string | undefined) => { if (v && !techs.includes(v)) techs.push(v); };
+  push(get('server'));
+  push(get('x-powered-by'));
+  push(get('x-aspnet-version') ? `ASP.NET ${get('x-aspnet-version')}` : undefined);
+  push(get('x-aspnetmvc-version') ? `ASP.NET MVC ${get('x-aspnetmvc-version')}` : undefined);
+  push(get('x-generator'));
+  push(get('x-drupal-cache') ? 'Drupal' : undefined);
+  push(get('x-runtime') ? 'Rails/Rack' : undefined);
+  if (/wp-/.test(get('link') ?? '') || /wordpress/i.test(get('x-powered-by') ?? '')) push('WordPress');
+  const via = get('via');
+  if (via) push(`via ${via}`);
+  return techs;
+}
+
+/** Detecta visibilidade de controles operacionais (rate-limit, cache) nos cabeçalhos. */
+export function detectarControles(h: Record<string, string | undefined>): { rateLimit: boolean; cacheControl: string | null; retryAfter: string | null } {
+  const get = (n: string) => h[n.toLowerCase()];
+  const rl = !!(get('ratelimit-limit') || get('x-ratelimit-limit') || get('x-rate-limit-limit') || get('ratelimit') || get('retry-after'));
+  return { rateLimit: rl, cacheControl: get('cache-control') ?? null, retryAfter: get('retry-after') ?? null };
+}
+
+/** Procura, no início do corpo, sinais de erro verboso ou vazamento (stack trace, SQL, caminho interno). */
+export function analisarCorpo(texto: string): { id: string; descricao: string }[] {
+  const sinais: { id: string; descricao: string }[] = [];
+  const t = texto.slice(0, 8192);
+  if (/\bat [\w.$]+\([\w.]+:\d+\)/.test(t) || /Exception in thread|java\.lang\.[A-Z]\w+Exception/.test(t))
+    sinais.push({ id: 'stack-java', descricao: 'Possível stack trace Java/JVM na resposta' });
+  if (/Traceback \(most recent call last\)/.test(t)) sinais.push({ id: 'stack-python', descricao: 'Possível traceback Python na resposta' });
+  if (/\b(at Object\.|at Module\.|node:internal\/)/.test(t)) sinais.push({ id: 'stack-node', descricao: 'Possível stack trace Node.js na resposta' });
+  if (/(SQL syntax|SQLSTATE|ORA-\d{5}|psql:|near "\w+": syntax error)/i.test(t)) sinais.push({ id: 'erro-sql', descricao: 'Possível mensagem de erro de banco/SQL na resposta' });
+  if (/([A-Za-z]:\\[\w\\]+|\/(?:home|var|usr|opt|srv)\/[\w./-]{3,})/.test(t)) sinais.push({ id: 'caminho-interno', descricao: 'Possível caminho de arquivo do servidor exposto na resposta' });
+  if (/\b(?:10|172|192)\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/.test(t)) sinais.push({ id: 'ip-interno', descricao: 'Possível IP de rede interna exposto na resposta' });
+  return sinais;
+}
+
+/** Resume uma spec OpenAPI/Swagger: conta rotas e operações e tira uma amostra. Pura. */
+export function resumirOpenApi(url: string, obj: unknown): ResumoOpenApi | null {
+  if (!obj || typeof obj !== 'object') return null;
+  const o = obj as Record<string, unknown>;
+  const paths = o.paths;
+  if (!paths || typeof paths !== 'object') return null;
+  const info = (o.info as Record<string, unknown> | undefined) ?? {};
+  const metodos = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']);
+  const rotas = Object.keys(paths);
+  let operacoes = 0;
+  const amostra: string[] = [];
+  for (const rota of rotas) {
+    const item = (paths as Record<string, unknown>)[rota];
+    if (!item || typeof item !== 'object') continue;
+    for (const m of Object.keys(item as Record<string, unknown>)) {
+      if (metodos.has(m.toLowerCase())) {
+        operacoes++;
+        if (amostra.length < 12) amostra.push(`${m.toUpperCase()} ${rota}`);
+      }
+    }
+  }
+  return {
+    url,
+    titulo: typeof info.title === 'string' ? info.title : null,
+    versao: typeof info.version === 'string' ? info.version : null,
+    rotas: rotas.length,
+    operacoes,
+    amostra,
+  };
+}
+
 /** Monta os achados a partir dos dados já coletados. Pura: sem rede. */
 export function montarAchados(d: {
   status: number | null;
@@ -116,7 +228,9 @@ export function montarAchados(d: {
   usaHttps: boolean;
   cabecalhos: { id: string; nome: string; presente: boolean }[];
   metodos: { arriscados: string[] } | null;
-  cookies: { nome: string; secure: boolean; httpOnly: boolean }[];
+  cookies: { nome: string; secure: boolean; httpOnly: boolean; sameSite: string | null }[];
+  cors: InfoCors | null;
+  corpoSinais: { id: string; descricao: string }[];
   exposicoes: Exposicao[];
   servidor: string | null;
   poweredBy: string | null;
@@ -149,12 +263,29 @@ export function montarAchados(d: {
     a.push({ id: 'metodos', severidade: temTrace ? 'media' : 'baixa', titulo: `Métodos HTTP sensíveis expostos: ${d.metodos.arriscados.join(', ')}`, detalhe: temTrace ? 'TRACE pode permitir Cross-Site Tracing.' : 'Confirmar se PUT/DELETE/PATCH deveriam estar acessíveis sem autenticação.', recomendacao: 'Desabilitar métodos não usados; exigir auth nos de escrita.' });
   }
 
+  // CORS
+  if (d.cors) {
+    if (d.cors.refleteOrigem && d.cors.permiteCredenciais) {
+      a.push({ id: 'cors-credenciais', severidade: 'alta', titulo: 'CORS reflete qualquer origem com credenciais', detalhe: `Access-Control-Allow-Origin ecoou a origem de prova (${d.cors.origemEnviada}) e Allow-Credentials=true. Sites de terceiros poderiam ler respostas autenticadas.`, recomendacao: 'Usar uma allowlist fixa de origens; nunca refletir a origem recebida junto de credenciais.' });
+    } else if (d.cors.refleteOrigem) {
+      a.push({ id: 'cors-reflexo', severidade: 'media', titulo: 'CORS reflete a origem enviada', detalhe: `O servidor ecoou a origem de prova (${d.cors.origemEnviada}) em Access-Control-Allow-Origin. Sem credenciais o risco é menor; confirmar se é intencional.`, recomendacao: 'Preferir uma allowlist fixa a refletir a origem recebida.' });
+    } else if (d.cors.curinga && d.cors.permiteCredenciais) {
+      a.push({ id: 'cors-curinga-cred', severidade: 'media', titulo: 'CORS com curinga e credenciais', detalhe: 'Access-Control-Allow-Origin=* junto de Allow-Credentials=true é inconsistente (navegadores ignoram), mas sinaliza config CORS mal entendida.', recomendacao: 'Definir origens explícitas quando há credenciais.' });
+    }
+  }
+
   // Cookies
   for (const ck of d.cookies) {
     const faltas: string[] = [];
     if (!ck.secure) faltas.push('Secure');
     if (!ck.httpOnly) faltas.push('HttpOnly');
     if (faltas.length) a.push({ id: `cookie-${ck.nome}`, severidade: 'media', titulo: `Cookie "${ck.nome}" sem ${faltas.join(' e ')}`, detalhe: 'Cookie pode vazar por canal inseguro ou ser lido por script.', recomendacao: 'Marcar Secure, HttpOnly e SameSite.' });
+    if ((ck.sameSite ?? '').toLowerCase() === 'none' && !ck.secure) a.push({ id: `cookie-ss-${ck.nome}`, severidade: 'media', titulo: `Cookie "${ck.nome}" com SameSite=None sem Secure`, detalhe: 'SameSite=None exige Secure; sem isso o navegador rejeita e o cookie trafega em contexto inseguro.', recomendacao: 'Adicionar Secure a cookies SameSite=None.' });
+  }
+
+  // Sinais de erro verboso no corpo
+  for (const s of d.corpoSinais) {
+    a.push({ id: `corpo-${s.id}`, severidade: 'media', titulo: 'Resposta expõe detalhe interno', detalhe: s.descricao, recomendacao: 'Devolver erros genéricos ao cliente; registrar o detalhe só no log.' });
   }
 
   // Exposições
@@ -201,11 +332,11 @@ function lerTls(host: string, port: number): Promise<InfoTlsScan | null> {
   });
 }
 
-async function seguirRedirects(url: string): Promise<{ status: number; urlFinal: string; headers: Headers; redirects: { status: number; para: string }[] }> {
+async function seguirRedirects(url: string): Promise<{ status: number; urlFinal: string; headers: Headers; corpo: string; redirects: { status: number; para: string }[] }> {
   let atual = url;
   const redirects: { status: number; para: string }[] = [];
   for (let i = 0; i <= 5; i++) {
-    const r = await fetch(atual, { method: 'GET', redirect: 'manual', headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(TIMEOUT) });
+    const r = await fetch(atual, { method: 'GET', redirect: 'manual', headers: { 'User-Agent': UA, Origin: ORIGEM_PROBE }, signal: AbortSignal.timeout(TIMEOUT) });
     const loc = r.headers.get('location');
     if (r.status >= 300 && r.status < 400 && loc && i < 5) {
       const prox = new URL(loc, atual).toString();
@@ -213,7 +344,12 @@ async function seguirRedirects(url: string): Promise<{ status: number; urlFinal:
       atual = prox;
       continue;
     }
-    return { status: r.status, urlFinal: atual, headers: r.headers, redirects };
+    let corpo = '';
+    const ct = r.headers.get('content-type') ?? '';
+    if (/text|json|xml|html/i.test(ct)) {
+      try { corpo = (await r.text()).slice(0, 8192); } catch { corpo = ''; }
+    }
+    return { status: r.status, urlFinal: atual, headers: r.headers, corpo, redirects };
   }
   throw new Error('redirecionamentos demais');
 }
@@ -233,15 +369,37 @@ async function sondarExposicao(base: URL, item: { caminho: string; sensivel: boo
   }
 }
 
-async function obterMetodos(url: string): Promise<{ permitidos: string[]; arriscados: string[] } | null> {
+async function obterMetodos(url: string): Promise<{ metodos: { permitidos: string[]; arriscados: string[] } | null; acao: string | null; acac: string | null }> {
   try {
-    const r = await fetch(url, { method: 'OPTIONS', redirect: 'manual', headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(TIMEOUT) });
+    const r = await fetch(url, { method: 'OPTIONS', redirect: 'manual', headers: { 'User-Agent': UA, Origin: ORIGEM_PROBE, 'Access-Control-Request-Method': 'GET' }, signal: AbortSignal.timeout(TIMEOUT) });
     const allow = r.headers.get('allow') ?? r.headers.get('access-control-allow-methods');
-    if (!allow) return null;
-    return classificarMetodos(allow);
+    return {
+      metodos: allow ? classificarMetodos(allow) : null,
+      acao: r.headers.get('access-control-allow-origin'),
+      acac: r.headers.get('access-control-allow-credentials'),
+    };
   } catch {
-    return null;
+    return { metodos: null, acao: null, acac: null };
   }
+}
+
+/** Busca a primeira spec OpenAPI/Swagger legível e a resume. */
+async function descobrirOpenApi(base: URL): Promise<ResumoOpenApi | null> {
+  for (const caminho of CAMINHOS_OPENAPI) {
+    try {
+      const u = new URL(caminho, base.origin).toString();
+      const r = await fetch(u, { method: 'GET', redirect: 'manual', headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(TIMEOUT) });
+      if (r.status !== 200) continue;
+      const ct = r.headers.get('content-type') ?? '';
+      if (!/json/i.test(ct)) continue;
+      const obj = await r.json().catch(() => null);
+      const resumo = resumirOpenApi(u, obj);
+      if (resumo) return resumo;
+    } catch {
+      /* próximo caminho */
+    }
+  }
+  return null;
 }
 
 const CAB_DICA: Record<string, string> = {
@@ -253,7 +411,7 @@ const CAB_DICA: Record<string, string> = {
   'Permissions-Policy': 'desliga câmera, microfone etc. não usados',
 };
 
-export async function escanear(urlBruta: string, opts: { exposicoes: boolean }): Promise<ScanRelatorio> {
+export async function escanear(urlBruta: string, opts: { exposicoes: boolean; openapi?: boolean }): Promise<ScanRelatorio> {
   const em = new Date().toISOString();
   let u: URL;
   try {
@@ -270,12 +428,14 @@ export async function escanear(urlBruta: string, opts: { exposicoes: boolean }):
   const base: ScanRelatorio = {
     url: u.toString(), urlFinal: u.toString(), escopo: escopoDoIp(ip), ipResolvido: ip,
     alcancavel: false, erro: null, status: null, tempoMs: null, servidor: null, poweredBy: null,
-    redirects: [], tls: null, cabecalhos: [], metodos: null, cookies: [], exposicoes: [],
-    autenticacao: 'incerta', achados: [], em,
+    tecnologias: [], redirects: [], tls: null, cabecalhos: [], metodos: null, cookies: [],
+    cors: null, controles: { rateLimit: false, cacheControl: null, retryAfter: null }, corpoSinais: [],
+    openapi: null, exposicoes: [], autenticacao: 'incerta', achados: [], em,
   };
 
   // requisição principal
   let headers: Headers | null = null;
+  let corpo = '';
   try {
     const t0 = Date.now();
     const res = await seguirRedirects(u.toString());
@@ -285,6 +445,7 @@ export async function escanear(urlBruta: string, opts: { exposicoes: boolean }):
     base.urlFinal = res.urlFinal;
     base.redirects = res.redirects;
     headers = res.headers;
+    corpo = res.corpo;
     base.servidor = headers.get('server');
     base.poweredBy = headers.get('x-powered-by');
     base.autenticacao = res.status === 401 || res.status === 403 ? 'exigida' : res.status >= 200 && res.status < 300 ? 'aberta' : 'incerta';
@@ -295,20 +456,27 @@ export async function escanear(urlBruta: string, opts: { exposicoes: boolean }):
     return base;
   }
 
-  // cabeçalhos de segurança (reusa a avaliação da área de exposição)
   const mapaHeaders = Object.fromEntries(headers.entries());
   const av = avaliarCabecalhos(mapaHeaders);
-  base.cabecalhos = av.map((c) => ({ nome: c.nome, presente: c.presente, valor: c.valor, dica: CAB_DICA[c.nome] ?? c.dica ?? '' }));
+  base.cabecalhos = av.map((c) => ({ nome: c.nome, presente: c.presente, valor: c.valor, dica: CAB_DICA[c.nome] ?? '' }));
+  base.tecnologias = fingerprintTech(mapaHeaders);
+  base.controles = detectarControles(mapaHeaders);
+  base.cors = analisarCors(ORIGEM_PROBE, mapaHeaders['access-control-allow-origin'], mapaHeaders['access-control-allow-credentials']);
+  base.corpoSinais = analisarCorpo(corpo);
 
-  // TLS, métodos e exposições em paralelo
-  const [tlsInfo, metodos, exposicoes] = await Promise.all([
+  // TLS, métodos+CORS, exposições e OpenAPI em paralelo
+  const [tlsInfo, metodosInfo, exposicoes, openapi] = await Promise.all([
     usaHttps ? lerTls(u.hostname, port) : Promise.resolve(null),
     obterMetodos(u.toString()),
     opts.exposicoes ? Promise.all(CAMINHOS_EXPOSICAO.map((c) => sondarExposicao(u, c))) : Promise.resolve([] as Exposicao[]),
+    opts.openapi === false ? Promise.resolve(null) : descobrirOpenApi(u),
   ]);
   base.tls = tlsInfo;
-  base.metodos = metodos;
+  base.metodos = metodosInfo.metodos;
   base.exposicoes = exposicoes;
+  base.openapi = openapi;
+  // se o OPTIONS (preflight) trouxe cabeçalho CORS e o GET não, usa o do OPTIONS
+  if ((!base.cors || !base.cors.acao) && metodosInfo.acao) base.cors = analisarCors(ORIGEM_PROBE, metodosInfo.acao, metodosInfo.acac);
 
   base.achados = montarAchados({
     status: base.status,
@@ -317,6 +485,8 @@ export async function escanear(urlBruta: string, opts: { exposicoes: boolean }):
     cabecalhos: av.map((c) => ({ id: c.id, nome: c.nome, presente: c.presente })),
     metodos: base.metodos,
     cookies: base.cookies,
+    cors: base.cors,
+    corpoSinais: base.corpoSinais,
     exposicoes: base.exposicoes,
     servidor: base.servidor,
     poweredBy: base.poweredBy,
@@ -328,12 +498,25 @@ export async function escanear(urlBruta: string, opts: { exposicoes: boolean }):
 // ---------- rota ----------
 
 export function registerScanRoutes(app: FastifyInstance) {
-  const Body = z.object({ url: z.string().url(), exposicoes: z.boolean().optional() });
+  const Body = z.object({
+    url: z.string().url().optional(),
+    urls: z.array(z.string().url()).max(MAX_LOTE).optional(),
+    exposicoes: z.boolean().optional(),
+    openapi: z.boolean().optional(),
+  }).refine((b) => b.url || (b.urls && b.urls.length), { message: 'Informe url ou urls.' });
+
   app.post('/api/scan', async (req, reply) => {
     const b = Body.safeParse(req.body);
-    if (!b.success) return reply.status(400).send({ error: 'Informe uma URL http/https válida.' });
+    if (!b.success) return reply.status(400).send({ error: 'Informe uma URL http/https válida (ou uma lista em "urls").' });
+    const opts = { exposicoes: b.data.exposicoes ?? true, openapi: b.data.openapi };
     try {
-      return await escanear(b.data.url, { exposicoes: b.data.exposicoes ?? true });
+      if (b.data.urls && b.data.urls.length) {
+        const relatorios = await Promise.all(
+          b.data.urls.map((url) => escanear(url, opts).catch((e) => ({ erroLote: e instanceof Error ? e.message : 'falha', url }))),
+        );
+        return { relatorios };
+      }
+      return await escanear(b.data.url!, opts);
     } catch (e) {
       return reply.status(400).send({ error: e instanceof Error ? e.message : 'falha no scan' });
     }
