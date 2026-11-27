@@ -10,7 +10,7 @@
  */
 
 export type SeveridadeRepo = 'alta' | 'media' | 'baixa' | 'info';
-export type CategoriaRepo = 'segredo' | 'dependencia' | 'infra' | 'codigo';
+export type CategoriaRepo = 'segredo' | 'dependencia' | 'infra' | 'codigo' | 'injecao' | 'jwt';
 
 export interface AchadoRepo {
   categoria: CategoriaRepo;
@@ -97,6 +97,77 @@ export function analisarCodigo(rel: string, conteudo: string): AchadoRepo[] {
     for (const r of REGRAS_CODIGO) {
       if (!r.exts.includes(ext)) continue;
       if (r.re.test(linha)) achados.push({ categoria: 'codigo', severidade: r.sev, regra: r.regra, titulo: r.titulo, arquivo: rel, linha: i + 1, trecho: linha.trim().slice(0, 160), recomendacao: r.rec });
+    }
+  });
+  return achados;
+}
+
+interface RegraInj { regra: string; titulo: string; re: RegExp; sev: SeveridadeRepo; rec: string; exts: string[] }
+const SQL_KW = /\b(SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM|WHERE|FROM)\b/i;
+const EXTS_JS = ['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs'];
+
+/** Regras de injeção (SQLi, NoSQL, template, command, prompt). Heurísticas — confirmar. */
+const REGRAS_INJECAO: RegraInj[] = [
+  // SQL injection — concatenação/interpolação de entrada na query
+  { regra: 'sqli-template', titulo: 'SQL montado por template/concatenação', re: /\b(?:query|execute|raw|prepare)\s*\(\s*`[^`]*\$\{/, sev: 'alta', rec: 'Usar query parametrizada (placeholders), nunca interpolar entrada na SQL.', exts: EXTS_JS },
+  { regra: 'sqli-concat', titulo: 'SQL concatenado com variável', re: /['"][^'"]*['"]\s*\+\s*\w/, sev: 'media', rec: 'Usar query parametrizada; concatenar entrada na SQL abre SQLi.', exts: EXTS_JS },
+  { regra: 'sqli-py-format', titulo: 'cursor.execute com f-string/%/format', re: /execute(?:many)?\s*\(\s*(?:f["']|["'][^"']*["']\s*%|["'][^"']*["']\s*\.format|["'][^"']*["']\s*\+)/, sev: 'alta', rec: 'Passar parâmetros como 2º argumento de execute(), não formatar a string.', exts: ['.py'] },
+  // NoSQL injection
+  { regra: 'nosql-req-direto', titulo: 'Entrada do request direto na consulta NoSQL', re: /\b(?:find|findOne|updateOne|updateMany|deleteOne|deleteMany|aggregate)\s*\(\s*req\.(?:body|query|params)\b/, sev: 'alta', rec: 'Validar/whitelistar campos; não passar req.body cru como filtro (injeção de operador $).', exts: EXTS_JS },
+  { regra: 'nosql-where', titulo: 'Uso de $where em consulta', re: /\$where\s*:/, sev: 'media', rec: 'Evitar $where (executa JS no banco); usar operadores seguros.', exts: EXTS_JS },
+  // Template injection (SSTI)
+  { regra: 'ssti-flask', titulo: 'render_template_string (SSTI em Flask)', re: /render_template_string\s*\(/, sev: 'alta', rec: 'Não renderizar template a partir de entrada do usuário; usar templates fixos com contexto.', exts: ['.py'] },
+  { regra: 'ssti-compile', titulo: 'Template compilado de string com variável', re: /(?:Handlebars\.compile|ejs\.render|pug\.compile)\s*\([^)]*(?:\$\{|\+\s*\w)/, sev: 'media', rec: 'Não compilar template a partir de entrada; separar template de dados.', exts: EXTS_JS },
+  // Command injection (linguagens além de JS/PY já cobertas em analisarCodigo)
+  { regra: 'cmdi-php', titulo: 'Execução de comando com variável (PHP)', re: /\b(?:system|exec|shell_exec|passthru|popen|proc_open)\s*\(\s*[^)]*\$/, sev: 'alta', rec: 'Usar escapeshellarg/escapeshellcmd ou APIs sem shell.', exts: ['.php'] },
+  { regra: 'cmdi-ruby', titulo: 'Execução de comando com interpolação (Ruby)', re: /(?:system\s*\(\s*["'][^"']*#\{|`[^`]*#\{)/, sev: 'alta', rec: 'Passar args em array para system(); nunca interpolar entrada.', exts: ['.rb'] },
+  { regra: 'cmdi-java', titulo: 'Runtime.exec com concatenação (Java)', re: /Runtime\.getRuntime\(\)\.exec\s*\([^)]*\+/, sev: 'alta', rec: 'Usar ProcessBuilder com args separados; validar a entrada.', exts: ['.java'] },
+];
+
+/** Marcadores de que a entrada do usuário entra num prompt de LLM. */
+const RE_PROMPT_ALVO = /\b(prompt|system[_-]?prompt|messages|completion|user[_-]?message)\b/i;
+const RE_USER_INPUT = /\b(req\.(?:body|query|params)|request\.(?:json|form|args)|user[_-]?input|userMessage|input\b)/;
+
+/** Injeções (SQL/NoSQL/template/command/prompt). Pura. */
+export function analisarInjecao(rel: string, conteudo: string): AchadoRepo[] {
+  const ext = rel.slice(rel.lastIndexOf('.')).toLowerCase();
+  const achados: AchadoRepo[] = [];
+  conteudo.split(/\r?\n/).forEach((linha, i) => {
+    if (linha.length > 1000) return;
+    for (const r of REGRAS_INJECAO) {
+      if (!r.exts.includes(ext)) continue;
+      // SQLi por concatenação só conta se houver palavra-chave SQL na linha (reduz falso positivo)
+      if ((r.regra === 'sqli-concat' || r.regra === 'sqli-template') && !SQL_KW.test(linha)) continue;
+      if (r.re.test(linha)) achados.push({ categoria: 'injecao', severidade: r.sev, regra: r.regra, titulo: r.titulo, arquivo: rel, linha: i + 1, trecho: linha.trim().slice(0, 160), recomendacao: r.rec });
+    }
+    // Prompt injection: linha liga prompt/LLM a entrada do usuário com concatenação/template
+    if (EXTS_JS.includes(ext) || ext === '.py') {
+      if (RE_PROMPT_ALVO.test(linha) && RE_USER_INPUT.test(linha) && /(\$\{|\+\s*\w|f["'])/.test(linha)) {
+        achados.push({ categoria: 'injecao', severidade: 'media', regra: 'prompt-injection', titulo: 'Entrada do usuário montada no prompt do LLM', arquivo: rel, linha: i + 1, trecho: linha.trim().slice(0, 160), recomendacao: 'Separar instrução de dado do usuário; delimitar/validar a entrada e aplicar guardrails. A confirmar.' });
+      }
+    }
+  });
+  return achados;
+}
+
+interface RegraJwt { regra: string; titulo: string; re: RegExp; sev: SeveridadeRepo; rec: string }
+const REGRAS_JWT: RegraJwt[] = [
+  { regra: 'jwt-alg-none', titulo: 'JWT aceita algoritmo "none"', re: /alg(?:orithm)?s?\s*[:=]\s*\[?\s*['"]none['"]/i, sev: 'alta', rec: 'Nunca aceitar alg "none"; fixar a lista de algoritmos esperados (ex.: RS256/HS256).' },
+  { regra: 'jwt-verify-false', titulo: 'JWT verificado com verify=False', re: /jwt\.decode\s*\([^)]*verify\s*=\s*False/i, sev: 'alta', rec: 'Verificar a assinatura; verify=False confia em qualquer token.' },
+  { regra: 'jwt-decode-sem-verify', titulo: 'jwt.decode (não verifica assinatura)', re: /\bjwt\.decode\s*\(/, sev: 'media', rec: 'Em jsonwebtoken, decode não valida a assinatura; usar jwt.verify para confiar no token.' },
+  { regra: 'jwt-ignore-exp', titulo: 'JWT com ignoreExpiration/exp desligado', re: /ignoreExpiration\s*:\s*true/i, sev: 'media', rec: 'Validar a expiração (exp); não ignorar.' },
+  { regra: 'jwt-segredo-literal', titulo: 'Segredo do JWT embutido no código', re: /\bjwt\.(?:sign|verify)\s*\([^,]+,\s*['"][^'"]{4,}['"]/, sev: 'alta', rec: 'Ler o segredo/chave de variável de ambiente; não embutir no código.' },
+];
+
+/** Fragilidades de JWT no código. Pura. */
+export function analisarJwt(rel: string, conteudo: string): AchadoRepo[] {
+  const ext = rel.slice(rel.lastIndexOf('.')).toLowerCase();
+  if (!['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs', '.py', '.go', '.rb', '.java', '.php'].includes(ext)) return [];
+  const achados: AchadoRepo[] = [];
+  conteudo.split(/\r?\n/).forEach((linha, i) => {
+    if (linha.length > 1000) return;
+    for (const r of REGRAS_JWT) {
+      if (r.re.test(linha)) achados.push({ categoria: 'jwt', severidade: r.sev, regra: r.regra, titulo: r.titulo, arquivo: rel, linha: i + 1, trecho: linha.trim().slice(0, 160), recomendacao: r.rec });
     }
   });
   return achados;

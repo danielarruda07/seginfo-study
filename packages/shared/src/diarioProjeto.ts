@@ -26,6 +26,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-27-reposcan-injecao',
+    data: '2026-11-27',
+    titulo: 'Reposcan detecta injecao (SQL/NoSQL/SSTI/cmd/prompt) e fragilidade de JWT',
+    descricao:
+      'Daniel quer testar injecao (SQLi, prompt injection, etc., principalmente em transacao) e fragilidade ' +
+      'de JWT. Como payload ativo em endpoint de transacao e destrutivo, a cobertura entra no lado ESTATICO: ' +
+      'o reposcan agora acha SQL montado por concatenacao, req.body direto em consulta NoSQL, SSTI, command ' +
+      'injection por linguagem, prompt do LLM montado com entrada do usuario, e JWT fraco (alg none, decode ' +
+      'sem verificar, verify=False, segredo embutido). Licao: para transacao, o teste seguro e ler o codigo, ' +
+      'nao disparar o ataque — o ativo (benigno, por sinal) fica so em rota de leitura no Scanner.',
+    categoria: 'seguranca',
+    tags: ['devsecops', 'sast', 'sqli', 'jwt', 'prompt-injection', 'reposcan'],
+    projetoId: null,
+  },
+  {
     id: 'proj-2026-11-27-reposcan',
     data: '2026-11-27',
     titulo: 'Analise estatica de repositorio clonado (CLI DevSecOps)',

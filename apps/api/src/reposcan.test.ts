@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  analisarSegredos, analisarCodigo, analisarInfra, analisarManifesto,
+  analisarSegredos, analisarCodigo, analisarInfra, analisarManifesto, analisarInjecao, analisarJwt,
   redigir, contarRepo, ordenarAchados,
 } from './reposcan.js';
 
@@ -67,6 +67,40 @@ describe('reposcan — dependências', () => {
     const r = analisarManifesto('requirements.txt', 'requests\nflask==2.0.0\n# comentario');
     expect(r.dependencias).toBe(2);
     expect(r.achados.some((a) => a.regra === 'dep-sem-pin')).toBe(true);
+  });
+});
+
+describe('reposcan — injeção', () => {
+  it('SQLi: template/concatenação só conta com palavra-chave SQL', () => {
+    expect(analisarInjecao('a.js', 'db.query(`SELECT * FROM u WHERE id=${id}`)').some((a) => a.regra === 'sqli-template')).toBe(true);
+    expect(analisarInjecao('a.js', 'const url = `/api/${id}`')).toEqual([]); // sem SQL → sem FP
+    expect(analisarInjecao('a.py', 'cursor.execute(f"SELECT * FROM u WHERE id={id}")').some((a) => a.regra === 'sqli-py-format')).toBe(true);
+  });
+  it('NoSQL: req direto no find e $where', () => {
+    expect(analisarInjecao('a.js', 'User.find(req.body)').some((a) => a.regra === 'nosql-req-direto')).toBe(true);
+    expect(analisarInjecao('a.js', 'coll.find({ $where: "this.a==1" })').some((a) => a.regra === 'nosql-where')).toBe(true);
+  });
+  it('SSTI e command injection por linguagem', () => {
+    expect(analisarInjecao('a.py', 'render_template_string(tpl)').some((a) => a.regra === 'ssti-flask')).toBe(true);
+    expect(analisarInjecao('a.php', 'system("ping " . $host)').some((a) => a.regra === 'cmdi-php')).toBe(true);
+    expect(analisarInjecao('a.rb', 'system("echo #{name}")').some((a) => a.regra === 'cmdi-ruby')).toBe(true);
+  });
+  it('prompt injection: entrada do usuário no prompt', () => {
+    expect(analisarInjecao('a.ts', 'const prompt = `Resuma: ${req.body.texto}`').some((a) => a.regra === 'prompt-injection')).toBe(true);
+    expect(analisarInjecao('a.ts', 'const prompt = "instrução fixa"')).toEqual([]);
+  });
+});
+
+describe('reposcan — JWT', () => {
+  it('alg none, decode sem verify, segredo literal e ignoreExpiration', () => {
+    expect(analisarJwt('a.js', "jwt.verify(t, k, { algorithms: ['none'] })").some((a) => a.regra === 'jwt-alg-none')).toBe(true);
+    expect(analisarJwt('a.js', 'const p = jwt.decode(token)').some((a) => a.regra === 'jwt-decode-sem-verify')).toBe(true);
+    expect(analisarJwt('a.js', "jwt.sign(payload, 'segredo-fixo-123')").some((a) => a.regra === 'jwt-segredo-literal')).toBe(true);
+    expect(analisarJwt('a.js', 'jwt.verify(t, k, { ignoreExpiration: true })').some((a) => a.regra === 'jwt-ignore-exp')).toBe(true);
+    expect(analisarJwt('a.py', 'jwt.decode(t, verify=False)').some((a) => a.regra === 'jwt-verify-false')).toBe(true);
+  });
+  it('ignora extensão não suportada', () => {
+    expect(analisarJwt('a.txt', 'jwt.decode(token)')).toEqual([]);
   });
 });
 

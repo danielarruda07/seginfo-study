@@ -12,6 +12,10 @@ Quatro análises:
 | **Dependências** | inventário de `package.json`/`requirements.txt`; specifiers sem versão fixa, HTTP inseguro, scripts de `install` (supply-chain) |
 | **Docker/IaC/CI** | Dockerfile (root, `:latest`, `ADD` remoto, `curl \| bash`, segredo em `ENV/ARG`), docker-compose (`privileged`, `network_mode: host`, segredo inline), workflows (`pull_request_target`, action sem SHA, injeção de `github.event`) |
 | **Código** | `eval`/`new Function`, `exec`/`child_process` com concatenação, `shell=True`, `pickle.loads`, `yaml.load` inseguro, `os.system`, hash fraco, `innerHTML=` |
+| **Injeção** | SQLi (query por template/concatenação, `cursor.execute` com f-string/%/format), NoSQL (`find(req.body)`, `$where`), SSTI (`render_template_string`, template compilado de string), command injection (PHP/Ruby/Java), prompt injection (entrada do usuário montada no prompt do LLM) |
+| **JWT** | aceita `alg: none`, `jwt.decode` sem verificar assinatura, `verify=False`, `ignoreExpiration: true`, segredo embutido no código |
+
+> As classes de injeção e JWT são **estáticas** (no código) — é o caminho seguro para endpoints de transação, que nunca devem receber payload ativo em produção. O teste ativo por sinal (benigno) fica no Scanner de endpoints, só em rotas de leitura.
 
 ## Uso
 

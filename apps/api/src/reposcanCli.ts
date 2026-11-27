@@ -11,7 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  analisarSegredos, analisarCodigo, analisarInfra, analisarManifesto,
+  analisarSegredos, analisarCodigo, analisarInfra, analisarManifesto, analisarInjecao, analisarJwt,
   ordenarAchados, contarRepo, type AchadoRepo, type SeveridadeRepo,
 } from './reposcan.js';
 
@@ -44,7 +44,7 @@ function analisarArquivo(rel: string, conteudo: string): AchadoRepo[] {
   const ext = rel.slice(rel.lastIndexOf('.')).toLowerCase();
   const out: AchadoRepo[] = [];
   out.push(...analisarSegredos(rel, conteudo));
-  if (EXT_CODIGO.has(ext)) out.push(...analisarCodigo(rel, conteudo));
+  if (EXT_CODIGO.has(ext)) { out.push(...analisarCodigo(rel, conteudo)); out.push(...analisarInjecao(rel, conteudo)); out.push(...analisarJwt(rel, conteudo)); }
   if (/dockerfile/.test(nome) || /docker-compose|compose\.ya?ml$/.test(nome) || /\.github\/workflows\//.test(nome)) out.push(...analisarInfra(rel, conteudo));
   if (nome.endsWith('package.json') || nome.endsWith('requirements.txt')) out.push(...analisarManifesto(rel, conteudo).achados);
   return out;
@@ -90,8 +90,8 @@ function main(): number {
   console.log(`Achados: ${c.alta} alto(s), ${c.media} médio(s), ${c.baixa} baixo(s), ${c.info} info.\n`);
   const porCat: Record<string, AchadoRepo[]> = {};
   for (const a of ordenados) (porCat[a.categoria] ??= []).push(a);
-  const NOME_CAT: Record<string, string> = { segredo: 'SEGREDOS', dependencia: 'DEPENDÊNCIAS', infra: 'DOCKER/IaC/CI', codigo: 'CÓDIGO' };
-  for (const cat of ['segredo', 'infra', 'dependencia', 'codigo']) {
+  const NOME_CAT: Record<string, string> = { segredo: 'SEGREDOS', injecao: 'INJEÇÃO (SQL/NoSQL/template/cmd/prompt)', jwt: 'JWT', infra: 'DOCKER/IaC/CI', dependencia: 'DEPENDÊNCIAS', codigo: 'CÓDIGO' };
+  for (const cat of ['segredo', 'injecao', 'jwt', 'infra', 'dependencia', 'codigo']) {
     const lista = porCat[cat];
     if (!lista?.length) continue;
     console.log(`--- ${NOME_CAT[cat]} (${lista.length}) ---`);
