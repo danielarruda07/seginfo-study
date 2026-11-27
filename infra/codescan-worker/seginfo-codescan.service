@@ -1,0 +1,30 @@
+[Unit]
+Description=SegInfo - worker da revisao de codigo (claude-security)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=seginfo-codescan
+Group=seginfo-codescan
+EnvironmentFile=/etc/seginfo-codescan/worker.env
+Environment=HOME=/var/lib/seginfo-codescan
+Environment=CLAUDE_BIN=/var/lib/seginfo-codescan/.local/bin/claude
+Environment=PLUGIN_DIR=/opt/seginfo-codescan/plugin
+WorkingDirectory=/var/lib/seginfo-codescan
+ExecStart=/usr/bin/python3 -I /opt/seginfo-codescan/worker.py
+Restart=on-failure
+RestartSec=30
+# Limites: a VM tambem hospeda a producao (Coolify). A varredura nao pode toma-la.
+MemoryMax=4G
+CPUQuota=200%
+TasksMax=512
+# Endurecimento do processo do worker
+NoNewPrivileges=false
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/seginfo-codescan
+
+[Install]
+WantedBy=multi-user.target

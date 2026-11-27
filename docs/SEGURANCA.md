@@ -20,6 +20,7 @@ Todo teste oferece **HTML** (arquivo único, sem script nem recurso externo, pro
 |---|---|---|---|
 | **Testar endpoint/API ao vivo** | Scanner de endpoints | Higiene + sinais de vulnerabilidade de uma URL | App → Inteligência → Scanner |
 | **Testar código/repositório** | Reposcan (CLI) | Análise estática de um repo clonado | Terminal: `scripts/reposcan.sh` |
+| **Revisão de código com IA** | Plugin oficial claude-security (worker) | Authn/authz, injeção e lógica, com CWE e patches | App → Inteligência → Revisão de código (IA) — ver [REVISAO_CODIGO.md](REVISAO_CODIGO.md) |
 | **Detectar ataque agêntico** | Caça ao ARTEX | Referência de detecção/hunting | App → Inteligência → Caça ao ARTEX |
 | **Método e referência** | Metodologia de Pentest | Ciclo de 7 fases ligado ao ATT&CK | App → Prática → Metodologia |
 

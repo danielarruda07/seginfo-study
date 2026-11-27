@@ -57,6 +57,7 @@ const SECOES_FIXAS: NavSection[] = [
       { to: '/ameacas', label: 'Ameaças (KEV)', icon: 'pi-exclamation-triangle' },
       { to: '/exposicao', label: 'Minha exposição', icon: 'pi-globe' },
       { to: '/scanner', label: 'Scanner de endpoints', icon: 'pi-bolt' },
+      { to: '/revisao-codigo', label: 'Revisão de código (IA)', icon: 'pi-code' },
       { to: '/artex', label: 'Caça ao ARTEX', icon: 'pi-compass' },
     ],
   },

@@ -11,6 +11,7 @@ const GRUPOS = [
     titulo: 'Testes de segurança',
     itens: [
       { to: '/scanner', icone: 'pi-bolt', nome: 'Scanner de endpoints', desc: 'TLS, cabeçalhos, CORS, OpenAPI, exposições, testes ativos seguros e análise de JWT. Exporta HTML/PDF.' },
+      { to: '/revisao-codigo', icone: 'pi-code', nome: 'Revisão de código (IA)', desc: 'Varredura profunda de repositório com o plugin oficial claude-security: authn/authz, injeção, lógica, patches sugeridos.' },
       { to: '/exposicao', icone: 'pi-globe', nome: 'Minha exposição', desc: 'Superfície externa por OSINT passivo e saúde dos sites publicados.' },
     ],
   },

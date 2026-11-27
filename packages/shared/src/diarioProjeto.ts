@@ -26,6 +26,22 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-27-revisao-codigo-ia',
+    data: '2026-11-27',
+    titulo: 'Revisao de codigo com IA: plugin oficial claude-security embarcado via worker',
+    descricao:
+      'O scanner de padroes achou 1 vulnerabilidade num repo onde um pentest humano achou 9 — as falhas ' +
+      'reais eram de autenticacao, autorizacao e logica, que regex nao enxerga. O Daniel pediu a analise ' +
+      'profunda dentro do app usando o plugin oficial claude-security. Como o plugin so roda no Claude Code ' +
+      'em sandbox Linux, o app enfileira o pedido e um worker na VM do Coolify clona, roda o plugin no ' +
+      'sandbox oficial (rede so para o modelo, chave fora) e devolve SARIF e patches. Licao: o ponto ' +
+      'sensivel nao era a IA, era o git clone — URL de repositorio pode executar comando (ext::), entao ' +
+      'a validacao e a primeira linha de defesa.',
+    categoria: 'seguranca',
+    tags: ['claude-security', 'sast', 'devsecops', 'worker', 'sandbox'],
+    projetoId: null,
+  },
+  {
     id: 'proj-2026-11-27-modo-profissional',
     data: '2026-11-27',
     titulo: 'Modo profissional: estudo ocultado, Central de Seguranca e export HTML/PDF',

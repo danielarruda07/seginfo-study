@@ -45,6 +45,7 @@ model Usuario {
   linkedinVoz      LinkedinVoz?
   agentes      Agente[]
   exposicaoAlvos ExposicaoAlvo[]
+  varredurasCodigo VarreduraCodigo[]
 }
 
 // Biblioteca permanente, independente da retenção do Radar e do reset dos alvos.
@@ -698,4 +699,31 @@ model ExposicaoVarredura {
 
   @@index([alvoId, criadoEm])
   @@index([usuarioId, criadoEm])
+}
+
+// Revisão de segurança de código com o plugin oficial claude-security, executada por um
+// worker Linux (sandbox) fora da API. A API só enfileira, entrega o pedido ao worker e
+// guarda o resultado (achados normalizados do SARIF, relatório e patches).
+model VarreduraCodigo {
+  id          String    @id @default(cuid())
+  usuarioId   String
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  repoUrl     String
+  branch      String?
+  modo        String    // codebase | changes | attack-surface
+  esforco     String    // low | medium | high
+  status      String    @default("fila") // fila | executando | concluido | erro
+  commit      String?
+  resumo      Json      @default("{}")
+  achados     Json      @default("[]")
+  relatorioMd String?
+  patches     Json      @default("[]")
+  erro        String?
+  workerId    String?
+  criadoEm    DateTime  @default(now())
+  iniciadoEm  DateTime?
+  concluidoEm DateTime?
+
+  @@index([usuarioId, criadoEm])
+  @@index([status, criadoEm])
 }

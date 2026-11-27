@@ -28,6 +28,9 @@ services:
       # Quality gate de higiene chamável pela CI (rota /api/scan/ci). Segredo HMAC;
       # sem ele a rota responde 503 (fail-closed). Ver docs/SCANNER_CI.md.
       - SCAN_CI_SECRET=${SCAN_CI_SECRET:-}
+      # Worker da revisão de código (claude-security, infra/codescan-worker). Token compartilhado
+      # com o worker (32+ caracteres); sem ele as rotas do worker respondem 503. Ver docs/REVISAO_CODIGO.md.
+      - CODESCAN_WORKER_TOKEN=${CODESCAN_WORKER_TOKEN:-}
       # opcionais (valores padrão seguros)
       - RADAR_GUARDAR_SENHAS=${RADAR_GUARDAR_SENHAS:-false}
       - ATAQUES_RETENCAO_DIAS=${ATAQUES_RETENCAO_DIAS:-90}

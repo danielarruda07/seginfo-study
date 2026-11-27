@@ -19,6 +19,7 @@ import { registerWazuhRoutes } from './wazuh.js';
 import { registerDescobertaRoutes } from './descoberta.js';
 import { registerExposicaoRoutes } from './exposicao.js';
 import { registerScanRoutes } from './scanEndpoint.js';
+import { registerCodescanUserRoutes } from './codescan.js';
 import { exigirSessaoCofre, registerCofre2faRoutes, registrarEvento } from './cofre2fa.js';
 
 /** Registra todas as rotas de estado do usuário, todas protegidas por requireUser. */
@@ -314,4 +315,5 @@ export async function registerStateRoutes(app: FastifyInstance) {
 
   // Scanner de higiene de endpoint/API (não destrutivo, alvo autorizado pelo operador)
   registerScanRoutes(app);
+  registerCodescanUserRoutes(app);
 }

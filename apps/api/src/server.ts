@@ -5,6 +5,7 @@ import { extractUrl } from './extract.js';
 import { registerStateRoutes } from './routes.js';
 import { registerIngestRoutes } from './ingest.js';
 import { registerScanCiRoutes } from './scanCi.js';
+import { registerCodescanWorkerRoutes } from './codescan.js';
 import { registerMcpRoutes } from './mcp.js';
 import { iniciarRetencao } from './radar.js';
 import { iniciarBackupAutomatico } from './backup.js';
@@ -36,6 +37,9 @@ await app.register(registerIngestRoutes);
 
 // quality gate de higiene chamável pela CI/CD (HMAC; fora do hook de usuário)
 await app.register(registerScanCiRoutes);
+
+// worker da revisão de código (claude-security): pega pedidos e devolve resultados (token próprio)
+await app.register(registerCodescanWorkerRoutes);
 
 // MCP do homelab: as ferramentas dos agentes para clientes como o Claude Code (token próprio + Access)
 await app.register(registerMcpRoutes);
