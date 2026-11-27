@@ -26,6 +26,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-27-reposcan',
+    data: '2026-11-27',
+    titulo: 'Analise estatica de repositorio clonado (CLI DevSecOps)',
+    descricao:
+      'Nova missao do Daniel: clonar repositorios e rodar testes neles localmente. Fiz uma CLI de analise ' +
+      'ESTATICA (le arquivos, nunca instala nem roda a suite do repo — isso executaria codigo nao confiavel): ' +
+      'segredos, dependencias, Docker/IaC/CI e padroes de codigo perigosos. Roda na maquina do operador sobre ' +
+      'a pasta clonada (ou clona raso de uma URL), com saida texto/JSON e codigo de saida para virar gate. ' +
+      'Licao: testar repo de terceiro e, por padrao, LER e nao EXECUTAR; manter a fronteira (autorizado, ' +
+      'estatico, nada sai para fora).',
+    categoria: 'funcionalidade',
+    tags: ['devsecops', 'sast', 'reposcan', 'segredos', 'supply-chain'],
+    projetoId: null,
+  },
+  {
     id: 'proj-2026-11-27-artex-caca',
     data: '2026-11-27',
     titulo: 'Caca ao ARTEX: deteccao e hunting defensivo mapeado ao ATT&CK',
