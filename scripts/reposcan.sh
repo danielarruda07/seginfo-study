@@ -7,6 +7,7 @@
 #   scripts/reposcan.sh <url-git>                  # clona raso num temp, analisa e apaga
 #   scripts/reposcan.sh <alvo> --json              # saida JSON
 #   scripts/reposcan.sh <alvo> --fail-on media     # reprova a partir de "media"
+#   scripts/reposcan.sh <alvo> --html laudo.html   # gera também o relatório em HTML (abra e imprima em PDF)
 #
 # Sai 0 se nada atingir o limiar (padrao: alta), 1 se reprovar, 2 em erro de uso.
 # Requer: node, git (so para o modo URL). Usa o tsx do proprio repo.
@@ -31,4 +32,4 @@ else
   DIR="$ALVO"
 fi
 
-node "$RAIZ/node_modules/tsx/dist/cli.mjs" "$RAIZ/apps/api/src/reposcanCli.ts" "$DIR" "$@"
+node "$RAIZ/node_modules/tsx/dist/cli.mjs" --tsconfig "$RAIZ/apps/api/tsconfig.json" "$RAIZ/apps/api/src/reposcanCli.ts" "$DIR" "$@"

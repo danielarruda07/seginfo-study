@@ -1,4 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router';
+import { MODULO_ESTUDO_ATIVO } from '@/config/modulos';
 import { Button } from 'primereact/button';
 import { DetailDrawer, type DetailDrawerProps } from '@/components/ui/DetailDrawer';
 import { Pill } from '@/components/InfraKit';
@@ -21,8 +22,8 @@ export function PilarFicha({ p, nav }: { p: Pilar; nav: Nav }) {
       status={<Pill label={`Aba "${p.aba}" do editor`} tone="muted" icon="pi-pencil" />}
       title={p.titulo}
       subtitle={p.pergunta}
-      actions={<Button label="Estudar na trilha" icon="pi pi-book" size="small" outlined
-        onClick={() => navigate({ to: '/trilhas/$trilhaId', params: { trilhaId: 'agentes' } })} />}>
+      actions={MODULO_ESTUDO_ATIVO ? <Button label="Estudar na trilha" icon="pi pi-book" size="small" outlined
+        onClick={() => navigate({ to: '/trilhas/$trilhaId', params: { trilhaId: 'agentes' } })} /> : undefined}>
 
       <Secao titulo="O que checar">
         <ul className="agd-checklist">{p.checklist.map((c) => <li key={c}>{c}</li>)}</ul>

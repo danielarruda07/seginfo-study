@@ -479,3 +479,4 @@ export * from './linkedinEstilo';
 export * from './linkedinVisual';
 export * from './agentes';
 export * from './versao';
+export * from './relatorioHtml';

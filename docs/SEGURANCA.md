@@ -10,6 +10,10 @@ destrutivo, auditável). Documentos específicos: [SCANNER_CI.md](SCANNER_CI.md)
 
 ---
 
+## Exportar resultados (HTML / PDF)
+
+Todo teste oferece **HTML** (arquivo único, sem script nem recurso externo, pronto para anexar a um laudo) e **PDF** (abre a impressão do navegador → "Salvar como PDF"): Scanner de endpoints (individual e lote consolidado), análise de JWT, Minha exposição, Laudos dos alvos e o Reposcan (`--html`). Todo conteúdo vindo do alvo é escapado — o relatório não executa nada do que foi coletado. Os relatórios saem marcados como **confidenciais**.
+
 ## Visão geral — três frentes
 
 | Frente | Ferramenta | O que faz | Onde |

@@ -33,12 +33,15 @@ scripts/reposcan.sh /caminho/do/repo --json
 
 # reprovar já a partir de "média" (padrão é "alta")
 scripts/reposcan.sh /caminho/do/repo --fail-on media
+
+# gerar também o relatório em HTML (abra no navegador e imprima em PDF)
+scripts/reposcan.sh /caminho/do/repo --html laudo-repo.html
 ```
 
 No Windows (PowerShell), chame direto pelo tsx:
 
 ```powershell
-node node_modules\tsx\dist\cli.mjs apps\api\src\reposcanCli.ts C:\caminho\do\repo
+node node_modules\tsx\dist\cli.mjs --tsconfig apps\api\tsconfig.json apps\api\src\reposcanCli.ts C:\caminho\do\repo --html laudo.html
 ```
 
 ## Código de saída

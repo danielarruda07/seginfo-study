@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { MODULO_ESTUDO_ATIVO } from '@/config/modulos';
 import { Button } from 'primereact/button';
 import type { Lab } from '@seginfo/shared';
 import { DetailDrawer } from '@/components/ui/DetailDrawer';
@@ -84,10 +85,10 @@ export function LabDrawer({ lab, progresso, nav, onSave, onDraft, onExerciciosCh
         {ferramentas.length > 0 && <p className="pr-vazio iv-mt">Comandos e anotações de cada uma no <Link to="/ferramentas">Arsenal de Ferramentas</Link>.</p>}
       </Secao>
 
-      <Secao titulo="Estudo e técnicas ATT&CK">
-        {topico
+      <Secao titulo={MODULO_ESTUDO_ATIVO ? 'Estudo e técnicas ATT&CK' : 'Técnicas ATT&CK'}>
+        {MODULO_ESTUDO_ATIVO && (topico
           ? <p className="pr-texto">Tópico: <Link to="/trilhas/$trilhaId" params={{ trilhaId: topico.trilhaId }}>{topico.titulo}</Link></p>
-          : <p className="pr-vazio">Sem tópico de estudo ligado.</p>}
+          : <p className="pr-vazio">Sem tópico de estudo ligado.</p>)}
         <div className="iv-mt"><TecnicasAttack ids={tecnicas} /></div>
       </Secao>
 

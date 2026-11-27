@@ -72,3 +72,22 @@ export function analisarTokenJwt(token: string, agoraSeg = Math.floor(Date.now()
 
   return { valido: true, header, payload, achados };
 }
+
+/** Relatório exportável (HTML/PDF) da análise de um JWT. O token em si NÃO entra no relatório. */
+export function relatorioDoJwt(a: AnaliseJwt): import('./exportarRelatorio').RelatorioExport {
+  const sev = (s: SevJwt) => s;
+  const conta = { alta: 0, media: 0, baixa: 0, info: 0 } as Record<SevJwt, number>;
+  for (const x of a.achados) conta[x.severidade]++;
+  return {
+    titulo: 'Análise de JWT (offline)',
+    subtitulo: 'Higiene estrutural do token — assinatura não verificada',
+    confidencial: true,
+    meta: [['Data', new Date().toLocaleString('pt-BR')], ['Algoritmo', String(a.header?.alg ?? '—')], ['Método', 'Decodificação local, sem rede e sem a chave']],
+    resumo: conta,
+    secoes: [
+      { titulo: 'Achados', itens: a.achados.map((x) => ({ severidade: sev(x.severidade), titulo: x.titulo, detalhe: x.detalhe })) },
+      { titulo: 'Header', codigo: JSON.stringify(a.header ?? {}, null, 2) },
+      { titulo: 'Claims do payload (nomes)', texto: [Object.keys(a.payload ?? {}).join(', ') || '—'] },
+    ],
+  };
+}

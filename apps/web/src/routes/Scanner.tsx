@@ -7,9 +7,10 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Kpi, Pill, StatusStrip, EmptyState } from '@/components/InfraKit';
 import {
   escanearEndpoint, escanearLote, listarHistorico, removerDoHistorico, contarSeveridade,
-  laudoMarkdown, baixarArquivo, type ScanRelatorio, type Severidade,
+  laudoMarkdown, baixarArquivo, relatorioDoScan, relatorioDoLote, type ScanRelatorio, type Severidade,
 } from '@/services/scanner';
-import { analisarTokenJwt, type AnaliseJwt, type SevJwt } from '@/services/jwt';
+import { ExportarRelatorio } from '@/components/ExportarRelatorio';
+import { analisarTokenJwt, relatorioDoJwt, type AnaliseJwt, type SevJwt } from '@/services/jwt';
 
 const TOM: Record<Severidade, 'danger' | 'warning' | 'info' | 'muted'> = {
   alta: 'danger', media: 'warning', baixa: 'info', info: 'muted',
@@ -33,8 +34,10 @@ function Relatorio({ r }: { r: ScanRelatorio }) {
         <Pill tone={r.autenticacao === 'exigida' ? 'ok' : r.autenticacao === 'aberta' ? 'warning' : 'muted'}
           label={`Auth: ${r.autenticacao}`} />
         <span style={{ marginLeft: 'auto' }}>
-          <Button label="Markdown" icon="pi pi-file" text size="small" onClick={() => baixarArquivo(nomeArquivo(r.url, 'md'), laudoMarkdown(r), 'text/markdown')} />
-          <Button label="JSON" icon="pi pi-code" text size="small" onClick={() => baixarArquivo(nomeArquivo(r.url, 'json'), JSON.stringify(r, null, 2), 'application/json')} />
+          <ExportarRelatorio montar={() => relatorioDoScan(r)} nome={`scan_${r.url}`}>
+            <Button label="Markdown" icon="pi pi-file" text size="small" onClick={() => baixarArquivo(nomeArquivo(r.url, 'md'), laudoMarkdown(r), 'text/markdown')} />
+            <Button label="JSON" icon="pi pi-code" text size="small" onClick={() => baixarArquivo(nomeArquivo(r.url, 'json'), JSON.stringify(r, null, 2), 'application/json')} />
+          </ExportarRelatorio>
         </span>
       </div>
 
@@ -147,6 +150,7 @@ function JwtBox() {
         placeholder="eyJhbGciOi...  (header.payload.assinatura)" aria-label="Token JWT" />
       <div className="iv-mt">
         <Button label="Analisar JWT" icon="pi pi-id-card" onClick={() => setRes(analisarTokenJwt(token))} disabled={!token.trim()} />
+        {res?.valido && <ExportarRelatorio montar={() => relatorioDoJwt(res)} nome="analise_jwt" />}
       </div>
       {res && !res.valido && <StatusStrip tone="warn" icon="pi-exclamation-triangle">{res.erro}</StatusStrip>}
       {res?.valido && (
@@ -258,6 +262,12 @@ export function Scanner() {
       </div>
 
       {atual && <Relatorio r={atual} />}
+      {resultadosLote.length > 1 && (
+        <div className="iv-card iv-mt iv-row iv-wrap" style={{ alignItems: 'center', gap: '0.5rem' }}>
+          <strong>Relatório consolidado do lote ({resultadosLote.length} alvos)</strong>
+          <ExportarRelatorio montar={() => relatorioDoLote(resultadosLote)} nome="scan_lote" />
+        </div>
+      )}
       {resultadosLote.map((r) => <Relatorio key={r.url} r={r} />)}
 
       <JwtBox />

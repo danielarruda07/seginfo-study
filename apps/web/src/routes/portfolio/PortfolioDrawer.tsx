@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { MODULO_ESTUDO_ATIVO } from '@/config/modulos';
 import { DetailDrawer, type DetailDrawerProps } from '@/components/ui/DetailDrawer';
 import { DetailFields } from '@/components/ui/Detail';
 import { Pill } from '@/components/InfraKit';
@@ -16,7 +17,7 @@ export function PortfolioDrawer({ item, nav }: { item: ItemPortfolio; nav: Nav }
     return (
       <DetailDrawer {...nav} kind={{ icon: 'pi-sitemap', label: 'Trilha concluída' }} ariaLabel={`Ficha da trilha ${trilha.titulo}`}
         status={<Pill label="100% concluída" tone="ok" icon="pi-check" />} title={trilha.titulo} subtitle={trilha.descricao}
-        actions={<Link to="/trilhas/$trilhaId" params={{ trilhaId: trilha.id }} className="p-button p-button-outlined p-button-sm">Abrir a trilha</Link>}>
+        actions={MODULO_ESTUDO_ATIVO ? <Link to="/trilhas/$trilhaId" params={{ trilhaId: trilha.id }} className="p-button p-button-outlined p-button-sm">Abrir a trilha</Link> : undefined}>
         <section>
           <h3 className="iv-section-label">{topicos.length} tópicos estudados</h3>
           <ul className="ca-lista">
@@ -62,7 +63,7 @@ export function PortfolioDrawer({ item, nav }: { item: ItemPortfolio; nav: Nav }
     <DetailDrawer {...nav} kind={{ icon: 'pi-book', label: 'Tópico concluído' }} ariaLabel={`Ficha do tópico ${t.titulo}`}
       status={<><Pill label="Concluído" tone="ok" icon="pi-check" /><Pill label={NIVEL_LABEL[t.nivel]} /></>}
       title={t.titulo} subtitle={trilha ? `Trilha ${trilha.titulo}` : undefined}
-      actions={<Link to="/trilhas/$trilhaId" params={{ trilhaId: t.trilhaId }} className="p-button p-button-outlined p-button-sm">Abrir na trilha</Link>}>
+      actions={MODULO_ESTUDO_ATIVO ? <Link to="/trilhas/$trilhaId" params={{ trilhaId: t.trilhaId }} className="p-button p-button-outlined p-button-sm">Abrir na trilha</Link> : undefined}>
       {t.resumo && (
         <section>
           <h3 className="iv-section-label">Resumo</h3>

@@ -26,6 +26,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-27-modo-profissional',
+    data: '2026-11-27',
+    titulo: 'Modo profissional: estudo ocultado, Central de Seguranca e export HTML/PDF',
+    descricao:
+      'O Daniel ja usa a plataforma no trabalho de DevSecOps e pediu que ela deixasse de parecer ferramenta ' +
+      'de estudo. Ocultei o modulo de Estudo por um interruptor (some do menu, da busca e dos links; URLs ' +
+      'redirecionam) sem apagar dados nem codigo, e a pagina inicial virou uma Central de Seguranca. Todo ' +
+      'teste agora exporta HTML autocontido e PDF (impressao do navegador), com o gerador no pacote ' +
+      'compartilhado para servir tambem o CLI do reposcan. Licao: conteudo do alvo vai parar dentro do ' +
+      'relatorio, entao o exportador escapa tudo — um laudo nao pode virar vetor de XSS.',
+    categoria: 'funcionalidade',
+    tags: ['profissional', 'relatorio', 'html', 'pdf', 'devsecops'],
+    projetoId: null,
+  },
+  {
     id: 'proj-2026-11-27-reposcan-fp',
     data: '2026-11-27',
     titulo: 'Reposcan: menos falso positivo (arquivos .example e ${VAR} no compose)',

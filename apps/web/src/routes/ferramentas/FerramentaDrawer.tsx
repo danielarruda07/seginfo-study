@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MODULO_ESTUDO_ATIVO } from '@/config/modulos';
 import { Link } from '@tanstack/react-router';
 import { Button } from 'primereact/button';
 import type { FerramentaCatalogo } from '@seginfo/shared';
@@ -75,11 +76,13 @@ export function FerramentaDrawer({ ferramenta: f, nav, onChanged }: Props) {
         {labs.length > 0 && <p className="pr-vazio iv-mt">Passos e registro de cada um em <Link to="/labs">Labs Práticos</Link>.</p>}
       </Secao>
 
+      {MODULO_ESTUDO_ATIVO && (
       <Secao titulo="Estudo relacionado">
         {topico
           ? <p className="pr-texto">Tópico: <Link to="/trilhas/$trilhaId" params={{ trilhaId: topico.trilhaId }}>{topico.titulo}</Link></p>
           : <p className="pr-vazio">Sem tópico de estudo ligado a esta ferramenta.</p>}
       </Secao>
+      )}
 
       {mesmaFase.length > 0 && (
         <Secao titulo={`Alternativas na mesma fase (${mesmaFase.length})`}>

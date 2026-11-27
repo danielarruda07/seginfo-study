@@ -1,5 +1,6 @@
 import { http } from './http';
 import { collection } from './store';
+import type { RelatorioExport, SecaoRelatorio } from './exportarRelatorio';
 
 /** Espelho do relatório devolvido por POST /api/scan (apps/api/src/scanEndpoint.ts). */
 export type Severidade = 'alta' | 'media' | 'baixa' | 'info';
@@ -183,4 +184,82 @@ export function baixarArquivo(nome: string, conteudo: string, tipo = 'text/plain
   a.download = nome;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+
+/** Seções de um relatório de scan (reutilizadas no relatório único e no de lote). */
+function secoesDoScan(r: ScanRelatorio, prefixo = ''): SecaoRelatorio[] {
+  const p = prefixo ? `${prefixo} — ` : '';
+  const secoes: SecaoRelatorio[] = [];
+  secoes.push({
+    titulo: `${p}Achados`,
+    texto: r.achados.length ? undefined : ['Nenhum achado nesta varredura.'],
+    itens: r.achados.map((a) => ({ severidade: a.severidade, titulo: a.titulo, detalhe: a.detalhe, recomendacao: a.recomendacao })),
+  });
+  if (r.tls) {
+    secoes.push({ titulo: `${p}TLS / certificado`, tabela: { colunas: ['Item', 'Valor'], linhas: [
+      ['Protocolo', r.tls.protocolo], ['Emissor', r.tls.emissor],
+      ['Válido até', r.tls.validoAte ? `${r.tls.validoAte}${r.tls.diasRestantes != null ? ` (${r.tls.diasRestantes} dias)` : ''}` : null],
+      ['Cadeia', r.tls.cadeiaConfiavel ? 'confiável' : `NÃO confiável${r.tls.erroCadeia ? ` (${r.tls.erroCadeia})` : ''}`],
+    ] } });
+  }
+  secoes.push({ titulo: `${p}Cabeçalhos de segurança`, tabela: { colunas: ['Cabeçalho', 'Situação', 'Valor / dica'],
+    linhas: r.cabecalhos.map((h) => [h.nome, h.presente ? 'presente' : 'ausente', h.presente ? h.valor : h.dica]) } });
+  const extras: (string | null)[][] = [];
+  if (r.cors?.acao) extras.push(['CORS', `Allow-Origin=${r.cors.acao}${r.cors.permiteCredenciais ? ' · credenciais' : ''}${r.cors.refleteOrigem ? ' · reflete a origem' : ''}`]);
+  if (r.metodos?.permitidos.length) extras.push(['Métodos (OPTIONS)', r.metodos.permitidos.join(', ')]);
+  if (r.tecnologias.length) extras.push(['Tecnologias', r.tecnologias.join(', ')]);
+  extras.push(['Rate-limit visível', r.controles.rateLimit ? 'sim' : 'não']);
+  if (r.controles.cacheControl) extras.push(['Cache-Control', r.controles.cacheControl]);
+  if (r.redirects.length) extras.push(['Redirecionamentos', r.redirects.map((x) => `${x.status}→${x.para}`).join(' · ')]);
+  secoes.push({ titulo: `${p}Superfície e controles`, tabela: { colunas: ['Item', 'Valor'], linhas: extras } });
+  if (r.openapi) {
+    secoes.push({ titulo: `${p}Superfície da API (OpenAPI)`, texto: [`${r.openapi.titulo ?? 'spec'} ${r.openapi.versao ?? ''} em ${r.openapi.url} — ${r.openapi.rotas} rota(s), ${r.openapi.operacoes} operação(ões).`],
+      codigo: r.openapi.amostra.join('\n') || undefined });
+  }
+  if (r.testesAtivos.length) {
+    secoes.push({ titulo: `${p}Testes ativos (seguros, a confirmar)`, tabela: { colunas: ['Teste', 'Parâmetro', 'Indício', 'Detalhe'],
+      linhas: r.testesAtivos.map((t) => [t.tipo, t.parametro, t.indicio ? 'SIM' : 'não', t.detalhe]) } });
+  }
+  if (r.exposicoes.length) {
+    secoes.push({ titulo: `${p}Exposições sondadas`, tabela: { colunas: ['Caminho', 'HTTP', 'Acessível', 'Sensível'],
+      linhas: r.exposicoes.map((e) => [e.caminho, e.status, e.acessivel ? 'SIM' : 'não', e.sensivel ? 'sim' : 'não']) } });
+  }
+  return secoes;
+}
+
+/** Relatório exportável (HTML/PDF) de um scan. */
+export function relatorioDoScan(r: ScanRelatorio): RelatorioExport {
+  const c = contarSeveridade(r.achados);
+  return {
+    titulo: 'Relatório de varredura de endpoint',
+    subtitulo: r.url,
+    confidencial: true,
+    meta: [
+      ['Alvo', r.url], ...(r.urlFinal !== r.url ? [['URL final', r.urlFinal] as [string, string]] : []),
+      ['Data', new Date(r.em).toLocaleString('pt-BR')], ['Escopo', `${r.escopo}${r.ipResolvido ? ` (${r.ipResolvido})` : ''}`],
+      ['HTTP', String(r.status ?? '—')], ['Autenticação', r.autenticacao], ['Tempo de resposta', r.tempoMs != null ? `${r.tempoMs} ms` : '—'],
+      ['Método', 'Não destrutivo: GET/HEAD/OPTIONS' + (r.testesAtivos.length ? ' + testes ativos benignos' : '')],
+    ],
+    resumo: { alta: c.alta, media: c.media, baixa: c.baixa, info: c.info },
+    secoes: r.alcancavel ? secoesDoScan(r) : [{ titulo: 'Resultado', texto: [`Alvo inalcançável: ${r.erro ?? 'sem resposta'}.`] }],
+  };
+}
+
+/** Relatório único (HTML/PDF) consolidando um lote de scans. */
+export function relatorioDoLote(rs: ScanRelatorio[]): RelatorioExport {
+  const todos = rs.flatMap((r) => r.achados);
+  const c = contarSeveridade(todos);
+  return {
+    titulo: 'Relatório de varredura de endpoints (lote)',
+    subtitulo: `${rs.length} alvo(s)`,
+    confidencial: true,
+    meta: [['Data', new Date().toLocaleString('pt-BR')], ['Alvos', rs.map((r) => r.url).join(' · ')]],
+    resumo: { alta: c.alta, media: c.media, baixa: c.baixa, info: c.info },
+    secoes: [
+      { titulo: 'Visão por alvo', tabela: { colunas: ['Alvo', 'HTTP', 'Altos', 'Médios', 'Baixos/Info'],
+        linhas: rs.map((r) => { const k = contarSeveridade(r.achados); return [r.url, r.status, k.alta, k.media, k.baixa + k.info]; }) } },
+      ...rs.flatMap((r) => secoesDoScan(r, r.url)),
+    ],
+  };
 }

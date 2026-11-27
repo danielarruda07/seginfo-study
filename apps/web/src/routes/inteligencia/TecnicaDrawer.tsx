@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MODULO_ESTUDO_ATIVO } from '@/config/modulos';
 import { Link } from '@tanstack/react-router';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
@@ -60,7 +61,7 @@ export function TecnicaDrawer({ tecnica: t, nav, onChange, periodo = '30 dias' }
         <p className={`in-passo ${toneClass(passo.tone)}`} data-alert={passo.tone ? true : undefined}>{passo.texto}</p>
       </section>
 
-      <section>
+      {MODULO_ESTUDO_ATIVO && <section>
         <h3 className="iv-section-label">Tópicos que cobrem</h3>
         <FichaLista vazio="Nenhum tópico mapeado ainda.">
           {t.topicos.flatMap((id) => {
@@ -68,7 +69,7 @@ export function TecnicaDrawer({ tecnica: t, nav, onChange, periodo = '30 dias' }
             return tp ? [<li key={id}><Link to="/trilhas/$trilhaId" params={{ trilhaId: tp.trilhaId }}>{tp.titulo}</Link></li>] : [];
           })}
         </FichaLista>
-      </section>
+      </section>}
 
       <section>
         <h3 className="iv-section-label">Labs que praticam</h3>

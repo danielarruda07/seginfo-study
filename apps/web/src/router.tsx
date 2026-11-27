@@ -1,7 +1,9 @@
 import { lazy } from 'react';
-import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
+import { createRootRoute, createRoute, createRouter, redirect } from '@tanstack/react-router';
 import { Layout } from '@/components/Layout';
+import { MODULO_ESTUDO_ATIVO } from '@/config/modulos';
 
+const Central = lazy(async () => ({ default: (await import('@/routes/Central')).Central }));
 const Dashboard = lazy(async () => ({ default: (await import('@/routes/Dashboard')).Dashboard }));
 const Trilhas = lazy(async () => ({ default: (await import('@/routes/Trilhas')).Trilhas }));
 const Topicos = lazy(async () => ({ default: (await import('@/routes/Topicos')).Topicos }));
@@ -42,17 +44,22 @@ const AgentsAuditoria = lazy(async () => ({ default: (await import('@/routes/age
 
 const rootRoute = createRootRoute({ component: Layout });
 
-const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: Dashboard });
-const trilhasRoute = createRoute({ getParentRoute: () => rootRoute, path: '/trilhas', component: Trilhas });
-const trilhaTopicosRoute = createRoute({ getParentRoute: () => rootRoute, path: '/trilhas/$trilhaId', component: Topicos });
-const topicosRoute = createRoute({ getParentRoute: () => rootRoute, path: '/topicos', component: Topicos });
+/** Módulo de estudo desligado: as URLs antigas levam à Central de Segurança. */
+const somenteComEstudo = () => {
+  if (!MODULO_ESTUDO_ATIVO) throw redirect({ to: '/' });
+};
+
+const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: MODULO_ESTUDO_ATIVO ? Dashboard : Central });
+const trilhasRoute = createRoute({ getParentRoute: () => rootRoute, path: '/trilhas', component: Trilhas, beforeLoad: somenteComEstudo });
+const trilhaTopicosRoute = createRoute({ getParentRoute: () => rootRoute, path: '/trilhas/$trilhaId', component: Topicos, beforeLoad: somenteComEstudo });
+const topicosRoute = createRoute({ getParentRoute: () => rootRoute, path: '/topicos', component: Topicos, beforeLoad: somenteComEstudo });
 const ambienteRoute = createRoute({ getParentRoute: () => rootRoute, path: '/ambiente', component: Inventario });
 const labsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/labs', component: Labs });
 const rangeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/range', component: Range });
 const ferramentasRoute = createRoute({ getParentRoute: () => rootRoute, path: '/ferramentas', component: Ferramentas });
 const metodologiaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/metodologia', component: Metodologia });
-const sessoesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/sessoes', component: Sessoes });
-const metasRoute = createRoute({ getParentRoute: () => rootRoute, path: '/metas', component: Metas });
+const sessoesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/sessoes', component: Sessoes, beforeLoad: somenteComEstudo });
+const metasRoute = createRoute({ getParentRoute: () => rootRoute, path: '/metas', component: Metas, beforeLoad: somenteComEstudo });
 const postsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/posts', component: Posts });
 const cofreRoute = createRoute({ getParentRoute: () => rootRoute, path: '/cofre', component: Cofre });
 const arsenalRoute = createRoute({ getParentRoute: () => rootRoute, path: '/arsenal', component: Arsenal });

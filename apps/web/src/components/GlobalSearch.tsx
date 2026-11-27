@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { MODULO_ESTUDO_ATIVO } from '@/config/modulos';
 import { useNavigate } from '@tanstack/react-router';
 import { OPEN_GLOBAL_SEARCH } from './shell/Topbar';
 
@@ -44,11 +45,11 @@ export function GlobalSearch() {
     const timer = window.setTimeout(async () => {
       const [catalog, sessions, inventory, range, ferramentas] = await Promise.all([import('@/services/catalog'), import('@/services/sessoes'), import('@/services/inventario'), import('@/services/range'), import('@/services/ferramentas')]);
       if (cancelled) return;
-      const topics = catalog.listTopicos({ rows: 1000 }).items.filter((x) => `${x.titulo} ${x.resumo} ${x.tags.join(' ')}`.toLocaleLowerCase().includes(q)).slice(0, 8)
+      const topics = !MODULO_ESTUDO_ATIVO ? [] : catalog.listTopicos({ rows: 1000 }).items.filter((x) => `${x.titulo} ${x.resumo} ${x.tags.join(' ')}`.toLocaleLowerCase().includes(q)).slice(0, 8)
         .map((x) => ({ id: `t-${x.id}`, title: x.titulo, detail: 'Tópico', action: () => navigate({ to: '/trilhas/$trilhaId', params: { trilhaId: x.trilhaId } }) }));
-      const trails = catalog.listTrilhas().filter((x) => `${x.titulo} ${x.descricao}`.toLocaleLowerCase().includes(q)).slice(0, 5)
+      const trails = !MODULO_ESTUDO_ATIVO ? [] : catalog.listTrilhas().filter((x) => `${x.titulo} ${x.descricao}`.toLocaleLowerCase().includes(q)).slice(0, 5)
         .map((x) => ({ id: `r-${x.id}`, title: x.titulo, detail: 'Trilha', action: () => navigate({ to: '/trilhas/$trilhaId', params: { trilhaId: x.id } }) }));
-      const goals = sessions.listMetas().filter((x) => x.titulo.toLocaleLowerCase().includes(q)).slice(0, 5)
+      const goals = !MODULO_ESTUDO_ATIVO ? [] : sessions.listMetas().filter((x) => x.titulo.toLocaleLowerCase().includes(q)).slice(0, 5)
         .map((x) => ({ id: `m-${x.id}`, title: x.titulo, detail: 'Meta', action: () => navigate({ to: '/metas' }) }));
       const labs = inventory.listLabs().filter((x) => `${x.titulo} ${x.objetivo}`.toLocaleLowerCase().includes(q)).slice(0, 5)
         .map((x) => ({ id: `l-${x.id}`, title: x.titulo, detail: 'Lab', action: () => navigate({ to: '/labs' }) }));

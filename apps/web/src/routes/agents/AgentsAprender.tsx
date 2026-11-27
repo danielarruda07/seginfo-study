@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { MODULO_ESTUDO_ATIVO } from '@/config/modulos';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ClickCard } from '@/components/ui/ClickCard';
 import { Bar, Kpi, StatusStrip } from '@/components/InfraKit';
@@ -21,7 +22,7 @@ export function AgentsAprender() {
       <PageHeader
         title="Aprender sobre agentes"
         subtitle="Os 8 pilares para construir um agente que entrega resultado. Clique num pilar para ver o que checar e como os seus agentes estão nele."
-        actions={<Link to="/trilhas/$trilhaId" params={{ trilhaId: 'agentes' }} className="ag-btn"><i className="pi pi-book" aria-hidden="true" /> Abrir a trilha</Link>}
+        actions={MODULO_ESTUDO_ATIVO ? <Link to="/trilhas/$trilhaId" params={{ trilhaId: 'agentes' }} className="ag-btn"><i className="pi pi-book" aria-hidden="true" /> Abrir a trilha</Link> : undefined}
       />
       <GuiaDaTela tela="aprender" />
 

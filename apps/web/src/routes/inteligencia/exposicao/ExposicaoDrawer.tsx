@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
+import { ExportarRelatorio } from '@/components/ExportarRelatorio';
 import { Button } from 'primereact/button';
 import { DetailDrawer } from '@/components/ui/DetailDrawer';
 import { Pill } from '@/components/InfraKit';
-import { historicoAlvo, nomeDoAlvo, type AlvoExposicao } from '@/services/exposicao';
+import { historicoAlvo, nomeDoAlvo, relatorioDaExposicao, type AlvoExposicao } from '@/services/exposicao';
 import { quando, SEVERIDADE } from './comum';
 import { FontesExtras } from './FontesExtras';
 
@@ -19,7 +20,7 @@ export function ExposicaoDrawer({ alvo, varrendo, onVarrer, onClose }: {
   return (
     <DetailDrawer onClose={onClose} wide kind={{ icon: 'pi-globe', label: 'Exposição' }} ariaLabel={`Exposição de ${nomeDoAlvo(alvo)}`}
       title={nomeDoAlvo(alvo)} subtitle={u ? `Última varredura: ${quando(u.criadoEm)}` : 'Ainda não varrido.'}
-      actions={<Button label="Varrer agora" icon="pi pi-refresh" outlined loading={varrendo} onClick={onVarrer} />}>
+      actions={<><Button label="Varrer agora" icon="pi pi-refresh" outlined loading={varrendo} onClick={onVarrer} />{u && <ExportarRelatorio montar={() => relatorioDaExposicao(alvo)} nome={`exposicao_${alvo.valor}`} />}</>}>
 
       {!r ? <p className="in-muted-p">Rode a primeira varredura para ver os dados.</p> : (
         <>

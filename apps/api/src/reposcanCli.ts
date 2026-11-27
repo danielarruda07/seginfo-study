@@ -3,7 +3,7 @@
  * CLI de análise estática de repositório clonado (DevSecOps).
  *
  * Uso (na raiz do SegInfo):
- *   npx tsx apps/api/src/reposcanCli.ts <pasta-do-repo-clonado> [--json] [--fail-on alta|media|baixa]
+ *   npx tsx apps/api/src/reposcanCli.ts <pasta-do-repo-clonado> [--json] [--html arquivo.html] [--fail-on alta|media|baixa]
  *
  * Só LÊ arquivos — não instala dependências nem roda a suíte do repositório.
  * Sai 0 se nada atingir o limiar de --fail-on (padrão: alta); 1 caso contrário; 2 em erro de uso.
@@ -14,6 +14,7 @@ import {
   analisarSegredos, analisarCodigo, analisarInfra, analisarManifesto, analisarInjecao, analisarJwt,
   ordenarAchados, contarRepo, type AchadoRepo, type SeveridadeRepo,
 } from './reposcan.js';
+import { gerarHtmlRelatorio, type RelatorioExport } from '@seginfo/shared';
 
 const IGNORAR_DIR = new Set(['node_modules', '.git', 'dist', 'build', 'out', '.next', 'coverage', 'vendor', '__pycache__', '.venv', 'venv', 'target', '.turbo', '.cache']);
 const EXT_CODIGO = new Set(['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs', '.py', '.go', '.rb', '.java', '.php']);
@@ -52,11 +53,20 @@ function analisarArquivo(rel: string, conteudo: string): AchadoRepo[] {
 
 function main(): number {
   const args = process.argv.slice(2);
-  const alvo = args.find((a) => !a.startsWith('-'));
+  // o alvo é o primeiro argumento posicional que não é o valor de --fail-on ou --html
+  const pular = new Set<number>();
+  for (const opcao of ['--fail-on', '--html']) {
+    const k = args.indexOf(opcao);
+    if (k >= 0) pular.add(k + 1);
+  }
+  const alvo = args.find((a, i) => !a.startsWith('-') && !pular.has(i));
   const json = args.includes('--json');
   const failIdx = args.indexOf('--fail-on');
   const failOn = (failIdx >= 0 ? args[failIdx + 1] : 'alta') as SeveridadeRepo;
-  if (!alvo) { console.error('Uso: reposcanCli <pasta-do-repo> [--json] [--fail-on alta|media|baixa]'); return 2; }
+  const htmlIdx = args.indexOf('--html');
+  const htmlArq = htmlIdx >= 0 ? args[htmlIdx + 1] : undefined;
+  if (htmlIdx >= 0 && (!htmlArq || htmlArq.startsWith('-'))) { console.error('--html exige o caminho do arquivo de saída'); return 2; }
+  if (!alvo) { console.error('Uso: reposcanCli <pasta-do-repo> [--json] [--html arquivo.html] [--fail-on alta|media|baixa]'); return 2; }
   const raiz = path.resolve(alvo);
   if (!fs.existsSync(raiz) || !fs.statSync(raiz).isDirectory()) { console.error(`Pasta não encontrada: ${raiz}`); return 2; }
 
@@ -78,6 +88,11 @@ function main(): number {
   const c = contarRepo(ordenados);
   const limiar: Record<SeveridadeRepo, number> = { alta: 0, media: 1, baixa: 2, info: 3 };
   const reprovou = ordenados.some((a) => limiar[a.severidade] <= limiar[failOn]);
+
+  if (htmlArq) {
+    fs.writeFileSync(htmlArq, gerarHtmlRelatorio(relatorioDoRepo(raiz, arquivos, dependencias, ordenados, reprovou, failOn)));
+    console.error(`Relatório HTML: ${path.resolve(htmlArq)}`);
+  }
 
   if (json) {
     console.log(JSON.stringify({ alvo: raiz, arquivos, dependencias, contagem: c, reprovou, achados: ordenados }, null, 2));
@@ -105,6 +120,36 @@ function main(): number {
   }
   console.log(reprovou ? `REPROVOU (limiar --fail-on ${failOn})` : 'OK');
   return reprovou ? 1 : 0;
+}
+
+const NOME_CAT_REL: Record<string, string> = { segredo: 'Segredos', injecao: 'Injeção (SQL/NoSQL/template/cmd/prompt)', jwt: 'JWT', infra: 'Docker / IaC / CI', dependencia: 'Dependências', codigo: 'Código' };
+
+/** Relatório HTML do scan de repositório (mesmo modelo dos testes da aplicação). */
+function relatorioDoRepo(raiz: string, arquivos: number, dependencias: number, achados: AchadoRepo[], reprovou: boolean, failOn: SeveridadeRepo): RelatorioExport {
+  const c = contarRepo(achados);
+  const porCat = new Map<string, AchadoRepo[]>();
+  for (const a of achados) porCat.set(a.categoria, [...(porCat.get(a.categoria) ?? []), a]);
+  return {
+    titulo: 'Análise estática de repositório',
+    subtitulo: raiz,
+    confidencial: true,
+    meta: [
+      ['Repositório', raiz], ['Data', new Date().toLocaleString('pt-BR')], ['Arquivos lidos', String(arquivos)],
+      ['Dependências inventariadas', String(dependencias)], ['Veredito', reprovou ? `REPROVOU (limiar ${failOn})` : 'OK'],
+      ['Método', 'Análise estática por padrões — lê os arquivos, não executa o código. Achados heurísticos: confirmar.'],
+    ],
+    resumo: { alta: c.alta, media: c.media, baixa: c.baixa, info: c.info },
+    secoes: ['segredo', 'injecao', 'jwt', 'infra', 'dependencia', 'codigo']
+      .filter((cat) => porCat.has(cat))
+      .map((cat) => ({
+        titulo: `${NOME_CAT_REL[cat]} (${porCat.get(cat)!.length})`,
+        itens: porCat.get(cat)!.map((a) => ({
+          severidade: a.severidade, titulo: a.titulo,
+          local: a.linha ? `${a.arquivo}:${a.linha}` : a.arquivo,
+          detalhe: a.trecho, recomendacao: a.recomendacao,
+        })),
+      })),
+  };
 }
 
 process.exit(main());

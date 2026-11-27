@@ -1,4 +1,5 @@
 /** Menu lateral agrupado em seções + breadcrumb derivado da rota (regras puras). */
+import { MODULO_ESTUDO_ATIVO } from '@/config/modulos';
 
 export interface NavItem {
   to: string;
@@ -11,17 +12,28 @@ export interface NavSection {
   items: NavItem[];
 }
 
-export const NAV_SECTIONS: NavSection[] = [
-  {
-    title: 'Estudo',
-    items: [
-      { to: '/', label: 'Painel', icon: 'pi-th-large', exact: true },
-      { to: '/trilhas', label: 'Trilhas', icon: 'pi-sitemap' },
-      { to: '/topicos', label: 'Tópicos', icon: 'pi-book' },
-      { to: '/sessoes', label: 'Sessões', icon: 'pi-clock' },
-      { to: '/metas', label: 'Metas', icon: 'pi-flag' },
-    ],
-  },
+const SECAO_ESTUDO: NavSection = {
+  title: 'Estudo',
+  items: [
+    { to: '/', label: 'Painel', icon: 'pi-th-large', exact: true },
+    { to: '/trilhas', label: 'Trilhas', icon: 'pi-sitemap' },
+    { to: '/topicos', label: 'Tópicos', icon: 'pi-book' },
+    { to: '/sessoes', label: 'Sessões', icon: 'pi-clock' },
+    { to: '/metas', label: 'Metas', icon: 'pi-flag' },
+  ],
+};
+
+const SECAO_VISAO_GERAL: NavSection = {
+  title: 'Visão geral',
+  items: [{ to: '/', label: 'Central de segurança', icon: 'pi-th-large', exact: true }],
+};
+
+/** Monta o menu conforme os módulos ligados (exportado para testar os dois modos). */
+export function montarSecoes(estudoAtivo: boolean): NavSection[] {
+  return [estudoAtivo ? SECAO_ESTUDO : SECAO_VISAO_GERAL, ...SECOES_FIXAS];
+}
+
+const SECOES_FIXAS: NavSection[] = [
   {
     title: 'Prática',
     items: [
@@ -83,9 +95,11 @@ export const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
+export const NAV_SECTIONS: NavSection[] = montarSecoes(MODULO_ESTUDO_ATIVO);
+
 /** Sub-rotas sem item próprio no menu: herdam o item pai e ganham um segmento extra. */
 const EXTRA_SEGMENTS: { prefix: string; parent: string; label: string }[] = [
-  { prefix: '/trilhas/', parent: '/trilhas', label: 'Tópicos da trilha' },
+  ...(MODULO_ESTUDO_ATIVO ? [{ prefix: '/trilhas/', parent: '/trilhas', label: 'Tópicos da trilha' }] : []),
   { prefix: '/agents/agente/', parent: '/agents', label: 'Editor' },
 ];
 

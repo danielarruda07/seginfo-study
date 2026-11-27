@@ -7,7 +7,8 @@ import { DetailDrawer } from '@/components/ui/DetailDrawer';
 import { DetailSection } from '@/components/ui/Detail';
 import { Pill, StatusStrip } from '@/components/InfraKit';
 import { useDrawerSelection } from '@/hooks/useDrawerSelection';
-import { getPericia, listarPericias, type PericiaItem } from '@/services/pericia';
+import { getPericia, listarPericias, relatorioDaPericia, type PericiaItem } from '@/services/pericia';
+import { ExportarRelatorio } from '@/components/ExportarRelatorio';
 
 /**
  * Laudos dos alvos reais do honeypot: o que o invasor deixou na máquina em cada janela
@@ -61,6 +62,9 @@ function Ficha({ id }: { id: string }) {
 
   return (
     <>
+      <div className="iv-row" style={{ justifyContent: 'flex-end' }}>
+        <ExportarRelatorio montar={() => relatorioDaPericia(q.data!)} nome={`laudo_${q.data.alvo}`} />
+      </div>
       {d.erros.length > 0 && (
         <StatusStrip tone="warn" icon="pi-exclamation-triangle">
           Parte da coleta falhou: {d.erros.join(' · ')}
