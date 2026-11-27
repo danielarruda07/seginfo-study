@@ -268,3 +268,63 @@ export function filtrarFerramentas(termo: string, lista: Ferramenta[] = FERRAMEN
   if (!q) return lista;
   return lista.filter((f) => norm([f.nome, f.resumo, f.comando ?? '', ...f.passos, ...f.limites].join(' ')).includes(q));
 }
+
+// ---------- comandos prontos (aparecem na Ajuda e no "Como usar" do rodapé de cada ferramenta) ----------
+
+export interface Comando { rotulo: string; codigo: string; shell: 'PowerShell' | 'Git Bash' | 'Claude Code' }
+
+export const COMANDOS: Record<string, Comando[]> = {
+  local: [
+    {
+      rotulo: 'Varrer um repositório já clonado (repositório inteiro)', shell: 'PowerShell',
+      codigo: 'powershell -ExecutionPolicy Bypass -File "$HOME\\SegInfo-Confidencial\\varredura-local.ps1" -Repo C:\\temp\\criptobrokers',
+    },
+    {
+      rotulo: 'Revisar só uma branch (PR)', shell: 'PowerShell',
+      codigo: 'powershell -ExecutionPolicy Bypass -File "$HOME\\SegInfo-Confidencial\\varredura-local.ps1" -Repo C:\\temp\\criptobrokers -Branch feat/minha-branch',
+    },
+    {
+      rotulo: 'Atualizar o clone antes de varrer (só baixa; não envia nada)', shell: 'PowerShell',
+      codigo: 'git -C C:\\temp\\criptobrokers fetch --all --prune\ngit -C C:\\temp\\criptobrokers pull --ff-only',
+    },
+    {
+      rotulo: 'Dentro do Claude Code que o script abrir: primeiro o mapa, depois a varredura', shell: 'Claude Code',
+      codigo: '(cole o prompt "Mapa da aplicação" de Conhecimento → Prompts de pentest)\n/claude-security:claude-security scan this whole repository at high effort; I understand it may take a while and use a significant number of tokens\n/exit',
+    },
+    {
+      rotulo: 'Ver os relatórios coletados', shell: 'PowerShell',
+      codigo: 'explorer "$HOME\\SegInfo-Confidencial\\varreduras"',
+    },
+    {
+      rotulo: 'Retomar uma varredura que caiu (o script mantém a cópia e mostra o caminho)', shell: 'PowerShell',
+      codigo: 'cd "$env:TEMP\\seginfo-varredura\\<repo>-<data>"\nclaude --resume\n# dentro: /claude-security:claude-security continue the scan',
+    },
+  ],
+  revisao: [
+    {
+      rotulo: 'Repositório privado no GitHub: o worker usa um token só-leitura (Contents: Read-only) configurado na VM 100', shell: 'PowerShell',
+      codigo: '# já configurado para EtherGlobalAssets/criptobrokers. Para outro repositório, inclua-o no mesmo token em\n# GitHub → Settings → Developer settings → Fine-grained tokens → (token) → Repository access',
+    },
+  ],
+  reposcan: [
+    {
+      rotulo: 'Análise estática rápida de um repositório local (Git Bash, na pasta do SegInfo)', shell: 'Git Bash',
+      codigo: 'scripts/reposcan.sh /c/temp/criptobrokers --html "$HOME/SegInfo-Confidencial/reposcan-criptobrokers.html"',
+    },
+    { rotulo: 'Como gate de CI (falha se houver achado médio ou pior)', shell: 'Git Bash', codigo: 'scripts/reposcan.sh . --json --fail-on media' },
+  ],
+  gate: [
+    { rotulo: 'Chamar o Scanner na pipeline (precisa de SCAN_CI_SECRET e do Service Token)', shell: 'Git Bash', codigo: 'scripts/scan-ci.sh https://staging.exemplo.com/api/health' },
+  ],
+};
+
+/** Ferramentas a mostrar no "Como usar" do rodapé de cada tela. */
+export const COMO_USAR_POR_ROTA: Record<string, string[]> = {
+  '/scanner': ['scanner', 'ativos', 'jwt', 'gate'],
+  '/revisao-codigo': ['revisao', 'local', 'prompts', 'reposcan'],
+  '/prompts': ['local', 'prompts'],
+  '/exposicao': ['exposicao'],
+  '/artex': ['artex'],
+  '/metodologia': ['metodologia'],
+  '/laudos': ['laudos'],
+};

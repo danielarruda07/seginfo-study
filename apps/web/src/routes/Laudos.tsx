@@ -9,6 +9,7 @@ import { Pill, StatusStrip } from '@/components/InfraKit';
 import { useDrawerSelection } from '@/hooks/useDrawerSelection';
 import { getPericia, listarPericias, relatorioDaPericia, type PericiaItem } from '@/services/pericia';
 import { ExportarRelatorio } from '@/components/ExportarRelatorio';
+import { ComoUsar } from '@/components/ComoUsar';
 
 /**
  * Laudos dos alvos reais do honeypot: o que o invasor deixou na máquina em cada janela
@@ -206,6 +207,7 @@ export function Laudos() {
           <Ficha id={sel.item.id} />
         </DetailDrawer>
       )}
+      <ComoUsar rota="/laudos" />
     </div>
   );
 }

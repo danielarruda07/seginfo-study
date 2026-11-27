@@ -7,6 +7,7 @@ import {
   CAMADA_ARTEX, CONFIANCA_ARTEX, type SinalArtex, type CamadaArtex,
 } from '@/data/ameacaArtex';
 import { getTecnica } from '@/data/attack';
+import { ComoUsar } from '@/components/ComoUsar';
 
 const CAMADAS: CamadaArtex[] = ['comportamento', 'web', 'identidade', 'host', 'nuvem'];
 
@@ -89,6 +90,7 @@ export function ArtexCaca() {
           ))}
         </ul>
       </div>
+      <ComoUsar rota="/artex" />
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
   ESFORCO_ROTULO, MODO_ROTULO, STATUS_ROTULO,
   type EsforcoVarredura, type ModoVarredura, type SevCodigo, type StatusVarredura, type VarreduraResumo,
 } from '@/services/revisaoCodigo';
+import { ComoUsar } from '@/components/ComoUsar';
 
 const TOM_SEV: Record<SevCodigo, 'danger' | 'serious' | 'warning' | 'info' | 'muted'> = {
   critica: 'danger', alta: 'serious', media: 'warning', baixa: 'info', info: 'muted',
@@ -188,6 +189,7 @@ export function RevisaoCodigo() {
       </div>
 
       {aberta && <Ficha id={aberta} onClose={() => setAberta(null)} />}
+      <ComoUsar rota="/revisao-codigo" />
     </div>
   );
 }

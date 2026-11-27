@@ -14,6 +14,7 @@ import { DestaquesExtras } from './inteligencia/exposicao/FontesExtras';
 import { ExposicaoDrawer } from './inteligencia/exposicao/ExposicaoDrawer';
 import '@/styles/telas/inteligencia.css';
 import '@/styles/telas/exposicao.css';
+import { ComoUsar } from '@/components/ComoUsar';
 
 const erroDe = (e: unknown, padrao: string) =>
   (e as { response?: { data?: { error?: string } } }).response?.data?.error ?? padrao;
@@ -168,6 +169,7 @@ export function Exposicao() {
       </section>
 
       {alvoAberto && <ExposicaoDrawer alvo={alvoAberto} varrendo={varrendo.has(alvoAberto.id)} onVarrer={() => void varrer(alvoAberto.id)} onClose={() => setAberto(null)} />}
+      <ComoUsar rota="/exposicao" />
     </div>
   );
 }

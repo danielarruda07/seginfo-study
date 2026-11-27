@@ -5,7 +5,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { EmptyState, Pill } from '@/components/InfraKit';
 import type { Tone } from '@/theme/status';
-import { FERRAMENTAS, FRENTES, ROTEIROS, ROTULO_IA, filtrarFerramentas, type Ferramenta, type NivelIa } from './conhecimento/ajuda';
+import { COMANDOS, FERRAMENTAS, FRENTES, ROTEIROS, ROTULO_IA, filtrarFerramentas, type Ferramenta, type NivelIa } from './conhecimento/ajuda';
+import { BlocoComandos } from '@/components/ComoUsar';
 
 const TOM_IA: Record<NivelIa, Tone> = { profunda: 'ok', apoio: 'info', nenhuma: 'muted' };
 const porId = new Map(FERRAMENTAS.map((f) => [f.id, f]));
@@ -25,6 +26,8 @@ function FichaFerramenta({ f, abrir }: { f: Ferramenta; abrir: (to: string) => v
       <p style={{ marginTop: '0.6rem' }}>{f.resumo}</p>
       <h4 className="iv-section-label">Como usar</h4>
       <ol style={{ margin: '0.25rem 0 0.5rem 1.2rem' }}>{f.passos.map((p) => <li key={p}>{p}</li>)}</ol>
+      {(COMANDOS[f.id] ?? []).length > 0 && <h4 className="iv-section-label">Comandos prontos</h4>}
+      <BlocoComandos comandos={COMANDOS[f.id] ?? []} />
       <p><strong>O que você recebe:</strong> {f.resultado}</p>
       {f.limites.length > 0 && (
         <>
@@ -71,6 +74,20 @@ export function Ajuda() {
               </ol>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="iv-mt" aria-labelledby="aj-local">
+        <h2 id="aj-local" className="iv-section-label">Passo a passo: varredura profunda de um repositório local (sem gastar a API)</h2>
+        <div className="iv-card" style={{ padding: '0.9rem 1rem' }}>
+          <ol style={{ marginTop: 0, paddingLeft: '1.2rem' }}>
+            <li>Tenha o repositório clonado (ex.: <code>{'C:\\temp\\criptobrokers'}</code>) e o Claude Code instalado e logado na sua assinatura.</li>
+            <li>Abra o <strong>PowerShell</strong> e rode o comando abaixo. O script cria uma cópia descartável sem push e abre o Claude Code nela — o seu clone e o GitHub não são tocados.</li>
+            <li>No Claude Code, cole os prompts de <strong>Conhecimento → Prompts de pentest</strong> (comece pelo <em>Mapa da aplicação</em>, depois <em>Varredura completa — esforço alto</em>). Aceite o custo/tempo quando o plugin perguntar.</li>
+            <li>Ao terminar, digite <code>/exit</code>. O script confere que o original não mudou e copia o relatório para <code>{'SegInfo-Confidencial\\varreduras'}</code> na sua pasta de usuário.</li>
+            <li>Aqui no app: <strong>Inteligência → Revisão de código (IA) → Importar varredura local</strong> → escolha a pasta <code>CLAUDE-SECURITY-…</code>. Depois exporte em HTML/PDF.</li>
+          </ol>
+          <BlocoComandos comandos={COMANDOS.local ?? []} />
         </div>
       </section>
 

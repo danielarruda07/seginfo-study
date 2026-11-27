@@ -6,6 +6,7 @@ import { FASES_PENTEST, NATUREZA_FASE, type FasePentest } from '@/data/metodolog
 import { getFerramenta } from '@/services/ferramentas';
 import { getTecnica } from '@/data/attack';
 import { TATICAS } from '@/data/attack';
+import { ComoUsar } from '@/components/ComoUsar';
 
 const TATICA_NOME = new Map(TATICAS.map((t) => [t.id, t.nome]));
 
@@ -128,6 +129,7 @@ export function Metodologia() {
         <a href="https://owasp.org/www-project-web-security-testing-guide/" target="_blank" rel="noreferrer">OWASP WSTG</a>,{' '}
         <Link to="/attack">Matriz ATT&CK</Link>. O conteúdo é genérico e educativo; o trabalho real segue o contrato e a RoE de cada cliente.
       </p>
+      <ComoUsar rota="/metodologia" />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
 } from '@/services/scanner';
 import { ExportarRelatorio } from '@/components/ExportarRelatorio';
 import { analisarTokenJwt, relatorioDoJwt, type AnaliseJwt, type SevJwt } from '@/services/jwt';
+import { ComoUsar } from '@/components/ComoUsar';
 
 const TOM: Record<Severidade, 'danger' | 'warning' | 'info' | 'muted'> = {
   alta: 'danger', media: 'warning', baixa: 'info', info: 'muted',
@@ -293,6 +294,7 @@ export function Scanner() {
           </ul>
         )}
       </div>
+      <ComoUsar rota="/scanner" />
     </div>
   );
 }

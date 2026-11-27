@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { EmptyState, Pill, StatusStrip } from '@/components/InfraKit';
 import { CATEGORIAS, REGRAS, filtrarPrompts, textoParaCopiar, type CategoriaPrompt, type Custo, type PromptPronto } from './conhecimento/prompts';
+import { ComoUsar } from '@/components/ComoUsar';
 
 const TOM_CUSTO: Record<Custo, 'ok' | 'warning' | 'serious'> = { baixo: 'ok', medio: 'warning', alto: 'serious' };
 
@@ -79,6 +80,7 @@ export function Prompts() {
         <summary style={{ cursor: 'pointer' }}><strong>Regras anexadas aos prompts de análise</strong></summary>
         <pre style={{ whiteSpace: 'pre-wrap', margin: '0.5rem 0 0', fontSize: '0.85rem' }}>{REGRAS}</pre>
       </details>
+      <ComoUsar rota="/prompts" />
     </div>
   );
 }

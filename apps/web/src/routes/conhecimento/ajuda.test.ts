@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { FERRAMENTAS, FRENTES, ROTEIROS, filtrarFerramentas } from './ajuda';
+import { COMANDOS, COMO_USAR_POR_ROTA, FERRAMENTAS, FRENTES, ROTEIROS, filtrarFerramentas } from './ajuda';
 import { NAV_SECTIONS } from '@/components/shell/nav';
+
+const temControle = (s: string) => [...s].some((ch) => { const n = ch.charCodeAt(0); return n < 32 && n !== 10; });
 
 describe('ajuda', () => {
   it('ids únicos e toda ferramenta tem rota ou comando', () => {
@@ -25,5 +27,18 @@ describe('ajuda', () => {
     expect(filtrarFerramentas('injecao').length).toBeGreaterThan(0);
     expect(filtrarFerramentas('')).toHaveLength(FERRAMENTAS.length);
     expect(filtrarFerramentas('zzzz')).toEqual([]);
+  });
+
+  it('comandos e "como usar" apontam para ferramentas e rotas que existem, sem caractere de controle', () => {
+    const ids = new Set(FERRAMENTAS.map((f) => f.id));
+    const rotas = new Set(NAV_SECTIONS.flatMap((s) => s.items.map((i) => i.to)));
+    for (const id of Object.keys(COMANDOS)) expect(ids.has(id), id).toBe(true);
+    for (const [rota, lista] of Object.entries(COMO_USAR_POR_ROTA)) {
+      expect(rotas.has(rota), rota).toBe(true);
+      for (const id of lista) expect(ids.has(id), id).toBe(true);
+    }
+    for (const c of Object.values(COMANDOS).flat()) expect(temControle(c.codigo), c.rotulo).toBe(false);
+    for (const f of FERRAMENTAS) expect(temControle([f.resumo, f.comando ?? '', ...f.passos].join(' ')), f.id).toBe(false);
+    expect(COMANDOS.local[0].codigo).toContain('C:' + String.fromCharCode(92) + 'temp' + String.fromCharCode(92) + 'criptobrokers');
   });
 });
