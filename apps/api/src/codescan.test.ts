@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  validarRepoUrl, validarBranch, severidadeSarif, extrairCwes, normalizarSarif, resumoDosAchados, sanearPatches,
+  validarRepoUrl, validarBranch, severidadeSarif, extrairCwes, normalizarSarif, resumoDosAchados, sanearPatches, nomeVarreduraLocal,
 } from './codescan.js';
 
 describe('codescan — validação do repositório (segurança do git clone)', () => {
@@ -88,5 +88,15 @@ describe('codescan — patches', () => {
     ]);
     expect(r.map((p) => p.nome)).toEqual(['F1.patch']);
     expect(sanearPatches('x')).toEqual([]);
+  });
+
+  it('nome de varredura local: aceita nome de pasta, recusa caminho absoluto, .. e controle', () => {
+    expect(nomeVarreduraLocal('criptobrokers')).toBe('local:criptobrokers');
+    expect(nomeVarreduraLocal(' ether-dex-backend @ main ')).toBe('local:ether-dex-backend @ main');
+    expect(nomeVarreduraLocal('C:\\temp\\x')).toBeNull();
+    expect(nomeVarreduraLocal('/etc/passwd')).toBeNull();
+    expect(nomeVarreduraLocal('a/../b')).toBeNull();
+    expect(nomeVarreduraLocal('a\nb')).toBeNull();
+    expect(nomeVarreduraLocal(42)).toBeNull();
   });
 });

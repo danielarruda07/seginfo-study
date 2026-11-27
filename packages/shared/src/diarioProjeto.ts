@@ -26,6 +26,20 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-27-varredura-local',
+    data: '2026-11-27',
+    titulo: 'Varredura profunda no repositorio local, com a assinatura e sem tocar no GitHub',
+    descricao:
+      'O Daniel queria rodar a revisao com IA nos clones que ja tem na maquina, sem gastar a chave da API e com ' +
+      'garantia de que nada mudaria no GitHub. A resposta foi uma copia descartavel: git clone local (sem rede), ' +
+      'push apontado para lugar nenhum, configuracoes do repositorio ignoradas e regras de negacao na sessao. ' +
+      'Licao: no Windows o plugin nao tem sandbox, entao a protecao vem de isolar o que pode ser estragado ' +
+      '(a copia) do que importa (o original e o remoto). Junto veio um menu de prompts prontos que chamam as ' +
+      'skills oficiais e analises dirigidas que scanner nenhum faz, como controles que ficaram em modo monitor.',
+    categoria: 'seguranca',
+    tags: ['devsecops', 'claude-security', 'pentest', 'ia'],
+  },
+  {
     id: 'proj-2026-11-27-ajuda',
     data: '2026-11-27',
     titulo: 'Ajuda e guia de uso: ferramenta boa que ninguem sabe usar nao serve',

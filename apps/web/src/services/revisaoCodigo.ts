@@ -94,3 +94,34 @@ export function relatorioDaRevisao(v: VarreduraDetalhe): RelatorioExport {
     secoes,
   };
 }
+
+// ---------- varredura local (Claude Code na máquina do operador) ----------
+
+export interface ArquivoLido { nome: string; texto: string }
+export interface PacoteImportacao { sarif: unknown; relatorioMd?: string; patches: { nome: string; conteudo: string }[]; avisos: string[] }
+
+/** Separa os arquivos do diretório CLAUDE-SECURITY-<ts> escolhidos pelo operador. Pura. */
+export function montarImportacao(arquivos: ArquivoLido[]): PacoteImportacao {
+  const avisos: string[] = [];
+  let sarif: unknown;
+  let relatorioMd: string | undefined;
+  const patches: { nome: string; conteudo: string }[] = [];
+  for (const a of arquivos) {
+    const nome = a.nome.split(/[\/]/).pop() ?? a.nome;
+    if (/\.sarif(\.json)?$/i.test(nome)) {
+      try { sarif = JSON.parse(a.texto); } catch { avisos.push(`${nome}: não é JSON válido.`); }
+    } else if (/\.md$/i.test(nome)) {
+      // prefere o relatório principal se vierem vários .md
+      if (!relatorioMd || /RESULTS/i.test(nome)) relatorioMd = a.texto;
+    } else if (/\.patch$/i.test(nome)) {
+      patches.push({ nome, conteudo: a.texto });
+    } else {
+      avisos.push(`${nome}: ignorado (use .sarif, .md ou .patch).`);
+    }
+  }
+  if (sarif === undefined) avisos.unshift('Falta o arquivo CLAUDE-SECURITY-RESULTS.sarif.');
+  return { sarif, relatorioMd, patches, avisos };
+}
+
+export const importarVarredura = (p: { nome: string; modo: ModoVarredura; esforco: EsforcoVarredura; commit?: string; sarif: unknown; relatorioMd?: string; patches: { nome: string; conteudo: string }[] }) =>
+  http.post<{ id: string; achados: number }>('/codigo/varreduras/importar', p).then((r) => r.data);

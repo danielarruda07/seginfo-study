@@ -162,6 +162,24 @@ export function sanearPatches(entrada: unknown): PatchCodigo[] {
 
 // ---------- rotas do operador ----------
 
+/** Nome de uma varredura local importada (vira 'local:<nome>' na lista). Sem caminho absoluto nem caractere de controle. */
+export function nomeVarreduraLocal(nome: unknown): string | null {
+  if (typeof nome !== 'string') return null;
+  const n = nome.trim();
+  if (!/^\w[\w .@/-]{0,119}$/.test(n) || n.includes('..')) return null;
+  return `local:${n}`;
+}
+
+const Importacao = z.object({
+  nome: z.string().min(1).max(120),
+  commit: z.string().regex(/^[0-9a-f]{7,64}$/).optional(),
+  modo: z.enum(['codebase', 'changes', 'attack-surface']).default('codebase'),
+  esforco: z.enum(['low', 'medium', 'high']).default('medium'),
+  sarif: z.unknown(),
+  relatorioMd: z.string().max(MAX_MD_BYTES).optional(),
+  patches: z.unknown().optional(),
+});
+
 const NovoPedido = z.object({
   repoUrl: z.string().min(1).max(400),
   branch: z.string().max(200).optional(),
@@ -187,6 +205,32 @@ export function registerCodescanUserRoutes(app: FastifyInstance) {
       select: { id: true, status: true, criadoEm: true },
     });
     return reply.code(201).send(criada);
+  });
+
+  /** Importa o resultado de uma varredura feita na máquina do operador (Claude Code local, sem worker). */
+  app.post('/api/codigo/varreduras/importar', { bodyLimit: 25 * 1_048_576 }, async (req, reply) => {
+    const b = Importacao.safeParse(req.body);
+    if (!b.success) return reply.code(400).send({ error: 'Importação inválida.' });
+    const repoUrl = nomeVarreduraLocal(b.data.nome);
+    if (!repoUrl) return reply.code(400).send({ error: 'Nome inválido: use letras, números, ponto, hífen, barra ou espaço.' });
+    const achados = normalizarSarif(b.data.sarif);
+    const s = b.data.sarif as { runs?: unknown } | null;
+    if (!s || typeof s !== 'object' || !Array.isArray(s.runs)) return reply.code(400).send({ error: 'O arquivo não parece um SARIF (falta runs).' });
+    const usuarioId = (req as AuthedRequest).usuarioId;
+    const agora = new Date();
+    const criada = await prisma.varreduraCodigo.create({
+      data: {
+        usuarioId, repoUrl, branch: null, modo: b.data.modo, esforco: b.data.esforco, status: 'concluido',
+        commit: b.data.commit ?? null, workerId: 'importado',
+        achados: achados as unknown as Prisma.InputJsonValue,
+        resumo: resumoDosAchados(achados) as unknown as Prisma.InputJsonValue,
+        relatorioMd: b.data.relatorioMd ?? null,
+        patches: sanearPatches(b.data.patches) as unknown as Prisma.InputJsonValue,
+        iniciadoEm: agora, concluidoEm: agora,
+      },
+      select: { id: true },
+    });
+    return reply.code(201).send({ id: criada.id, achados: achados.length });
   });
 
   app.get('/api/codigo/varreduras', async (req) => {

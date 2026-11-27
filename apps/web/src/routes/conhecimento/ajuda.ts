@@ -124,6 +124,29 @@ export const FERRAMENTAS: Ferramenta[] = [
     ],
   },
   {
+    id: 'local', nome: 'Varredura local com o seu Claude Code', frente: 'codigo', comando: 'scripts\\varredura-local.ps1 -Repo C:\\temp\\<repositorio>', ia: 'profunda', exporta: true,
+    resumo: 'A mesma varredura profunda do plugin claude-security, mas num repositório já clonado na sua máquina e usando a sua assinatura do Claude Code (não gasta a chave da API). O script cria uma cópia descartável sem push, abre o Claude Code nela com regras de negação e coleta o relatório.',
+    passos: [
+      'No PowerShell, na pasta do SegInfo: scripts\\varredura-local.ps1 -Repo C:\\temp\\<repo> (ou -Branch <branch> para revisar um PR).',
+      'No Claude Code que abrir, cole um prompt de Conhecimento → Prompts de pentest (comece pelo "Mapa da aplicação" e depois a varredura de esforço alto).',
+      'Ao terminar, /exit: o script copia CLAUDE-SECURITY-* para %USERPROFILE%\\SegInfo-Confidencial\\varreduras e confere que o original não mudou.',
+      'Em Revisão de código (IA) → Importar varredura local, escolha a pasta: achados, patches e export HTML/PDF como numa varredura do worker.',
+    ],
+    resultado: 'Relatório MD/SARIF/patches do plugin + análises dirigidas, importáveis no app.',
+    limites: [
+      'No Windows o plugin não tem sandbox: os agentes leem com o seu usuário. Só para código autorizado (empresa/cliente), nunca de origem desconhecida.',
+      'Nada vai ao GitHub: a cópia não tem push e o plugin nunca commita. O relatório é confidencial e fica fora do OneDrive.',
+      'Consome a cota da sua assinatura; esforço alto e superfície de ataque podem levar horas.',
+    ],
+  },
+  {
+    id: 'prompts', nome: 'Prompts de pentest', frente: 'codigo', to: '/prompts', ia: 'profunda', exporta: false,
+    resumo: 'Prompts prontos que chamam as skills do plugin (varredura, superfície de ataque, modelo de ameaças, triagem, patches) e análises dirigidas de aplicação: mapa, autorização (IDOR/BOLA), fluxos de dinheiro, Web3, injeção, JWT e integrações.',
+    passos: ['Abra Conhecimento → Prompts de pentest.', 'Copie o prompt (as regras de só-leitura vão junto) e cole no Claude Code aberto pelo script.'],
+    resultado: 'Análises em CLAUDE-SECURITY-ANALISES/, coletadas pelo script junto do relatório.',
+    limites: ['Os prompts de aplicação não passam pela verificação por agentes do plugin: confirme os achados em staging.'],
+  },
+  {
     id: 'radar', nome: 'Radar', frente: 'deteccao', to: '/radar', ia: 'nenhuma', exporta: false,
     resumo: 'Eventos dos sensores e honeypots por origem, serviço e técnica MITRE, com linha do tempo e reputação (GreyNoise).',
     passos: ['Filtre por ambiente e técnica.', 'Abra um evento para ver o caminho do ataque.'],
@@ -221,7 +244,8 @@ export const ROTEIROS: Roteiro[] = [
     id: 'repo', titulo: 'Pentest de repositório (código-fonte)', quando: 'O cliente dá acesso ao repositório.',
     passos: [
       { texto: 'Rode o Reposcan primeiro: em segundos mostra segredos, CI/Docker inseguros e padrões óbvios.', ferramenta: 'reposcan' },
-      { texto: 'Peça a Revisão de código (IA) com esforço alto: é ela que acha authn/authz, lógica e cadeias.', ferramenta: 'revisao' },
+      { texto: 'Peça a Revisão de código (IA) com esforço alto — no worker (URL do GitHub) ou na sua máquina (repositório já clonado, sem gastar a API): é ela que acha authn/authz, lógica e cadeias.', ferramenta: 'revisao' },
+      { texto: 'No repositório local, rode também os prompts de aplicação (autorização, dinheiro, Web3) e consolide o laudo.', ferramenta: 'prompts' },
       { texto: 'Valide os achados críticos lendo o trecho apontado (e, se possível, em staging).' },
       { texto: 'Junte os dois relatórios e os patches sugeridos no laudo; exporte HTML/PDF.', ferramenta: 'revisao' },
     ],

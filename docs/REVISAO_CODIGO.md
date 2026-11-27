@@ -86,3 +86,21 @@ Você (tela)                 API do SegInfo                    Worker (VM 100, u
 
 O `install.sh` fixa a versão do plugin (`PLUGIN_COMMIT`). Para atualizar, troque o commit **de
 propósito**, leia o changelog do plugin e rode o instalador de novo.
+
+## Varredura local (Claude Code na sua máquina) — v0.62
+
+Para repositórios **já clonados** na máquina de trabalho (ex.: `C:\temp\<repo>`), usando a **sua assinatura do Claude Code** em vez da chave da API:
+
+```powershell
+scripts\varredura-local.ps1 -Repo C:\temp\<repo>              # repositório inteiro
+scripts\varredura-local.ps1 -Repo C:\temp\<repo> -Branch <b>  # revisar uma branch/PR
+```
+
+O script:
+1. faz `git clone` **local** (sem rede) para uma cópia descartável em `%TEMP%\seginfo-varredura\`; o `origin` da cópia é a pasta local e o **push aponta para lugar nenhum**;
+2. abre o Claude Code na cópia com `--setting-sources user` (ignora `.claude/`, hooks e MCP do repositório), `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`, `--plugin-dir` do claude-security e regras de negação (git push/remote/config, gh, curl/wget, ssh, npm/pip/yarn/pnpm, docker, WebFetch/WebSearch);
+3. ao `/exit`, confere que HEAD e status do original **não mudaram**, copia `CLAUDE-SECURITY-*` para `%USERPROFILE%\SegInfo-Confidencial\varreduras\` (fora do OneDrive) e pergunta se apaga a cópia.
+
+Os prompts prontos ficam em **Conhecimento → Prompts de pentest**. O resultado entra no app por **Revisão de código (IA) → Importar varredura local** (escolha a pasta `CLAUDE-SECURITY-*`): achados, patches e export HTML/PDF como numa varredura do worker.
+
+**Limite:** no Windows o plugin não tem sandbox — os agentes leem com o seu usuário. Use só em código autorizado (empresa/cliente), nunca de origem desconhecida; para isso, use o worker da VM 100.

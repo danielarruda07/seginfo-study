@@ -8,6 +8,7 @@ import { DetailDrawer } from '@/components/ui/DetailDrawer';
 import { Kpi, Pill, StatusStrip, EmptyState } from '@/components/InfraKit';
 import { ExportarRelatorio } from '@/components/ExportarRelatorio';
 import { baixarArquivo } from '@/services/scanner';
+import { ImportarLocal } from './revisao/ImportarLocal';
 import {
   apagarVarredura, getVarredura, listarVarreduras, pedirVarredura, relatorioDaRevisao, totalAchados,
   ESFORCO_ROTULO, MODO_ROTULO, STATUS_ROTULO,
@@ -152,6 +153,8 @@ export function RevisaoCodigo() {
         {modo === 'attack-surface' && <p className="iv-muted" style={{ marginBottom: 0 }}>Auditoria em três estágios do plugin, a mais profunda e a mais cara. Pode levar de 1 a 2,5 horas.</p>}
         {erro && <StatusStrip tone="warn" icon="pi-exclamation-triangle">{erro}</StatusStrip>}
       </div>
+
+      <ImportarLocal onImportada={setAberta} />
 
       <div className="iv-card iv-mt">
         <h2 className="iv-section-label">Varreduras</h2>
