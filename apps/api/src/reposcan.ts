@@ -49,17 +49,26 @@ const REGRAS_SEGREDO: RegraSegredo[] = [
 /** Atribuição genérica a nome sensível: senha/token/secret = "valor". */
 const RE_ATRIB_SENSIVEL = /\b(pass(?:word|wd)?|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret|auth)\b\s*[:=]\s*['"]([^'"\s]{8,})['"]/i;
 
+/** Arquivo de EXEMPLO/template (valores de placeholder esperados). */
+export function ehArquivoExemplo(rel: string): boolean {
+  return /\.(example|exemplo|sample|dist|template|tmpl)(\.\w+)?$|(^|[./])\.env\.(example|exemplo|sample|dist|template)\b/i.test(rel);
+}
+
 /** Acha segredos numa linha. Pura. */
 export function analisarSegredos(rel: string, conteudo: string): AchadoRepo[] {
   const achados: AchadoRepo[] = [];
   const linhas = conteudo.split(/\r?\n/);
+  const exemplo = ehArquivoExemplo(rel);
   const ehEnv = /(^|\/)\.env(\.|$)|\.env\./.test(rel) || /(^|\/)\.env$/.test(rel);
   linhas.forEach((linha, i) => {
     if (linha.length > 500) return; // minificado/huge: pula
+    // Provedores específicos (AKIA, chave privada, ghp_...) valem SEMPRE — até num .example não deveria vazar
     for (const r of REGRAS_SEGREDO) {
       const m = r.re.exec(linha);
       if (m) achados.push({ categoria: 'segredo', severidade: r.sev, regra: r.regra, titulo: r.titulo, arquivo: rel, linha: i + 1, trecho: redigir(m[0]), recomendacao: 'Remover do código, rotacionar o segredo e usar variável de ambiente/secret manager.' });
     }
+    // Heurísticas genéricas NÃO rodam em arquivos de exemplo/template (placeholder é esperado)
+    if (exemplo) return;
     const ga = RE_ATRIB_SENSIVEL.exec(linha);
     if (ga && !PLACEHOLDERS.test(ga[2]) && !/^\$\{|^process\.env|^os\.environ/.test(ga[2])) {
       achados.push({ categoria: 'segredo', severidade: 'media', regra: 'atrib-sensivel', titulo: `Valor sensível atribuído a "${ga[1]}"`, arquivo: rel, linha: i + 1, trecho: redigir(ga[2]), recomendacao: 'Não embutir segredo no código; ler de variável de ambiente/secret manager.' });
@@ -204,10 +213,13 @@ export function analisarInfra(rel: string, conteudo: string): AchadoRepo[] {
   if (/docker-compose(\.\w+)?\.ya?ml$/.test(nome) || nome === 'compose.yaml' || nome === 'compose.yml') {
     const linhas = conteudo.split(/\r?\n/);
     linhas.forEach((l, i) => {
+      if (/^\s*#/.test(l)) return; // comentário: ignora
       if (/privileged\s*:\s*true/i.test(l)) add('alta', 'compose-privileged', 'Serviço privileged: true', 'Evitar privileged; conceder só as capabilities necessárias.', i + 1);
       if (/network_mode\s*:\s*["']?host/i.test(l)) add('media', 'compose-host-net', 'network_mode: host', 'Usar rede isolada em vez de host.', i + 1);
       if (/^\s*-?\s*["']?0\.0\.0\.0:/i.test(l)) add('baixa', 'compose-bind-all', 'Porta publicada em 0.0.0.0', 'Restringir o bind (127.0.0.1) quando possível.', i + 1);
-      if (/\b\w*(?:PASS|SECRET|TOKEN|KEY)\w*\s*[:=]\s*(?!\$\{)\S+/i.test(l)) add('media', 'compose-segredo', 'Possível segredo inline no compose', 'Usar variável de ambiente/secret, não valor fixo.', i + 1);
+      // valor fixo só conta se NÃO for referência a variável (${VAR}, incl. com default) nem placeholder
+      const ms = /\b\w*(?:PASS|SECRET|TOKEN|KEY)\w*\s*[:=]\s*(.+?)\s*$/i.exec(l);
+      if (ms && !/^\$\{/.test(ms[1]) && !/^["']?\$\{/.test(ms[1]) && !PLACEHOLDERS.test(ms[1])) add('media', 'compose-segredo', 'Possível segredo inline no compose', 'Usar variável de ambiente/secret, não valor fixo.', i + 1);
     });
   }
 

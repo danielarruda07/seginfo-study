@@ -26,6 +26,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-27-reposcan-fp',
+    data: '2026-11-27',
+    titulo: 'Reposcan: menos falso positivo (arquivos .example e ${VAR} no compose)',
+    descricao:
+      'Rodei o proprio reposcan no repo do SegInfo (531 arquivos): 0 vulnerabilidade real — os altos eram ' +
+      'fixtures de teste e um prisma.$queryRaw parametrizado; o ruido vinha de arquivos .env.example e de ' +
+      'referencias ${VAR} no docker-compose. Ajustei: arquivos de exemplo/template nao disparam as ' +
+      'heuristicas genericas de segredo (chave de provedor real ainda dispara), e compose-segredo ignora ' +
+      'comentario e ${VAR}. Medios caíram de 90 para 21. Licao: rodar a ferramenta no proprio codigo e o ' +
+      'melhor jeito de achar e cortar falso positivo antes de usar em cliente.',
+    categoria: 'seguranca',
+    tags: ['reposcan', 'devsecops', 'falso-positivo', 'sast'],
+    projetoId: null,
+  },
+  {
     id: 'proj-2026-11-27-doc-seguranca',
     data: '2026-11-27',
     titulo: 'Documentacao consolidada das ferramentas de seguranca (docs/SEGURANCA.md)',

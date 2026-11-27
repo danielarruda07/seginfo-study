@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   analisarSegredos, analisarCodigo, analisarInfra, analisarManifesto, analisarInjecao, analisarJwt,
-  redigir, contarRepo, ordenarAchados,
+  redigir, contarRepo, ordenarAchados, ehArquivoExemplo,
 } from './reposcan.js';
 
 describe('reposcan — segredos', () => {
@@ -26,6 +26,16 @@ describe('reposcan — segredos', () => {
   it('redige o segredo', () => {
     expect(redigir('AKIABCDEFGHIJKLMNOP1')).toMatch(/^AKI…P1 \(20 chars\)$/);
     expect(redigir('curto')).toBe('****');
+  });
+
+  it('não acusa valor genérico em arquivo de exemplo, mas ainda pega chave de provedor', () => {
+    expect(ehArquivoExemplo('.env.example')).toBe(true);
+    expect(ehArquivoExemplo('config.exemplo')).toBe(true);
+    expect(ehArquivoExemplo('app.js')).toBe(false);
+    // .env.example com valor realista NÃO vira env-valor/atrib
+    expect(analisarSegredos('.env.example', 'DATABASE_URL=postgres://u:p@host/db')).toEqual([]);
+    // mas uma chave AWS de verdade num .example ainda é flagada
+    expect(analisarSegredos('.env.example', 'AWS_KEY=AKIABCDEFGHIJKLMNOP1').some((a) => a.regra === 'aws-akid')).toBe(true);
   });
 });
 
@@ -52,6 +62,13 @@ describe('reposcan — infra', () => {
   it('compose privileged e workflow pull_request_target', () => {
     expect(analisarInfra('docker-compose.yml', 'services:\n  a:\n    privileged: true').some((a) => a.regra === 'compose-privileged')).toBe(true);
     expect(analisarInfra('.github/workflows/ci.yml', 'on: pull_request_target\njobs: {}').some((a) => a.regra === 'ci-pr-target')).toBe(true);
+  });
+
+  it('compose: ${VAR} e comentário não viram compose-segredo; valor fixo vira', () => {
+    expect(analisarInfra('docker-compose.yml', '      - INGEST_TOKEN=${INGEST_TOKEN}').some((a) => a.regra === 'compose-segredo')).toBe(false);
+    expect(analisarInfra('docker-compose.yml', '      - FLAG=${FLAG:-false}').some((a) => a.regra === 'compose-segredo')).toBe(false);
+    expect(analisarInfra('docker-compose.yml', '      # DATABASE_TOKEN=exemplo').some((a) => a.regra === 'compose-segredo')).toBe(false);
+    expect(analisarInfra('docker-compose.yml', '      - API_TOKEN=abc123xyzFIXO').some((a) => a.regra === 'compose-segredo')).toBe(true);
   });
 });
 
