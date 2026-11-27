@@ -25,6 +25,9 @@ services:
       # Service Token do Access para a ingestão (app `estudo-ingest`)
       - CF_ACCESS_INGEST_AUD=${CF_ACCESS_INGEST_AUD}
       - CF_ACCESS_INGEST_CLIENT_ID=${CF_ACCESS_INGEST_CLIENT_ID}
+      # Quality gate de higiene chamável pela CI (rota /api/scan/ci). Segredo HMAC;
+      # sem ele a rota responde 503 (fail-closed). Ver docs/SCANNER_CI.md.
+      - SCAN_CI_SECRET=${SCAN_CI_SECRET:-}
       # opcionais (valores padrão seguros)
       - RADAR_GUARDAR_SENHAS=${RADAR_GUARDAR_SENHAS:-false}
       - ATAQUES_RETENCAO_DIAS=${ATAQUES_RETENCAO_DIAS:-90}

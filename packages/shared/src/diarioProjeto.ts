@@ -26,6 +26,19 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-26-scan-ci-env',
+    data: '2026-11-26',
+    titulo: 'Compose passa o segredo do gate de CI ao container',
+    descricao:
+      'A rota /api/scan/ci (v0.52.0) le process.env.SCAN_CI_SECRET, mas o docker-compose nao repassava ' +
+      'essa variavel ao servico da API, entao ela nunca chegava ao container (ficaria sempre em 503). ' +
+      'Adicionei a linha no compose. Falta o Daniel definir o valor no Coolify. Licao: variavel de ' +
+      'ambiente nova so vale de ponta a ponta quando o compose a lista explicitamente.',
+    categoria: 'infra',
+    tags: ['scanner', 'cicd', 'coolify', 'config'],
+    projetoId: null,
+  },
+  {
     id: 'proj-2026-11-26-scanner-ci-hmac',
     data: '2026-11-26',
     titulo: 'Scanner vira quality gate: rota HMAC chamavel pela CI/CD',
