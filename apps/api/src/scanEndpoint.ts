@@ -60,6 +60,14 @@ export interface ResumoOpenApi {
   amostra: string[];
 }
 
+/** Resultado de um teste ativo seguro (uma requisição GET a mais, com marcador inofensivo). */
+export interface TesteAtivo {
+  tipo: 'reflexo' | 'open-redirect' | 'autorizacao';
+  parametro: string | null;
+  indicio: boolean;
+  detalhe: string;
+}
+
 export interface ScanRelatorio {
   url: string;
   urlFinal: string;
@@ -83,6 +91,7 @@ export interface ScanRelatorio {
   openapi: ResumoOpenApi | null;
   exposicoes: Exposicao[];
   autenticacao: 'exigida' | 'aberta' | 'incerta';
+  testesAtivos: TesteAtivo[];
   achados: Achado[];
   em: string;
 }
@@ -111,6 +120,13 @@ const CAMINHOS_EXPOSICAO: { caminho: string; sensivel: boolean; sinal?: RegExp }
 
 /** Caminhos onde pode estar uma spec OpenAPI/Swagger legível (mapeamento de superfície). */
 const CAMINHOS_OPENAPI = ['/openapi.json', '/swagger.json', '/v3/api-docs', '/api-docs', '/swagger/v1/swagger.json'];
+
+/** Parâmetros comuns de redirecionamento — testados com destino-marcador, sem seguir. */
+const PARAMS_REDIRECT = ['redirect', 'url', 'next', 'return', 'returnUrl', 'returnTo', 'dest', 'destination', 'continue', 'redirect_uri'];
+/** Host-marcador inofensivo para o teste de open redirect (domínio reservado, não resolve). */
+const HOST_MARCADOR = 'seginfo-redir-check.invalid';
+/** Marcador inofensivo (só letras/dígitos, não é HTML nem script) para o teste de reflexo. */
+const MARCADOR_REFLEXO = 'sgfRefl0PROBE';
 
 // ---------- analisadores puros (testáveis sem rede) ----------
 
@@ -148,6 +164,39 @@ export function analisarCors(origemEnviada: string, acao: string | null | undefi
     permiteCredenciais: /true/i.test(acac ?? ''),
     refleteOrigem: a === origemEnviada,
     curinga: a === '*',
+  };
+}
+
+/** O corpo reflete o marcador sem codificar (indício de reflexo de entrada)? Pura. */
+export function corpoReflete(corpo: string, marcador: string): boolean {
+  return corpo.includes(marcador);
+}
+
+/** O Location aponta para o host-marcador (indício de open redirect)? Pura. */
+export function locationApontaMarcador(location: string | null | undefined, hostMarcador: string): boolean {
+  if (!location) return false;
+  try {
+    // resolve relativo contra uma base neutra para extrair o host de destino
+    const u = new URL(location, 'https://base.local');
+    return u.hostname === hostMarcador;
+  } catch {
+    // Location mal formado: cai no teste textual (ex.: "//host/..")
+    return new RegExp(`(^|/|@)${hostMarcador.replace(/[.]/g, '\\.')}([/:?#]|$)`).test(location);
+  }
+}
+
+/** Compara a resposta com e sem credencial para ver se a autorização é forçada. Pura. */
+export function avaliarAutorizacao(statusSemCred: number, statusComCred: number): TesteAtivo {
+  // se "sem credencial" já devolve conteúdo (2xx) e "com credencial" também, a rota não força auth
+  const abertaSemCred = statusSemCred >= 200 && statusSemCred < 300;
+  const indicio = abertaSemCred && statusComCred >= 200 && statusComCred < 300;
+  return {
+    tipo: 'autorizacao',
+    parametro: null,
+    indicio,
+    detalhe: indicio
+      ? `A rota respondeu ${statusSemCred} sem credencial e ${statusComCred} com credencial de prova: a autorização pode não estar sendo exigida.`
+      : `Sem credencial: ${statusSemCred}; com credencial de prova: ${statusComCred}.`,
   };
 }
 
@@ -232,6 +281,7 @@ export function montarAchados(d: {
   cors: InfoCors | null;
   corpoSinais: { id: string; descricao: string }[];
   exposicoes: Exposicao[];
+  testesAtivos: TesteAtivo[];
   servidor: string | null;
   poweredBy: string | null;
 }): Achado[] {
@@ -291,6 +341,14 @@ export function montarAchados(d: {
   // Exposições
   for (const e of d.exposicoes) {
     if (e.acessivel && e.sensivel) a.push({ id: `exp-${e.caminho}`, severidade: 'alta', titulo: `Exposição acessível: ${e.caminho}`, detalhe: `Respondeu ${e.status} com conteúdo compatível.`, recomendacao: 'Bloquear o acesso público a esse caminho.' });
+  }
+
+  // Testes ativos (seguros): sinalizam candidatos, não confirmam exploração
+  for (const t of d.testesAtivos) {
+    if (!t.indicio) continue;
+    if (t.tipo === 'open-redirect') a.push({ id: `ativo-redirect-${t.parametro}`, severidade: 'media', titulo: `Possível open redirect no parâmetro "${t.parametro}"`, detalhe: `${t.detalhe} A confirmar: redirecionamento para destino externo controlado pela URL.`, recomendacao: 'Validar o destino contra uma allowlist; não redirecionar para URLs absolutas vindas do cliente.' });
+    else if (t.tipo === 'reflexo') a.push({ id: `ativo-reflexo-${t.parametro}`, severidade: 'media', titulo: `Entrada refletida sem codificação (parâmetro "${t.parametro}")`, detalhe: `${t.detalhe} A confirmar: ponto candidato a XSS refletido (o scanner não injeta script, só um marcador inofensivo).`, recomendacao: 'Codificar a saída conforme o contexto (HTML/atributo/JS) e aplicar CSP.' });
+    else if (t.tipo === 'autorizacao') a.push({ id: 'ativo-autorizacao', severidade: 'media', titulo: 'Autorização pode não estar sendo exigida', detalhe: `${t.detalhe} A confirmar com o dono da aplicação se a rota deveria ser protegida.`, recomendacao: 'Exigir autenticação/autorização nas rotas sensíveis e negar por padrão.' });
   }
 
   // Divulgação de versão
@@ -411,7 +469,61 @@ const CAB_DICA: Record<string, string> = {
   'Permissions-Policy': 'desliga câmera, microfone etc. não usados',
 };
 
-export async function escanear(urlBruta: string, opts: { exposicoes: boolean; openapi?: boolean }): Promise<ScanRelatorio> {
+// ---------- testes ativos seguros (uma requisição GET a mais, marcador inofensivo) ----------
+
+/** Devolve a URL com um parâmetro setado/sobrescrito (mantém os demais). */
+function comParametro(base: URL, nome: string, valor: string): string {
+  const u = new URL(base.toString());
+  u.searchParams.set(nome, valor);
+  return u.toString();
+}
+
+/** Reflexo: injeta um marcador inofensivo e vê se ele volta cru no corpo. */
+async function testarReflexo(base: URL): Promise<TesteAtivo | null> {
+  // testa um parâmetro existente, senão um nome comum
+  const nome = [...base.searchParams.keys()][0] ?? 'q';
+  try {
+    const alvo = comParametro(base, nome, MARCADOR_REFLEXO);
+    const r = await fetch(alvo, { method: 'GET', redirect: 'manual', headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(TIMEOUT) });
+    const ct = r.headers.get('content-type') ?? '';
+    if (!/text|html|xml|json/i.test(ct)) return { tipo: 'reflexo', parametro: nome, indicio: false, detalhe: 'Resposta não textual; reflexo não avaliado.' };
+    const corpo = (await r.text()).slice(0, 16384);
+    const refletiu = corpoReflete(corpo, MARCADOR_REFLEXO);
+    return { tipo: 'reflexo', parametro: nome, indicio: refletiu, detalhe: refletiu ? `O valor do parâmetro "${nome}" voltou sem codificação no corpo.` : `O marcador em "${nome}" não apareceu cru na resposta.` };
+  } catch {
+    return null;
+  }
+}
+
+/** Open redirect: seta destino-marcador em parâmetros comuns e olha o Location sem seguir. */
+async function testarOpenRedirect(base: URL): Promise<TesteAtivo[]> {
+  const marcador = `https://${HOST_MARCADOR}/or`;
+  const resultados = await Promise.all(PARAMS_REDIRECT.map(async (nome): Promise<TesteAtivo | null> => {
+    try {
+      const alvo = comParametro(base, nome, marcador);
+      const r = await fetch(alvo, { method: 'GET', redirect: 'manual', headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(TIMEOUT) });
+      if (r.status < 300 || r.status >= 400) return null;
+      const indicio = locationApontaMarcador(r.headers.get('location'), HOST_MARCADOR);
+      if (!indicio) return null;
+      return { tipo: 'open-redirect', parametro: nome, indicio: true, detalhe: `Resposta ${r.status} com Location para o destino-marcador.` };
+    } catch {
+      return null;
+    }
+  }));
+  return resultados.filter((t): t is TesteAtivo => t !== null);
+}
+
+/** Autorização: compara a resposta sem e com uma credencial de prova (Bearer inválido). */
+async function testarAutorizacao(url: string, statusSemCred: number): Promise<TesteAtivo | null> {
+  try {
+    const r = await fetch(url, { method: 'GET', redirect: 'manual', headers: { 'User-Agent': UA, Authorization: 'Bearer seginfo-probe-invalido' }, signal: AbortSignal.timeout(TIMEOUT) });
+    return avaliarAutorizacao(statusSemCred, r.status);
+  } catch {
+    return null;
+  }
+}
+
+export async function escanear(urlBruta: string, opts: { exposicoes: boolean; openapi?: boolean; ativos?: boolean }): Promise<ScanRelatorio> {
   const em = new Date().toISOString();
   let u: URL;
   try {
@@ -430,7 +542,7 @@ export async function escanear(urlBruta: string, opts: { exposicoes: boolean; op
     alcancavel: false, erro: null, status: null, tempoMs: null, servidor: null, poweredBy: null,
     tecnologias: [], redirects: [], tls: null, cabecalhos: [], metodos: null, cookies: [],
     cors: null, controles: { rateLimit: false, cacheControl: null, retryAfter: null }, corpoSinais: [],
-    openapi: null, exposicoes: [], autenticacao: 'incerta', achados: [], em,
+    openapi: null, exposicoes: [], autenticacao: 'incerta', testesAtivos: [], achados: [], em,
   };
 
   // requisição principal
@@ -478,6 +590,20 @@ export async function escanear(urlBruta: string, opts: { exposicoes: boolean; op
   // se o OPTIONS (preflight) trouxe cabeçalho CORS e o GET não, usa o do OPTIONS
   if ((!base.cors || !base.cors.acao) && metodosInfo.acao) base.cors = analisarCors(ORIGEM_PROBE, metodosInfo.acao, metodosInfo.acac);
 
+  // testes ativos seguros (opt-in): só se o alvo respondeu
+  if (opts.ativos && base.alcancavel) {
+    const [reflexo, redirects, autz] = await Promise.all([
+      testarReflexo(u),
+      testarOpenRedirect(u),
+      testarAutorizacao(u.toString(), base.status ?? 0),
+    ]);
+    const ativos: TesteAtivo[] = [];
+    if (reflexo) ativos.push(reflexo);
+    ativos.push(...redirects);
+    if (autz) ativos.push(autz);
+    base.testesAtivos = ativos;
+  }
+
   base.achados = montarAchados({
     status: base.status,
     tls: base.tls,
@@ -488,6 +614,7 @@ export async function escanear(urlBruta: string, opts: { exposicoes: boolean; op
     cors: base.cors,
     corpoSinais: base.corpoSinais,
     exposicoes: base.exposicoes,
+    testesAtivos: base.testesAtivos,
     servidor: base.servidor,
     poweredBy: base.poweredBy,
   });
@@ -503,12 +630,13 @@ export function registerScanRoutes(app: FastifyInstance) {
     urls: z.array(z.string().url()).max(MAX_LOTE).optional(),
     exposicoes: z.boolean().optional(),
     openapi: z.boolean().optional(),
+    ativos: z.boolean().optional(),
   }).refine((b) => b.url || (b.urls && b.urls.length), { message: 'Informe url ou urls.' });
 
   app.post('/api/scan', async (req, reply) => {
     const b = Body.safeParse(req.body);
     if (!b.success) return reply.status(400).send({ error: 'Informe uma URL http/https válida (ou uma lista em "urls").' });
-    const opts = { exposicoes: b.data.exposicoes ?? true, openapi: b.data.openapi };
+    const opts = { exposicoes: b.data.exposicoes ?? true, openapi: b.data.openapi, ativos: b.data.ativos ?? false };
     try {
       if (b.data.urls && b.data.urls.length) {
         const relatorios = await Promise.all(

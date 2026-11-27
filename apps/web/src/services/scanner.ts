@@ -45,6 +45,13 @@ export interface ResumoOpenApi {
   amostra: string[];
 }
 
+export interface TesteAtivo {
+  tipo: 'reflexo' | 'open-redirect' | 'autorizacao';
+  parametro: string | null;
+  indicio: boolean;
+  detalhe: string;
+}
+
 export interface ScanRelatorio {
   url: string;
   urlFinal: string;
@@ -68,6 +75,7 @@ export interface ScanRelatorio {
   openapi: ResumoOpenApi | null;
   exposicoes: Exposicao[];
   autenticacao: 'exigida' | 'aberta' | 'incerta';
+  testesAtivos: TesteAtivo[];
   achados: Achado[];
   em: string;
 }
@@ -78,15 +86,15 @@ export interface ScanRegistro extends ScanRelatorio {
 
 const historico = collection<ScanRegistro>('scanner-historico');
 
-export async function escanearEndpoint(url: string, exposicoes = true): Promise<ScanRelatorio> {
-  const { data } = await http.post<ScanRelatorio>('/scan', { url, exposicoes });
+export async function escanearEndpoint(url: string, exposicoes = true, ativos = false): Promise<ScanRelatorio> {
+  const { data } = await http.post<ScanRelatorio>('/scan', { url, exposicoes, ativos });
   historico.add({ ...data });
   return data;
 }
 
 /** Escaneia um lote de URLs (até 15) numa só chamada e guarda cada relatório no histórico. */
-export async function escanearLote(urls: string[], exposicoes = true): Promise<ScanRelatorio[]> {
-  const { data } = await http.post<{ relatorios: (ScanRelatorio | { erroLote: string; url: string })[] }>('/scan', { urls, exposicoes });
+export async function escanearLote(urls: string[], exposicoes = true, ativos = false): Promise<ScanRelatorio[]> {
+  const { data } = await http.post<{ relatorios: (ScanRelatorio | { erroLote: string; url: string })[] }>('/scan', { urls, exposicoes, ativos });
   const ok = data.relatorios.filter((r): r is ScanRelatorio => 'achados' in r);
   for (const r of ok) historico.add({ ...r });
   return ok;
@@ -152,6 +160,13 @@ export function laudoMarkdown(r: ScanRelatorio): string {
     L.push(`- ${r.openapi.titulo ?? 'spec'} ${r.openapi.versao ?? ''} em ${r.openapi.url}`);
     L.push(`- ${r.openapi.rotas} rota(s), ${r.openapi.operacoes} operação(ões)`);
     for (const op of r.openapi.amostra) L.push(`  - ${op}`);
+    L.push('');
+  }
+  if (r.testesAtivos.length) {
+    L.push('## Testes ativos (seguros, a confirmar)');
+    for (const t of r.testesAtivos) {
+      L.push(`- [${t.indicio ? 'INDÍCIO' : 'ok'}] ${t.tipo}${t.parametro ? ` (${t.parametro})` : ''} — ${t.detalhe}`);
+    }
     L.push('');
   }
   if (r.metodos?.permitidos.length) L.push(`Métodos (OPTIONS): ${r.metodos.permitidos.join(', ')}`);

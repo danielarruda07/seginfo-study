@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   classificarMetodos, escopoDoIp, parseCookie, montarAchados,
   analisarCors, fingerprintTech, detectarControles, analisarCorpo, resumirOpenApi,
-  type InfoTlsScan,
+  corpoReflete, locationApontaMarcador, avaliarAutorizacao,
+  type InfoTlsScan, type TesteAtivo,
 } from './scanEndpoint.js';
 
-const semExtra = { cors: null, corpoSinais: [] as { id: string; descricao: string }[] };
+const semExtra = { cors: null, corpoSinais: [] as { id: string; descricao: string }[], testesAtivos: [] as TesteAtivo[] };
 
 describe('scanner de endpoint — analisadores', () => {
   it('classifica métodos arriscados a partir do Allow', () => {
@@ -82,6 +83,7 @@ describe('scanner de endpoint — analisadores', () => {
       cookies: [{ nome: 'x', secure: false, httpOnly: true, sameSite: 'None' }],
       cors: analisarCors(probe, probe, 'true'),
       corpoSinais: [{ id: 'erro-sql', descricao: 'erro SQL' }],
+      testesAtivos: [],
       exposicoes: [], servidor: null, poweredBy: null,
     });
     expect(r.some((a) => a.id === 'cors-credenciais' && a.severidade === 'alta')).toBe(true);
@@ -105,5 +107,37 @@ describe('scanner de endpoint — analisadores', () => {
     expect(r.some((a) => a.id === 'banner-powered')).toBe(true);
     expect(r.some((a) => a.id.includes('robots'))).toBe(false);
     expect(r[0].severidade).toBe('alta');
+  });
+
+  it('detecta reflexo do marcador no corpo', () => {
+    expect(corpoReflete('<p>busca: sgfRefl0PROBE</p>', 'sgfRefl0PROBE')).toBe(true);
+    expect(corpoReflete('<p>busca: &lt;codificado&gt;</p>', 'sgfRefl0PROBE')).toBe(false);
+  });
+
+  it('detecta Location apontando para o host-marcador (open redirect)', () => {
+    const h = 'seginfo-redir-check.invalid';
+    expect(locationApontaMarcador('https://seginfo-redir-check.invalid/or', h)).toBe(true);
+    expect(locationApontaMarcador('//seginfo-redir-check.invalid/or', h)).toBe(true);
+    expect(locationApontaMarcador('/pagina/local', h)).toBe(false);
+    expect(locationApontaMarcador('https://site-legitimo.com/seginfo-redir-check.invalid', h)).toBe(false);
+    expect(locationApontaMarcador(null, h)).toBe(false);
+  });
+
+  it('sinaliza autorização não forçada quando responde 2xx sem e com credencial', () => {
+    expect(avaliarAutorizacao(200, 200).indicio).toBe(true);
+    expect(avaliarAutorizacao(401, 200).indicio).toBe(false);
+    expect(avaliarAutorizacao(200, 403).indicio).toBe(false);
+  });
+
+  it('testes ativos com indício viram achados; sem indício, não', () => {
+    const ativos: TesteAtivo[] = [
+      { tipo: 'open-redirect', parametro: 'next', indicio: true, detalhe: 'x' },
+      { tipo: 'reflexo', parametro: 'q', indicio: true, detalhe: 'x' },
+      { tipo: 'autorizacao', parametro: null, indicio: false, detalhe: 'x' },
+    ];
+    const r = montarAchados({ status: 200, usaHttps: true, tls: tlsOk, cabecalhos: [], metodos: null, cookies: [], cors: null, corpoSinais: [], exposicoes: [], testesAtivos: ativos, servidor: null, poweredBy: null });
+    expect(r.some((a) => a.id === 'ativo-redirect-next')).toBe(true);
+    expect(r.some((a) => a.id === 'ativo-reflexo-q')).toBe(true);
+    expect(r.some((a) => a.id === 'ativo-autorizacao')).toBe(false);
   });
 });

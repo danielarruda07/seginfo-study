@@ -107,6 +107,7 @@ const Body = z.object({
   urls: z.array(z.string().url()).max(15).optional(),
   exposicoes: z.boolean().optional(),
   openapi: z.boolean().optional(),
+  ativos: z.boolean().optional(),
   limites: Limites.optional(),
 }).refine((b) => b.url || (b.urls && b.urls.length), { message: 'Informe url ou urls.' });
 
@@ -147,7 +148,7 @@ export function registerScanCiRoutes(app: FastifyInstance) {
       if (!b.success) return reply.status(400).send({ error: 'Informe url (ou urls) e limites opcionais.' });
 
       const limites = resolverLimites(b.data.limites);
-      const opts = { exposicoes: b.data.exposicoes ?? true, openapi: b.data.openapi };
+      const opts = { exposicoes: b.data.exposicoes ?? true, openapi: b.data.openapi, ativos: b.data.ativos ?? false };
       const alvos = b.data.urls && b.data.urls.length ? b.data.urls : [b.data.url!];
 
       const itens: ItemGate[] = await Promise.all(alvos.map(async (url): Promise<ItemGate> => {

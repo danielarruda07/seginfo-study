@@ -121,6 +121,11 @@ function Relatorio({ r }: { r: ScanRelatorio }) {
         {r.redirects.length > 0 && (
           <p className="iv-muted">Redirecionamentos: {r.redirects.map((x) => `${x.status}→${x.para}`).join(' · ')}</p>
         )}
+        {r.testesAtivos.length > 0 && (
+          <p className="iv-muted">
+            Testes ativos: {r.testesAtivos.map((t) => `${t.tipo}${t.parametro ? `(${t.parametro})` : ''}: ${t.indicio ? 'indício' : 'ok'}`).join(' · ')}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -131,6 +136,7 @@ export function Scanner() {
   const [lote, setLote] = useState('');
   const [modoLote, setModoLote] = useState(false);
   const [exposicoes, setExposicoes] = useState(true);
+  const [ativos, setAtivos] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [atual, setAtual] = useState<ScanRelatorio | null>(null);
@@ -144,13 +150,13 @@ export function Scanner() {
       if (modoLote) {
         const urls = lote.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean).slice(0, 15);
         if (!urls.length) { setCarregando(false); return; }
-        const rs = await escanearLote(urls, exposicoes);
+        const rs = await escanearLote(urls, exposicoes, ativos);
         setResultadosLote(rs);
         setAtual(null);
       } else {
         const alvo = url.trim();
         if (!alvo) { setCarregando(false); return; }
-        const r = await escanearEndpoint(alvo, exposicoes);
+        const r = await escanearEndpoint(alvo, exposicoes, ativos);
         setAtual(r);
         setResultadosLote([]);
       }
@@ -188,7 +194,18 @@ export function Scanner() {
             <Checkbox checked={exposicoes} onChange={(e) => setExposicoes(!!e.checked)} />
             <span>Sondar exposições comuns (.git, .env, swagger…)</span>
           </label>
+          <label className="iv-row" style={{ gap: '0.4rem', alignItems: 'center' }}>
+            <Checkbox checked={ativos} onChange={(e) => setAtivos(!!e.checked)} />
+            <span>Testes ativos seguros (reflexo, open-redirect, autorização)</span>
+          </label>
         </div>
+
+        {ativos && (
+          <StatusStrip tone="warn" icon="pi-info-circle">
+            Testes ativos enviam requisições com um marcador inofensivo (sem explorar). Use apenas em alvos autorizados;
+            os achados saem como <strong>a confirmar</strong>.
+          </StatusStrip>
+        )}
 
         {modoLote ? (
           <InputTextarea value={lote} onChange={(e) => setLote(e.target.value)} rows={5} style={{ width: '100%' }}

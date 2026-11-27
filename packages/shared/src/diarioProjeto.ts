@@ -26,6 +26,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-27-scanner-ativo',
+    data: '2026-11-27',
+    titulo: 'Scanner ganha testes ativos seguros (reflexo, open-redirect, autorizacao)',
+    descricao:
+      'O scanner era so passivo. Daniel pediu testes de ataque; implementei a camada ATIVA mantendo a ' +
+      'fronteira: cada teste e uma requisicao GET a mais com um marcador inofensivo, nunca explora. ' +
+      'Reflexo (candidato a XSS refletido), open redirect (olha o Location sem seguir) e autorizacao nao ' +
+      'forcada (compara com e sem credencial de prova). E opt-in (toggle na tela, flag ativos na API) e os ' +
+      'achados saem como a confirmar. Licao: da pra cobrir tecnica ofensiva de verdade sem sair do ' +
+      'nao destrutivo — o segredo e sinalizar o candidato, nao disparar o exploit.',
+    categoria: 'funcionalidade',
+    tags: ['pentest', 'scanner', 'api', 'xss', 'open-redirect', 'devsecops'],
+    projetoId: null,
+  },
+  {
     id: 'proj-2026-11-26-scan-ci-borda',
     data: '2026-11-26',
     titulo: 'Gate de CI precisa de duas chaves: borda (Access) e app (HMAC)',
