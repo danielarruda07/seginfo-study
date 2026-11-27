@@ -26,6 +26,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-27-artex-caca',
+    data: '2026-11-27',
+    titulo: 'Caca ao ARTEX: deteccao e hunting defensivo mapeado ao ATT&CK',
+    descricao:
+      'Daniel pediu as tecnicas do ARTEX (framework ofensivo agentico adotado por atacantes). Em vez de ' +
+      'embutir o framework, trouxe o lado DEFENSIVO do relatorio de deteccao/hunting: sinais ' +
+      'comportamentais por camada (loop do agente, web, identidade, host, nuvem), cada um com dica de caca ' +
+      'e tecnicas MITRE, mais marcadores tratados como indicio (UAs/headers/IPs mudam). Consenso das fontes: ' +
+      'cacar por comportamento, nao por IOC. Licao: a melhor forma de usar um framework ofensivo e aprender ' +
+      'a detecta-lo — vira capacidade defensiva sem o risco de rodar o atacante em casa.',
+    categoria: 'seguranca',
+    tags: ['artex', 'deteccao', 'hunting', 'attack', 'devsecops'],
+    projetoId: null,
+  },
+  {
     id: 'proj-2026-11-27-scanner-ativo',
     data: '2026-11-27',
     titulo: 'Scanner ganha testes ativos seguros (reflexo, open-redirect, autorizacao)',
