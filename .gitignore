@@ -19,3 +19,7 @@ seginfo-backup-private.pem
 
 # Configuração pessoal do Claude Code (não versionar)
 .claude/settings.local.json
+
+# Python
+__pycache__/
+*.pyc
