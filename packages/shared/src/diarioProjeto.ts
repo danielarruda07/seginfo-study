@@ -26,6 +26,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-27-doc-seguranca',
+    data: '2026-11-27',
+    titulo: 'Documentacao consolidada das ferramentas de seguranca (docs/SEGURANCA.md)',
+    descricao:
+      'Reuni num so documento tudo que foi implantado a nivel de seguranca (v0.49-0.57): Scanner de endpoints ' +
+      'e seus testes ativos benignos, analisador de JWT offline, gate de CI por HMAC, Reposcan estatico e Caca ' +
+      'ao ARTEX — com para-que-serve, como usar e a fronteira (autorizado, nao destrutivo). Respondi tambem se ' +
+      'da para varrer repo do GitHub: sim, estatico via reposcan (publico direto, privado com git autenticado), ' +
+      'faltando so a checagem de CVE via OSV. Indexei no AGENTS.md. Licao: ferramenta de seguranca sem doc de ' +
+      'escopo e fronteira e meio caminho para uso errado.',
+    categoria: 'infra',
+    tags: ['documentacao', 'devsecops', 'seguranca'],
+    projetoId: null,
+  },
+  {
     id: 'proj-2026-11-27-scanner-injecao-jwt',
     data: '2026-11-27',
     titulo: 'Scanner: sinais ativos benignos de SQLi/prompt + analisador de JWT offline',

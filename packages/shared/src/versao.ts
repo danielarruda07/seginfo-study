@@ -6,4 +6,4 @@
  *   - número do meio (0.8.0): funcionalidade nova.
  * O front e a API leem daqui; se o rodapé mostrar versões diferentes, um dos dois não foi atualizado.
  */
-export const VERSAO = '0.57.0';
+export const VERSAO = '0.57.1';
