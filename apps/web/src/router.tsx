@@ -30,6 +30,7 @@ const Ameacas = lazy(async () => ({ default: (await import('@/routes/Ameacas')).
 const Exposicao = lazy(async () => ({ default: (await import('@/routes/Exposicao')).Exposicao }));
 const ArtexCaca = lazy(async () => ({ default: (await import('@/routes/ArtexCaca')).ArtexCaca }));
 const RevisaoCodigo = lazy(async () => ({ default: (await import('@/routes/RevisaoCodigo')).RevisaoCodigo }));
+const Ajuda = lazy(async () => ({ default: (await import('@/routes/Ajuda')).Ajuda }));
 const Scanner = lazy(async () => ({ default: (await import('@/routes/Scanner')).Scanner }));
 const Portfolio = lazy(async () => ({ default: (await import('@/routes/Portfolio')).Portfolio }));
 const Documentacao = lazy(async () => ({ default: (await import('@/routes/Documentacao')).Documentacao }));
@@ -77,6 +78,7 @@ const ameacasRoute = createRoute({ getParentRoute: () => rootRoute, path: '/amea
 const exposicaoRoute = createRoute({ getParentRoute: () => rootRoute, path: '/exposicao', component: Exposicao });
 const revisaoCodigoRoute = createRoute({ getParentRoute: () => rootRoute, path: '/revisao-codigo', component: RevisaoCodigo });
 const artexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/artex', component: ArtexCaca });
+const ajudaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/ajuda', component: Ajuda });
 const scannerRoute = createRoute({ getParentRoute: () => rootRoute, path: '/scanner', component: Scanner });
 const portfolioRoute = createRoute({ getParentRoute: () => rootRoute, path: '/portfolio', component: Portfolio });
 const documentacaoRoute = createRoute({ getParentRoute: () => rootRoute, path: '/documentacao', component: Documentacao });
@@ -134,6 +136,7 @@ const routeTree = rootRoute.addChildren([
   scannerRoute,
   revisaoCodigoRoute,
   artexRoute,
+  ajudaRoute,
   documentacaoRoute,
 ]);
 

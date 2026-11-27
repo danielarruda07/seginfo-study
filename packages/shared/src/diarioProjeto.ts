@@ -26,6 +26,18 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-27-ajuda',
+    data: '2026-11-27',
+    titulo: 'Ajuda e guia de uso: ferramenta boa que ninguem sabe usar nao serve',
+    descricao:
+      'Depois de uma leva grande de entregas (scanner, testes ativos, JWT, reposcan, revisao com IA), o Daniel ' +
+      'disse que nao sabia como usar tudo. Virou uma tela de Ajuda com roteiros de teste por cenario e, em cada ' +
+      'ferramenta, um selo honesto de quanto de IA ela usa. Licao: deixar claro o que e deterministico e o que e ' +
+      'raciocinio de modelo muda o que voce promete ao cliente no laudo.',
+    categoria: 'decisao',
+    tags: ['ux', 'documentacao', 'ia', 'pentest'],
+  },
+  {
     id: 'proj-2026-11-27-revisao-codigo-ia',
     data: '2026-11-27',
     titulo: 'Revisao de codigo com IA: plugin oficial claude-security embarcado via worker',

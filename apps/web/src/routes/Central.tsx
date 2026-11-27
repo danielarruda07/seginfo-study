@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { Button } from 'primereact/button';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ClickCard } from '@/components/ui/ClickCard';
 import { Kpi, Pill, EmptyState } from '@/components/InfraKit';
@@ -53,7 +54,8 @@ export function Central() {
   return (
     <div>
       <PageHeader title="Central de segurança"
-        subtitle="Testes, detecção, inteligência e método em um só lugar. Uso restrito a alvos autorizados." />
+        subtitle="Testes, detecção, inteligência e método em um só lugar. Uso restrito a alvos autorizados."
+        actions={<Button label="Como usar" icon="pi pi-question-circle" outlined size="small" onClick={() => navigate({ to: '/ajuda' })} />} />
 
       <div className="iv-kpis iv-mt">
         <Kpi label="Varreduras registradas" icon="pi-bolt" value={historico.length} hint="neste navegador" />

@@ -67,6 +67,7 @@ const SECOES_FIXAS: NavSection[] = [
       { to: '/biblioteca', label: 'Biblioteca', icon: 'pi-bookmark' },
       { to: '/cerebro', label: 'Segundo Cérebro', icon: 'pi-database' },
       { to: '/arsenal', label: 'Arsenal IA', icon: 'pi-sparkles' },
+      { to: '/ajuda', label: 'Ajuda e guia de uso', icon: 'pi-question-circle' },
     ],
   },
   {
