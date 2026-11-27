@@ -83,9 +83,9 @@ export function Ajuda() {
           <ol style={{ marginTop: 0, paddingLeft: '1.2rem' }}>
             <li>Tenha o repositório clonado (ex.: <code>{'C:\\temp\\criptobrokers'}</code>) e o Claude Code instalado e logado na sua assinatura.</li>
             <li>Abra o <strong>PowerShell</strong> e rode o comando abaixo. O script cria uma cópia descartável sem push e abre o Claude Code nela — o seu clone e o GitHub não são tocados.</li>
-            <li>No Claude Code, cole os prompts de <strong>Conhecimento → Prompts de pentest</strong> (comece pelo <em>Mapa da aplicação</em>, depois <em>Varredura completa — esforço alto</em>). Aceite o custo/tempo quando o plugin perguntar.</li>
+            <li>No Claude Code, cole os prompts de <strong>Pentest de aplicação → Prompts de pentest</strong> (comece pelo <em>Mapa da aplicação</em>, depois <em>Varredura completa — esforço alto</em>). Aceite o custo/tempo quando o plugin perguntar.</li>
             <li>Ao terminar, digite <code>/exit</code>. O script confere que o original não mudou e copia o relatório para <code>{'SegInfo-Confidencial\\varreduras'}</code> na sua pasta de usuário.</li>
-            <li>Aqui no app: <strong>Inteligência → Revisão de código (IA) → Importar varredura local</strong> → escolha a pasta <code>CLAUDE-SECURITY-…</code>. Depois exporte em HTML/PDF.</li>
+            <li>Aqui no app: <strong>Pentest de aplicação → Revisão de código (IA) → Importar varredura local</strong> → escolha a pasta <code>CLAUDE-SECURITY-…</code>. Depois exporte em HTML/PDF.</li>
           </ol>
           <BlocoComandos comandos={COMANDOS.local ?? []} />
         </div>

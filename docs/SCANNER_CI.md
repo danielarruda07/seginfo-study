@@ -1,6 +1,6 @@
 # Scanner no pipeline — quality gate de higiene (rota HMAC)
 
-A tela **Inteligência → Scanner de endpoints** é para o operador, atrás do Cloudflare Access.
+A tela **Pentest de aplicação → Scanner de endpoints** é para o operador, atrás do Cloudflare Access.
 Para a **CI/CD** (que não tem navegador nem sessão) existe uma rota irmã, autenticada por HMAC:
 
 ```

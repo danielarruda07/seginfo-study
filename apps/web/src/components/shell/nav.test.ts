@@ -3,7 +3,7 @@ import { breadcrumb, filterNav, findActive, montarSecoes } from './nav';
 
 describe('nav', () => {
   it('monta o breadcrumb seção › tela', () => {
-    expect(breadcrumb('/ambiente')).toEqual(['Prática', 'Meu Ambiente']);
+    expect(breadcrumb('/ambiente')).toEqual(['Laboratório', 'Meu Ambiente']);
     expect(breadcrumb('/')).toEqual(['Visão geral', 'Central de segurança']);
   });
 
@@ -22,7 +22,7 @@ describe('nav', () => {
 
   it('filtra o menu sem acento e mantém a seção inteira quando o título casa', () => {
     expect(filterNav('scanner').flatMap((s) => s.items.map((i) => i.label))).toEqual(['Scanner de endpoints']);
-    expect(filterNav('pratica')[0].items).toHaveLength(6);
+    expect(filterNav('laboratorio')[0].items).toHaveLength(4);
     expect(filterNav('zzz')).toEqual([]);
   });
 

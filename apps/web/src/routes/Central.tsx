@@ -9,21 +9,25 @@ import { listarHistorico, contarSeveridade } from '@/services/scanner';
 /** Ferramentas agrupadas por função — a página inicial da plataforma. */
 const GRUPOS = [
   {
-    titulo: 'Testes de segurança',
+    titulo: 'Pentest de aplicação',
     itens: [
       { to: '/scanner', icone: 'pi-bolt', nome: 'Scanner de endpoints', desc: 'TLS, cabeçalhos, CORS, OpenAPI, exposições, testes ativos seguros e análise de JWT. Exporta HTML/PDF.' },
-      { to: '/revisao-codigo', icone: 'pi-code', nome: 'Revisão de código (IA)', desc: 'Varredura profunda de repositório com o plugin oficial claude-security: authn/authz, injeção, lógica, patches sugeridos.' },
-      { to: '/exposicao', icone: 'pi-globe', nome: 'Minha exposição', desc: 'Superfície externa por OSINT passivo e saúde dos sites publicados.' },
+      { to: '/revisao-codigo', icone: 'pi-code', nome: 'Revisão de código (IA)', desc: 'Varredura profunda com o plugin oficial claude-security, no worker ou no seu repositório local: authn/authz, injeção, lógica, patches.' },
+      { to: '/prompts', icone: 'pi-comments', nome: 'Prompts de pentest', desc: 'Skills do plugin e análises dirigidas: IDOR, fluxos de dinheiro, Web3, webhooks, controles em modo monitor.' },
+      { to: '/exposicao', icone: 'pi-globe', nome: 'Minha exposição', desc: 'Superfície externa por OSINT passivo: subdomínios, portas e CVEs conhecidas.' },
+      { to: '/artex', icone: 'pi-compass', nome: 'Caça ao ARTEX', desc: 'Ataques agênticos contra aplicações: sinais de detecção e hunting.' },
+      { to: '/metodologia', icone: 'pi-sitemap', nome: 'Metodologia de pentest', desc: 'Ciclo de 7 fases (PTES + OWASP WSTG) com checklist e cuidados de escopo.' },
+      { to: '/ferramentas', icone: 'pi-wrench', nome: 'Arsenal de ferramentas', desc: 'Catálogo de ferramentas por fase do teste.' },
     ],
   },
   {
-    titulo: 'Detecção e resposta',
+    titulo: 'Blue Team e honeypot',
     itens: [
       { to: '/radar', icone: 'pi-eye', nome: 'Radar de ataques', desc: 'Eventos dos sensores e honeypots, por origem, serviço e técnica.' },
       { to: '/wazuh', icone: 'pi-shield', nome: 'Wazuh', desc: 'Saúde do SIEM, agentes e alertas encaminhados.' },
       { to: '/investigacoes', icone: 'pi-search', nome: 'Investigações', desc: 'Linha do tempo e evidências de cada caso.' },
       { to: '/laudos', icone: 'pi-file-check', nome: 'Laudos dos alvos', desc: 'Perícia dos alvos atacados, com técnicas MITRE.' },
-      { to: '/artex', icone: 'pi-compass', nome: 'Caça a ataques agênticos', desc: 'Sinais de detecção e hunting do ARTEX e afins.' },
+      { to: '/artefatos', icone: 'pi-folder-open', nome: 'Biblioteca de artefatos', desc: 'Amostras e evidências preservadas.' },
     ],
   },
   {
@@ -31,16 +35,14 @@ const GRUPOS = [
     itens: [
       { to: '/ameacas', icone: 'pi-exclamation-triangle', nome: 'Ameaças (KEV)', desc: 'Vulnerabilidades exploradas ativamente, cruzadas com o inventário.' },
       { to: '/attack', icone: 'pi-table', nome: 'Matriz ATT&CK', desc: 'Táticas e técnicas, com cobertura de detecção.' },
-      { to: '/artefatos', icone: 'pi-folder-open', nome: 'Biblioteca de artefatos', desc: 'Amostras e evidências preservadas.' },
     ],
   },
   {
-    titulo: 'Método e operação',
+    titulo: 'Laboratório',
     itens: [
-      { to: '/metodologia', icone: 'pi-compass', nome: 'Metodologia de pentest', desc: 'Ciclo de 7 fases ligado ao ATT&CK, com checklist e cuidados.' },
-      { to: '/ferramentas', icone: 'pi-wrench', nome: 'Arsenal de ferramentas', desc: 'Catálogo de ferramentas por fase do teste.' },
       { to: '/ambiente', icone: 'pi-server', nome: 'Meu ambiente', desc: 'Inventário de ativos e serviços.' },
-      { to: '/range', icone: 'pi-bullseye', nome: 'Range vulnerável', desc: 'Alvos de laboratório para validar técnicas com segurança.' },
+      { to: '/range', icone: 'pi-bullseye', nome: 'Range vulnerável', desc: 'Alvos de laboratório para validar técnicas antes de usar na empresa.' },
+      { to: '/labs', icone: 'pi-desktop', nome: 'Labs', desc: 'Máquinas de laboratório para exercícios.' },
     ],
   },
 ] as const;

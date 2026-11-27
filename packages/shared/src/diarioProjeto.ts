@@ -26,6 +26,18 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-27-menu-appsec',
+    data: '2026-11-27',
+    titulo: 'Menu organizado pelo papel: Red Team de aplicacao, Blue Team e laboratorio',
+    descricao:
+      'O app cresceu por camadas e o menu ficou contando a historia de como foi construido, nao de como e usado. ' +
+      'Com o foco agora em seguranca de aplicacoes e APIs da empresa, as ferramentas de teste foram juntas num menu ' +
+      'Pentest de aplicacao; o que vem de sensores e honeypots virou Blue Team; e o range virou Laboratorio. ' +
+      'Licao: nomear pelo trabalho que a pessoa faz (atacar, defender, ensaiar) encurta o caminho ate a ferramenta.',
+    categoria: 'decisao',
+    tags: ['ux', 'appsec', 'red-team', 'blue-team'],
+  },
+  {
     id: 'proj-2026-11-27-varredura-local',
     data: '2026-11-27',
     titulo: 'Varredura profunda no repositorio local, com a assinatura e sem tocar no GitHub',

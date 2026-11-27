@@ -35,40 +35,52 @@ export function montarSecoes(estudoAtivo: boolean): NavSection[] {
 
 const SECOES_FIXAS: NavSection[] = [
   {
-    title: 'Prática',
+    // Red Team / AppSec: testar aplicações, APIs, endpoints e código (foco atual do Daniel)
+    title: 'Pentest de aplicação',
+    items: [
+      { to: '/scanner', label: 'Scanner de endpoints', icon: 'pi-bolt' },
+      { to: '/revisao-codigo', label: 'Revisão de código (IA)', icon: 'pi-code' },
+      { to: '/prompts', label: 'Prompts de pentest', icon: 'pi-comments' },
+      { to: '/exposicao', label: 'Minha exposição', icon: 'pi-globe' },
+      { to: '/artex', label: 'Caça ao ARTEX', icon: 'pi-compass' },
+      { to: '/metodologia', label: 'Metodologia de Pentest', icon: 'pi-sitemap' },
+      { to: '/ferramentas', label: 'Arsenal de Ferramentas', icon: 'pi-wrench' },
+    ],
+  },
+  {
+    // Blue Team: o que os sensores e honeypots viram e a perícia do que ficou nas máquinas
+    title: 'Blue Team e honeypot',
+    items: [
+      { to: '/radar', label: 'Radar', icon: 'pi-eye' },
+      { to: '/wazuh', label: 'Wazuh', icon: 'pi-shield' },
+      { to: '/investigacoes', label: 'Investigações', icon: 'pi-search' },
+      { to: '/laudos', label: 'Laudos dos alvos', icon: 'pi-file-check' },
+      { to: '/artefatos', label: 'Biblioteca de artefatos', icon: 'pi-folder-open' },
+    ],
+  },
+  {
+    title: 'Inteligência de ameaças',
+    items: [
+      { to: '/ameacas', label: 'Ameaças (KEV)', icon: 'pi-exclamation-triangle' },
+      { to: '/attack', label: 'Matriz ATT&CK', icon: 'pi-table' },
+    ],
+  },
+  {
+    title: 'Laboratório',
     items: [
       { to: '/ambiente', label: 'Meu Ambiente', icon: 'pi-server' },
       { to: '/labs', label: 'Labs', icon: 'pi-desktop' },
       { to: '/range', label: 'Range Vulnerável', icon: 'pi-bullseye' },
       { to: '/documentacao', label: 'Documentação', icon: 'pi-file' },
-      { to: '/ferramentas', label: 'Arsenal de Ferramentas', icon: 'pi-wrench' },
-      { to: '/metodologia', label: 'Metodologia de Pentest', icon: 'pi-compass' },
-    ],
-  },
-  {
-    title: 'Inteligência',
-    items: [
-      { to: '/radar', label: 'Radar', icon: 'pi-eye' },
-      { to: '/wazuh', label: 'Wazuh', icon: 'pi-shield' },
-      { to: '/laudos', label: 'Laudos dos alvos', icon: 'pi-file-check' },
-      { to: '/investigacoes', label: 'Investigações', icon: 'pi-search' },
-      { to: '/artefatos', label: 'Biblioteca de artefatos', icon: 'pi-folder-open' },
-      { to: '/attack', label: 'Matriz ATT&CK', icon: 'pi-table' },
-      { to: '/ameacas', label: 'Ameaças (KEV)', icon: 'pi-exclamation-triangle' },
-      { to: '/exposicao', label: 'Minha exposição', icon: 'pi-globe' },
-      { to: '/scanner', label: 'Scanner de endpoints', icon: 'pi-bolt' },
-      { to: '/revisao-codigo', label: 'Revisão de código (IA)', icon: 'pi-code' },
-      { to: '/artex', label: 'Caça ao ARTEX', icon: 'pi-compass' },
     ],
   },
   {
     title: 'Conhecimento',
     items: [
+      { to: '/ajuda', label: 'Ajuda e guia de uso', icon: 'pi-question-circle' },
       { to: '/biblioteca', label: 'Biblioteca', icon: 'pi-bookmark' },
       { to: '/cerebro', label: 'Segundo Cérebro', icon: 'pi-database' },
       { to: '/arsenal', label: 'Arsenal IA', icon: 'pi-sparkles' },
-      { to: '/prompts', label: 'Prompts de pentest', icon: 'pi-comments' },
-      { to: '/ajuda', label: 'Ajuda e guia de uso', icon: 'pi-question-circle' },
     ],
   },
   {

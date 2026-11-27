@@ -1,6 +1,6 @@
 # Biblioteca de artefatos de ataques
 
-Em **Inteligência → Biblioteca de artefatos** (`/artefatos`), arquivos, comandos observados no Radar, trechos de persistência e linhas de processos são preservados para estudo no PostgreSQL. A biblioteca tem busca em nome, conteúdo, hash, resumo e notas; filtros de tipo, categoria, alvo e favoritos; anotações e tags por item. Um comando observado e um processo presente na coleta possuem tipos diferentes: a presença do comando no log não comprova seu sucesso.
+Em **Blue Team e honeypot → Biblioteca de artefatos** (`/artefatos`), arquivos, comandos observados no Radar, trechos de persistência e linhas de processos são preservados para estudo no PostgreSQL. A biblioteca tem busca em nome, conteúdo, hash, resumo e notas; filtros de tipo, categoria, alvo e favoritos; anotações e tags por item. Um comando observado e um processo presente na coleta possuem tipos diferentes: a presença do comando no log não comprova seu sucesso.
 
 ## Preservação e histórico
 

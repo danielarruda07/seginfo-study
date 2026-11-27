@@ -18,11 +18,11 @@ Todo teste oferece **HTML** (arquivo único, sem script nem recurso externo, pro
 
 | Frente | Ferramenta | O que faz | Onde |
 |---|---|---|---|
-| **Testar endpoint/API ao vivo** | Scanner de endpoints | Higiene + sinais de vulnerabilidade de uma URL | App → Inteligência → Scanner |
+| **Testar endpoint/API ao vivo** | Scanner de endpoints | Higiene + sinais de vulnerabilidade de uma URL | App → Pentest de aplicação → Scanner |
 | **Testar código/repositório** | Reposcan (CLI) | Análise estática de um repo clonado | Terminal: `scripts/reposcan.sh` |
-| **Revisão de código com IA** | Plugin oficial claude-security (worker) | Authn/authz, injeção e lógica, com CWE e patches | App → Inteligência → Revisão de código (IA) — ver [REVISAO_CODIGO.md](REVISAO_CODIGO.md) |
-| **Detectar ataque agêntico** | Caça ao ARTEX | Referência de detecção/hunting | App → Inteligência → Caça ao ARTEX |
-| **Método e referência** | Metodologia de Pentest | Ciclo de 7 fases ligado ao ATT&CK | App → Prática → Metodologia |
+| **Revisão de código com IA** | Plugin oficial claude-security (worker) | Authn/authz, injeção e lógica, com CWE e patches | App → Pentest de aplicação → Revisão de código (IA) — ver [REVISAO_CODIGO.md](REVISAO_CODIGO.md) |
+| **Detectar ataque agêntico** | Caça ao ARTEX | Referência de detecção/hunting | App → Pentest de aplicação → Caça ao ARTEX |
+| **Método e referência** | Metodologia de Pentest | Ciclo de 7 fases ligado ao ATT&CK | App → Pentest de aplicação → Metodologia |
 
 ---
 
@@ -96,7 +96,7 @@ Código de saída: `0` limpo · `1` reprovou (serve de gate) · `2` erro. Saída
 Referência de **detecção e hunting** do framework ofensivo agêntico ARTEX, mapeada ao ATT&CK. O framework
 **não** é embutido (é um agente ofensivo autônomo, risco de supply-chain). Traz sinais comportamentais por
 camada (loop do agente, web, identidade, host, nuvem) com dica de caça, e marcadores (UAs/headers/IPs)
-tratados como indício. App → Inteligência → Caça ao ARTEX.
+tratados como indício. App → Pentest de aplicação → Caça ao ARTEX.
 
 ---
 

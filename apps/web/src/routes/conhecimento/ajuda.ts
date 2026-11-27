@@ -43,7 +43,7 @@ export const FERRAMENTAS: Ferramenta[] = [
     id: 'scanner', nome: 'Scanner de endpoints', frente: 'endpoint', to: '/scanner', ia: 'nenhuma', exporta: true,
     resumo: 'Testa uma URL de site ou API a partir do servidor do homelab: TLS, cabeçalhos de segurança, cookies, CORS, métodos HTTP, tecnologia, arquivos expostos (/.git, /.env, /actuator, swagger), OpenAPI e erro verboso.',
     passos: [
-      'Abra Inteligência → Scanner de endpoints.',
+      'Abra Pentest de aplicação → Scanner de endpoints.',
       'Cole a URL (ou até 15, uma por linha, para o modo lote).',
       'Deixe "Testes ativos seguros" DESLIGADO na primeira passada; rode e leia os achados.',
       'Se o alvo não for de escrita/transação, ligue os testes ativos e rode de novo.',
@@ -94,7 +94,7 @@ export const FERRAMENTAS: Ferramenta[] = [
     id: 'revisao', nome: 'Revisão de código (IA)', frente: 'codigo', to: '/revisao-codigo', ia: 'profunda', exporta: true,
     resumo: 'Varredura profunda de um repositório com o plugin oficial claude-security, rodando num worker isolado (sandbox) na VM 100. O modelo lê o código e raciocina sobre autenticação, autorização, injeção, lógica de negócio e cadeias de ataque. Devolve achados com CWE, arquivo:linha e patches sugeridos.',
     passos: [
-      'Abra Inteligência → Revisão de código (IA).',
+      'Abra Pentest de aplicação → Revisão de código (IA).',
       'Informe a URL do repositório (https ou ssh). Privado exige CODESCAN_GIT_TOKEN no worker.',
       'Escolha o modo: completo (repositório inteiro) ou só mudanças de uma branch.',
       'Escolha o esforço: baixo para o primeiro teste; alto para laudo de cliente.',
@@ -128,7 +128,7 @@ export const FERRAMENTAS: Ferramenta[] = [
     resumo: 'A mesma varredura profunda do plugin claude-security, mas num repositório já clonado na sua máquina e usando a sua assinatura do Claude Code (não gasta a chave da API). O script cria uma cópia descartável sem push, abre o Claude Code nela com regras de negação e coleta o relatório.',
     passos: [
       'No PowerShell, na pasta do SegInfo: scripts\\varredura-local.ps1 -Repo C:\\temp\\<repo> (ou -Branch <branch> para revisar um PR).',
-      'No Claude Code que abrir, cole um prompt de Conhecimento → Prompts de pentest (comece pelo "Mapa da aplicação" e depois a varredura de esforço alto).',
+      'No Claude Code que abrir, cole um prompt de Pentest de aplicação → Prompts de pentest (comece pelo "Mapa da aplicação" e depois a varredura de esforço alto).',
       'Ao terminar, /exit: o script copia CLAUDE-SECURITY-* para %USERPROFILE%\\SegInfo-Confidencial\\varreduras e confere que o original não mudou.',
       'Em Revisão de código (IA) → Importar varredura local, escolha a pasta: achados, patches e export HTML/PDF como numa varredura do worker.',
     ],
@@ -142,7 +142,7 @@ export const FERRAMENTAS: Ferramenta[] = [
   {
     id: 'prompts', nome: 'Prompts de pentest', frente: 'codigo', to: '/prompts', ia: 'profunda', exporta: false,
     resumo: 'Prompts prontos que chamam as skills do plugin (varredura, superfície de ataque, modelo de ameaças, triagem, patches) e análises dirigidas de aplicação: mapa, autorização (IDOR/BOLA), fluxos de dinheiro, Web3, injeção, JWT e integrações.',
-    passos: ['Abra Conhecimento → Prompts de pentest.', 'Copie o prompt (as regras de só-leitura vão junto) e cole no Claude Code aberto pelo script.'],
+    passos: ['Abra Pentest de aplicação → Prompts de pentest.', 'Copie o prompt (as regras de só-leitura vão junto) e cole no Claude Code aberto pelo script.'],
     resultado: 'Análises em CLAUDE-SECURITY-ANALISES/, coletadas pelo script junto do relatório.',
     limites: ['Os prompts de aplicação não passam pela verificação por agentes do plugin: confirme os achados em staging.'],
   },
@@ -289,7 +289,7 @@ export const COMANDOS: Record<string, Comando[]> = {
     },
     {
       rotulo: 'Dentro do Claude Code que o script abrir: primeiro o mapa, depois a varredura', shell: 'Claude Code',
-      codigo: '(cole o prompt "Mapa da aplicação" de Conhecimento → Prompts de pentest)\n/claude-security:claude-security scan this whole repository at high effort; I understand it may take a while and use a significant number of tokens\n/exit',
+      codigo: '(cole o prompt "Mapa da aplicação" de Pentest de aplicação → Prompts de pentest)\n/claude-security:claude-security scan this whole repository at high effort; I understand it may take a while and use a significant number of tokens\n/exit',
     },
     {
       rotulo: 'Ver os relatórios coletados', shell: 'PowerShell',

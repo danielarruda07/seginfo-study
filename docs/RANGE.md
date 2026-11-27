@@ -184,7 +184,7 @@ cada alvo real **pelo agente QEMU via API do Proxmox**, sem instalar nada no alv
 
 O token do reset ganhou um papel extra só nas VMs dos alvos reais: `VM.GuestAgent.Audit`, `VM.GuestAgent.FileRead`
 e `VM.GuestAgent.Unrestricted` (executar comandos pelo agente). O laudo roda como o usuário do coletor (grupo `wazuh`),
-não como root; se falhar, o reset acontece mesmo assim. No app: Inteligência → **Laudos dos alvos**.
+não como root; se falhar, o reset acontece mesmo assim. No app: Blue Team e honeypot → **Laudos dos alvos**.
 
 Limite conhecido: um rootkit de espaço de usuário (`/etc/ld.so.preload`) pode esconder arquivos e processos da própria
 coleta; o laudo avisa quando encontra um.

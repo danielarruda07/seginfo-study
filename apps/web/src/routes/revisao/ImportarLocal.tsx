@@ -55,7 +55,7 @@ export function ImportarLocal({ onImportada }: { onImportada: (id: string) => vo
     <div className="iv-card iv-mt">
       <h2 className="iv-section-label">Importar varredura local (Claude Code na sua máquina)</h2>
       <p className="iv-muted" style={{ marginTop: 0 }}>
-        Rodou o <code>/claude-security</code> num clone local (veja <strong>Conhecimento → Prompts de pentest</strong>)? Escolha a pasta
+        Rodou o <code>/claude-security</code> num clone local (veja <strong>Pentest de aplicação → Prompts de pentest</strong>)? Escolha a pasta
         <code> CLAUDE-SECURITY-&lt;data&gt;</code> que ele gerou. O app só lê o SARIF, o relatório e os patches — nada é executado e nada vai ao GitHub.
       </p>
       <div className="iv-row iv-wrap" style={{ gap: '0.6rem', alignItems: 'center' }}>

@@ -1,6 +1,6 @@
 # Revisão de código com IA (plugin oficial claude-security)
 
-Tela: **Inteligência → Revisão de código (IA)** (`/revisao-codigo`).
+Tela: **Pentest de aplicação → Revisão de código (IA)** (`/revisao-codigo`).
 
 É o nível acima do Reposcan. O Reposcan procura **padrões** (segredo, config, código perigoso).
 Esta revisão usa o plugin oficial da Anthropic, que **lê o código e raciocina** sobre autenticação,
@@ -101,6 +101,6 @@ O script:
 2. abre o Claude Code na cópia com `--setting-sources user` (ignora `.claude/`, hooks e MCP do repositório), `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`, `--plugin-dir` do claude-security e regras de negação (git push/remote/config, gh, curl/wget, ssh, npm/pip/yarn/pnpm, docker, WebFetch/WebSearch);
 3. ao `/exit`, confere que HEAD e status do original **não mudaram**, copia `CLAUDE-SECURITY-*` para `%USERPROFILE%\SegInfo-Confidencial\varreduras\` (fora do OneDrive) e pergunta se apaga a cópia.
 
-Os prompts prontos ficam em **Conhecimento → Prompts de pentest**. O resultado entra no app por **Revisão de código (IA) → Importar varredura local** (escolha a pasta `CLAUDE-SECURITY-*`): achados, patches e export HTML/PDF como numa varredura do worker.
+Os prompts prontos ficam em **Pentest de aplicação → Prompts de pentest**. O resultado entra no app por **Revisão de código (IA) → Importar varredura local** (escolha a pasta `CLAUDE-SECURITY-*`): achados, patches e export HTML/PDF como numa varredura do worker.
 
 **Limite:** no Windows o plugin não tem sandbox — os agentes leem com o seu usuário. Use só em código autorizado (empresa/cliente), nunca de origem desconhecida; para isso, use o worker da VM 100.

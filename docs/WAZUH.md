@@ -10,7 +10,7 @@ Alertas de produção chegam como fonte `wazuh`, a partir do nível 3, sem exigi
 
 Atualizar o app não atualiza o forwarder da VM do Wazuh. Instale a versão publicada de `sensor/wazuh-forwarder/forwarder.py`, comparando o arquivo ativo antes de substituir e preservando seu estado. A mudança não reprocessa automaticamente alertas antigos já ultrapassados pelo cursor do coletor.
 
-A página **Inteligência → Wazuh** reúne duas fontes diferentes:
+A página **Blue Team e honeypot → Wazuh** reúne duas fontes diferentes:
 
 - **Manager e agentes:** consulta à API REST do Wazuh para exibir versão, estado dos serviços e agentes cadastrados/ativos/desconectados. No Playground, ferramentas aprovadas também podem solicitar reinício de agentes específicos ou do manager.
 - **Alertas encaminhados:** eventos que o forwarder já normalizou e enviou a `POST /api/ingest`. A tela filtra esse recorte salvo no banco por período, regra, agente e alvo. Ela não consulta `alerts.json` diretamente nem representa todos os eventos do SIEM.
@@ -41,7 +41,7 @@ Se as variáveis estiverem ausentes, o painel ainda lista os alertas que já che
 
 O forwarder no manager lê `/var/ossec/logs/alerts/alerts.json`, transforma fontes suportadas e envia lotes à API com Cloudflare Access Service Token e `X-Ingest-Token`. A API valida as credenciais, normaliza e deduplica os eventos no PostgreSQL. Esse pipeline é separado da consulta REST de saúde acima. A rota `/api/ingest/pericia` também recebe relatórios de perícia dos alvos antes do reset, exibidos em **Laudos dos alvos**.
 
-**Inteligência → Investigações** reúne os laudos por janela e correlaciona eventos significativos do Radar pelo sensor e horário. O dossiê apresenta linha do tempo, arquivos e hashes, persistência, processos, conexões e invasores correlacionados, com filtros por alvo e sistema. A **Matriz ATT&CK** mantém separadas as técnicas vindas dos eventos do Radar e as sugeridas pelos tipos de persistência dos laudos (últimos 90 dias); o segundo mapeamento é uma pista para revisão, não confirmação automática de execução. Amostras continuam na VM do Wazuh; o app guarda metadados e hashes.
+**Blue Team e honeypot → Investigações** reúne os laudos por janela e correlaciona eventos significativos do Radar pelo sensor e horário. O dossiê apresenta linha do tempo, arquivos e hashes, persistência, processos, conexões e invasores correlacionados, com filtros por alvo e sistema. A **Matriz ATT&CK** mantém separadas as técnicas vindas dos eventos do Radar e as sugeridas pelos tipos de persistência dos laudos (últimos 90 dias); o segundo mapeamento é uma pista para revisão, não confirmação automática de execução. Amostras continuam na VM do Wazuh; o app guarda metadados e hashes.
 
 Como a origem é `alerts.json`, a cobertura depende das regras e do limiar de alerta do Wazuh e do que o forwarder sabe normalizar. Para investigação completa ou busca de eventos abaixo desse limiar, use o Wazuh Indexer/Dashboard; esta página não substitui essas ferramentas.
 
