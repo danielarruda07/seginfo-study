@@ -15,9 +15,15 @@ WorkingDirectory=/var/lib/seginfo-codescan
 ExecStart=/usr/bin/python3 -I /opt/seginfo-codescan/worker.py
 Restart=on-failure
 RestartSec=30
-# Limites: a VM tambem hospeda a producao (Coolify). A varredura nao pode toma-la.
-MemoryMax=4G
-CPUQuota=200%
+# Limites: a VM 100 tem ~3,4 GB e hospeda a producao (Coolify). Se faltar memoria, morre a
+# varredura, nao o app: teto baixo, e CPU/disco com prioridade menor que a dos containers.
+MemoryHigh=1000M
+MemoryMax=1200M
+MemorySwapMax=512M
+CPUQuota=150%
+CPUWeight=20
+IOWeight=20
+Nice=10
 TasksMax=512
 # Endurecimento do processo do worker
 NoNewPrivileges=false

@@ -41,7 +41,7 @@ Você (tela)                 API do SegInfo                    Worker (VM 100, u
 - O worker roda com usuário próprio, **sem sudo**. Ele pode executar só o "keeper" do sandbox como
   root, que é o que o `--sudo` do plugin exige no Ubuntu 24.04+. A pasta do plugin é do root e
   só-leitura para o worker; se não fosse, o worker conseguiria virar root.
-- systemd limita o worker a 4 GB de RAM e 2 CPUs, porque a VM também hospeda a produção.
+- A VM 100 tem ~3,4 GB e hospeda a produção. O worker tem teto de 1,2 GB (o sandbox, 1 GB) e prioridade de CPU e disco menor que a dos containers: se faltar memória, morre a varredura, não o app. Para varreduras grandes (superfície de ataque, esforço alto), aumente a RAM da VM.
 - As rotas do worker (`/api/scan/ci/codigo/*`) exigem o Service Token do Cloudflare Access (o mesmo do
   gate de CI) e um token próprio (`CODESCAN_WORKER_TOKEN`). Sem o token, respondem 503 (fail-closed).
 
