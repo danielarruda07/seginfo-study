@@ -26,6 +26,21 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-26-scan-ci-borda',
+    data: '2026-11-26',
+    titulo: 'Gate de CI precisa de duas chaves: borda (Access) e app (HMAC)',
+    descricao:
+      'Ao testar a rota /api/scan/ci de fora, a resposta foi 302 da Cloudflare: o dominio inteiro esta ' +
+      'atras do Access, entao o HMAC nem chegava a ser avaliado. A solucao segue o padrao dos coletores ' +
+      'do Radar: um Service Token do Access numa aplicacao restrita ao path api/scan/ci, mais o HMAC no ' +
+      'app. O script da CI passou a enviar o token e a explicar o bloqueio de borda, e deixou de depender ' +
+      'de jq. Licao: autenticacao no app nao basta quando ha uma camada de borda na frente; testar de fora ' +
+      'antes de declarar pronto.',
+    categoria: 'seguranca',
+    tags: ['scanner', 'cicd', 'cloudflare-access', 'hmac'],
+    projetoId: null,
+  },
+  {
     id: 'proj-2026-11-26-scan-ci-env',
     data: '2026-11-26',
     titulo: 'Compose passa o segredo do gate de CI ao container',

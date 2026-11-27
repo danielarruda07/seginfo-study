@@ -20,6 +20,33 @@ falha sozinho quando um endpoint regride (perdeu HSTS, abriu CORS com credenciai
   - `X-Scan-Signature: sha256=<hex>` onde `hex = HMAC_SHA256(SCAN_CI_SECRET, "<timestamp>.<corpo-cru>")`
 - O servidor recusa requisição com mais de **300s** de diferença (proteção de replay) e compara em tempo constante.
 
+## Borda: Cloudflare Access (Service Token)
+
+O `estudo.criecom.ia.br` inteiro fica atrás do Cloudflare Access. Uma chamada sem
+autenticação de borda recebe `302` para a tela de login e **nem chega na API** — o HMAC
+nem é avaliado. Por isso a CI precisa passar por **duas camadas**:
+
+1. **Borda:** um Service Token do Access, enviado nos cabeçalhos
+   `CF-Access-Client-Id` e `CF-Access-Client-Secret` (variáveis `CF_ACCESS_CLIENT_ID` /
+   `CF_ACCESS_CLIENT_SECRET` no script).
+2. **App:** a assinatura HMAC com o `SCAN_CI_SECRET`.
+
+Mesmo padrão dos coletores do Radar (ingestão), que já usam um Service Token próprio.
+
+### Configurar no Cloudflare Zero Trust
+
+1. **Access → Service Auth → Service Tokens → Create Service Token.** Nome: `seginfo-ci`.
+   Copie o **Client ID** e o **Client Secret** (o secret só aparece uma vez).
+2. **Access → Applications → Add an application → Self-hosted.**
+   - Nome: `estudo-scan-ci`
+   - Domínio: `estudo.criecom.ia.br`, **path:** `api/scan/ci`
+     (aplicação com path mais específico tem precedência sobre a do domínio inteiro).
+3. **Policy** dessa aplicação: **Action = Service Auth**, **Include → Service Token → `seginfo-ci`**.
+4. Salve. Teste com o script (abaixo) passando as duas variáveis do token.
+
+> Não crie uma regra *Bypass* para esse path: ela tiraria a camada de borda e deixaria a rota
+> protegida só pelo HMAC. Com o Service Token ficam as duas camadas.
+
 ## Corpo
 
 ```jsonc
@@ -48,6 +75,8 @@ SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$SCAN_CI_SECRET
 
 HTTP=$(curl -sS -o resposta.json -w '%{http_code}' \
   -X POST "$API/api/scan/ci" \
+  -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
+  -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
   -H "Content-Type: application/json" \
   -H "X-Scan-Timestamp: $TS" \
   -H "X-Scan-Signature: sha256=$SIG" \
@@ -67,7 +96,10 @@ echo "Gate de higiene OK"
 - name: Gate de higiene de endpoint
   env:
     SCAN_CI_SECRET: ${{ secrets.SCAN_CI_SECRET }}
-  run: ./scripts/scan-ci.sh
+    CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+    CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+    SCAN_URL: https://api.cliente.com/v1
+  run: bash ./scripts/scan-ci.sh
 ```
 
 Guarde o `SCAN_CI_SECRET` como secret do repositório, com o **mesmo valor** da variável no Coolify.
