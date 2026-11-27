@@ -26,6 +26,22 @@ export interface EntradaDiario {
 
 export const DIARIO_PROJETO: EntradaDiario[] = [
   {
+    id: 'proj-2026-11-27-scanner-injecao-jwt',
+    data: '2026-11-27',
+    titulo: 'Scanner: sinais ativos benignos de SQLi/prompt + analisador de JWT offline',
+    descricao:
+      'Completa o pedido de testar injecao e JWT, respeitando a fronteira de transacao (so estatico/staging): ' +
+      'no Scanner, dois sinais ativos BENIGNOS e opt-in, so em GET de leitura — SQLi por erro (uma aspa simples ' +
+      'faz o banco mostrar erro) e canario de prompt injection (instrucao inofensiva ve se o modelo obedece), ' +
+      'ambos como a confirmar, sem explorar. E uma caixa que analisa um JWT colado, no proprio navegador, sem ' +
+      'rede e sem a chave: aponta alg none, HS simetrico, falta de exp, validade longa, claim sensivel. Licao: ' +
+      'da pra dar sinal de injecao sem disparar exploit — a aspa e o canario sao inofensivos, e o resto fica no ' +
+      'estatico do reposcan.',
+    categoria: 'funcionalidade',
+    tags: ['scanner', 'sqli', 'prompt-injection', 'jwt', 'devsecops'],
+    projetoId: null,
+  },
+  {
     id: 'proj-2026-11-27-reposcan-injecao',
     data: '2026-11-27',
     titulo: 'Reposcan detecta injecao (SQL/NoSQL/SSTI/cmd/prompt) e fragilidade de JWT',

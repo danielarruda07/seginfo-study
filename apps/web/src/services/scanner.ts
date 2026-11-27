@@ -46,7 +46,7 @@ export interface ResumoOpenApi {
 }
 
 export interface TesteAtivo {
-  tipo: 'reflexo' | 'open-redirect' | 'autorizacao';
+  tipo: 'reflexo' | 'open-redirect' | 'autorizacao' | 'sqli-erro' | 'prompt-canario';
   parametro: string | null;
   indicio: boolean;
   detalhe: string;

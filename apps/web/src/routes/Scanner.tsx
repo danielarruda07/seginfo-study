@@ -9,6 +9,7 @@ import {
   escanearEndpoint, escanearLote, listarHistorico, removerDoHistorico, contarSeveridade,
   laudoMarkdown, baixarArquivo, type ScanRelatorio, type Severidade,
 } from '@/services/scanner';
+import { analisarTokenJwt, type AnaliseJwt, type SevJwt } from '@/services/jwt';
 
 const TOM: Record<Severidade, 'danger' | 'warning' | 'info' | 'muted'> = {
   alta: 'danger', media: 'warning', baixa: 'info', info: 'muted',
@@ -131,6 +132,37 @@ function Relatorio({ r }: { r: ScanRelatorio }) {
   );
 }
 
+const TOM_JWT: Record<SevJwt, 'danger' | 'warning' | 'info' | 'muted'> = { alta: 'danger', media: 'warning', baixa: 'info', info: 'muted' };
+
+function JwtBox() {
+  const [token, setToken] = useState('');
+  const [res, setRes] = useState<AnaliseJwt | null>(null);
+  return (
+    <div className="iv-card iv-mt">
+      <h2 className="iv-section-label">Analisar JWT (offline)</h2>
+      <p className="iv-muted" style={{ marginTop: 0 }}>
+        Cole um token para checar fragilidades estruturais. Roda no navegador, não envia nada e <strong>não verifica a assinatura</strong> (precisaria da chave).
+      </p>
+      <InputTextarea value={token} onChange={(e) => setToken(e.target.value)} rows={3} style={{ width: '100%', fontFamily: 'monospace' }}
+        placeholder="eyJhbGciOi...  (header.payload.assinatura)" aria-label="Token JWT" />
+      <div className="iv-mt">
+        <Button label="Analisar JWT" icon="pi pi-id-card" onClick={() => setRes(analisarTokenJwt(token))} disabled={!token.trim()} />
+      </div>
+      {res && !res.valido && <StatusStrip tone="warn" icon="pi-exclamation-triangle">{res.erro}</StatusStrip>}
+      {res?.valido && (
+        <ul style={{ marginTop: '0.6rem' }}>
+          {res.achados.map((a, i) => (
+            <li key={i} style={{ marginBottom: '0.3rem' }}>
+              <Pill tone={TOM_JWT[a.severidade]} label={SEV_LABEL[a.severidade]} /> <strong>{a.titulo}</strong>
+              <div className="iv-muted">{a.detalhe}</div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function Scanner() {
   const [url, setUrl] = useState('');
   const [lote, setLote] = useState('');
@@ -196,14 +228,14 @@ export function Scanner() {
           </label>
           <label className="iv-row" style={{ gap: '0.4rem', alignItems: 'center' }}>
             <Checkbox checked={ativos} onChange={(e) => setAtivos(!!e.checked)} />
-            <span>Testes ativos seguros (reflexo, open-redirect, autorização)</span>
+            <span>Testes ativos seguros (reflexo, open-redirect, autorização, sinal de SQLi, canário de prompt)</span>
           </label>
         </div>
 
         {ativos && (
           <StatusStrip tone="warn" icon="pi-info-circle">
-            Testes ativos enviam requisições com um marcador inofensivo (sem explorar). Use apenas em alvos autorizados;
-            os achados saem como <strong>a confirmar</strong>.
+            Testes ativos enviam requisições GET com marcador/aspa/canário <strong>inofensivos</strong> (sem explorar); os achados saem como <strong>a confirmar</strong>.
+            Use só em alvos autorizados e <strong>nunca em endpoint de transação/escrita de produção</strong> — para esses, use a análise estática (reposcan) ou um ambiente de staging.
           </StatusStrip>
         )}
 
@@ -227,6 +259,8 @@ export function Scanner() {
 
       {atual && <Relatorio r={atual} />}
       {resultadosLote.map((r) => <Relatorio key={r.url} r={r} />)}
+
+      <JwtBox />
 
       <div className="iv-card iv-mt">
         <h2 className="iv-section-label">Histórico (local)</h2>

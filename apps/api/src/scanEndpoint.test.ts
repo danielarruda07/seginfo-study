@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   classificarMetodos, escopoDoIp, parseCookie, montarAchados,
   analisarCors, fingerprintTech, detectarControles, analisarCorpo, resumirOpenApi,
-  corpoReflete, locationApontaMarcador, avaliarAutorizacao,
+  corpoReflete, locationApontaMarcador, avaliarAutorizacao, detectaErroSql, detectaCanario,
   type InfoTlsScan, type TesteAtivo,
 } from './scanEndpoint.js';
 
@@ -127,6 +127,24 @@ describe('scanner de endpoint — analisadores', () => {
     expect(avaliarAutorizacao(200, 200).indicio).toBe(true);
     expect(avaliarAutorizacao(401, 200).indicio).toBe(false);
     expect(avaliarAutorizacao(200, 403).indicio).toBe(false);
+  });
+
+  it('detecta erro de banco (sinal de SQLi) e o canário de prompt', () => {
+    expect(detectaErroSql('... You have an error in your SQL syntax near ...')).toBe(true);
+    expect(detectaErroSql('ORA-01756: quoted string not properly terminated')).toBe(true);
+    expect(detectaErroSql('resposta normal 200 OK')).toBe(false);
+    expect(detectaCanario('SEGINFOCANARIO9')).toBe(true);
+    expect(detectaCanario('outra resposta')).toBe(false);
+  });
+
+  it('achados ativos de SQLi (alta) e prompt (media)', () => {
+    const ativos: TesteAtivo[] = [
+      { tipo: 'sqli-erro', parametro: 'id', indicio: true, detalhe: 'x' },
+      { tipo: 'prompt-canario', parametro: 'q', indicio: true, detalhe: 'x' },
+    ];
+    const r = montarAchados({ status: 200, usaHttps: true, tls: tlsOk, cabecalhos: [], metodos: null, cookies: [], cors: null, corpoSinais: [], exposicoes: [], testesAtivos: ativos, servidor: null, poweredBy: null });
+    expect(r.some((a) => a.id === 'ativo-sqli-id' && a.severidade === 'alta')).toBe(true);
+    expect(r.some((a) => a.id === 'ativo-prompt-q' && a.severidade === 'media')).toBe(true);
   });
 
   it('testes ativos com indício viram achados; sem indício, não', () => {
